@@ -9,8 +9,10 @@ use App\Models\Formation;
 use App\Models\Project;
 use App\Models\Reservation;
 use App\Models\ReservationCowork;
+use App\Models\Task;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
@@ -213,6 +215,86 @@ class DashboardController extends Controller
                     ->where('canceled', 0)
                     ->count()
                 : 0;
+
+            // Last 7 days reservation trend for dashboard charts
+            $reservationTrend = [];
+            if (Schema::hasTable('reservations')) {
+                for ($i = 6; $i >= 0; $i--) {
+                    $date = now()->subDays($i);
+                    $reservationTrend[] = [
+                        'label' => $date->format('D'),
+                        'date' => $date->format('Y-m-d'),
+                        'count' => Reservation::whereDate('day', $date)
+                            ->where('canceled', 0)
+                            ->count(),
+                    ];
+                }
+            }
+
+            // Last 7 days completed tasks for line chart
+            $taskCompletionTrend = [];
+            if (Schema::hasTable('tasks')) {
+                for ($i = 6; $i >= 0; $i--) {
+                    $date = now()->subDays($i);
+                    $taskCompletionTrend[] = [
+                        'label' => $date->format('D'),
+                        'date' => $date->format('Y-m-d'),
+                        'count' => Task::where('status', 'completed')
+                            ->whereDate('completed_at', $date)
+                            ->count(),
+                    ];
+                }
+            }
+
+            // Project owner activity feed (only for users who own projects)
+            $isProjectOwner = false;
+            $projectOwnerActivity = [];
+            $userId = Auth::id();
+
+            if ($userId && Schema::hasTable('projects') && Schema::hasTable('tasks')) {
+                $ownedProjectIds = Project::where('created_by', $userId)->pluck('id');
+                $isProjectOwner = $ownedProjectIds->isNotEmpty();
+
+                if ($isProjectOwner) {
+                    $projectOwnerActivity = Task::query()
+                        ->whereIn('project_id', $ownedProjectIds)
+                        ->with([
+                            'project:id,name',
+                            'creator:id,name',
+                            'assignedTo:id,name',
+                        ])
+                        ->orderByDesc('updated_at')
+                        ->limit(5)
+                        ->get()
+                        ->map(function (Task $task) {
+                            $type = match ($task->status) {
+                                'completed' => 'completed',
+                                'in_progress' => 'in_progress',
+                                'review' => 'review',
+                                default => 'created',
+                            };
+
+                            $actor = $task->assignedTo?->name
+                                ?? $task->creator?->name
+                                ?? 'Team member';
+
+                            return [
+                                'id' => $task->id.'-'.$type,
+                                'type' => $type,
+                                'task_id' => $task->id,
+                                'task_title' => $task->title ?? 'Untitled task',
+                                'project_id' => $task->project_id,
+                                'project_name' => $task->project?->name ?? 'Project',
+                                'actor_name' => $actor,
+                                'status' => $task->status,
+                                'time_ago' => $task->updated_at?->diffForHumans() ?? 'N/A',
+                                'href' => '/admin/projects/'.$task->project_id,
+                            ];
+                        })
+                        ->values()
+                        ->toArray();
+                }
+            }
         } catch (\Exception $e) {
             // Fallback to empty data if there's an error
             Log::error('Dashboard data error: '.$e->getMessage());
@@ -236,6 +318,10 @@ class DashboardController extends Controller
             $todayReservations = 0;
             $weekReservations = 0;
             $monthReservations = 0;
+            $reservationTrend = [];
+            $taskCompletionTrend = [];
+            $isProjectOwner = false;
+            $projectOwnerActivity = [];
         }
 
         return Inertia::render('dashboard', [
@@ -250,6 +336,10 @@ class DashboardController extends Controller
             'todayReservations' => $todayReservations,
             'weekReservations' => $weekReservations,
             'monthReservations' => $monthReservations,
+            'reservationTrend' => $reservationTrend ?? [],
+            'taskCompletionTrend' => $taskCompletionTrend ?? [],
+            'isProjectOwner' => $isProjectOwner ?? false,
+            'projectOwnerActivity' => $projectOwnerActivity ?? [],
         ]);
     }
 }
