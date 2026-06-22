@@ -8,4 +8,4 @@ Route::middleware("learning")->group(function()
 {
     Route::get("/academy/token", [LearningController::class, "handleToken"]);
     Route::get("/academy/classes",[SendClassController::class, "GetClassesData"]);
-});
+    });
