@@ -1,6 +1,6 @@
 const forcedRoles = {
-    'aymenboujjar12@gmail.com': ['pro'],
-    'forkanimahdi@gmail.com': ['coach'],
+    // 'aymenboujjar12@gmail.com': ['pro'],
+    // 'forkanimahdi@gmail.com': ['coach'],
 };
 
 const formatRole = (value) => (value === 'studio_responsable' ? 'Responsable Studio' : value);
