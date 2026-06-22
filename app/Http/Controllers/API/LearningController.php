@@ -56,7 +56,6 @@ class LearningController extends Controller
                 "formation_id" => $user->formation_id ?? null
             ];
         }
-
         return $token;
     }
 
