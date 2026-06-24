@@ -95,7 +95,7 @@ const ProjectShow = ({
     isProjectOwner = false,
     currentUserProjectRole = null,
 }) => {
-    const [activeTab, setActiveTab] = useState('overview');
+    const [activeTab, setActiveTab] = useState('tasks');
     const [unreadMessageCount, setUnreadMessageCount] = useState(0);
     const activityReadStorageKey = `project-${project.id}-read-activities`;
     const [readActivityIds, setReadActivityIds] = useState(() => {
