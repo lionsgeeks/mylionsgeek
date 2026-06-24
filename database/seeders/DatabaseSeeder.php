@@ -24,7 +24,9 @@ class DatabaseSeeder extends Seeder
         //         'email_verified_at' => now(),
         //     ]
         // );
-        $this->call([    // make sure you have this
+        $this->call([
+            //* this was used for testing purposes
+            // StudentSeeder::class,
             PostSeeder::class,
             CommentSeeder::class,
             LikeSeeder::class,

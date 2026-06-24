@@ -19,7 +19,11 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Attendance endpoints (accessible to admin and coach)
     Route::post('/attendances', [TrainingController::class, 'attendance']);
-    Route::post('/attendance/save', [TrainingController::class, 'save']);
+    Route::post('/attendance/save', [TrainingController::class, 'save'])
+        ->middleware('school.network');
+    Route::get('/attendance/network-check', function () {
+        return response()->json(['ok' => true]);
+    })->middleware('school.network');
     Route::get('/trainings/{id}/attendance-events', [TrainingController::class, 'attendanceEvents']);
     Route::get('/trainings/{id}/attendance-history', [TrainingController::class, 'attendanceHistory']);
 });

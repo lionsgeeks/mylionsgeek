@@ -321,3 +321,15 @@ require __DIR__.'/admin/project-approvals.php';
 require __DIR__.'/admin/post-reports.php';
 require __DIR__.'/students/posts.php';
 require __DIR__.'/chat.php';
+
+// Keep local-only if this is still needed temporarily.
+if (app()->environment('local')) {
+    Route::get('/debug-ip', function (Request $request) {
+        return response()->json([
+            'ip' => $request->ip(),
+            'ips' => $request->ips(),
+            'x_forwarded_for' => $request->header('X-Forwarded-For'),
+            'remote_addr' => $request->server('REMOTE_ADDR'),
+        ]);
+    });
+}
