@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use GuzzleHttp\Client;
 
 class ExpoPushNotificationService
 {
@@ -138,21 +137,23 @@ class ExpoPushNotificationService
             ]);
 
             // Expo API expects the request body to be a JSON array directly: [{"to": "...", ...}]
-            // NOT an object with "messages" property: {"messages": [{"to": "...", ...}]}
-            // Use Guzzle directly to send raw JSON array (Laravel's Http wraps arrays in objects)
-            $client = new Client(['timeout' => 10]);
-            $guzzleResponse = $client->post(self::EXPO_PUSH_URL, [
-                'headers' => [
+            $request = Http::timeout(10)
+                ->withHeaders([
                     'Accept' => 'application/json',
                     'Accept-Encoding' => 'gzip, deflate',
                     'Content-Type' => 'application/json',
-                ],
-                'body' => json_encode($messages),
-            ]);
-            
-            $statusCode = $guzzleResponse->getStatusCode();
-            $responseBody = $guzzleResponse->getBody()->getContents();
-            $responseData = json_decode($responseBody, true);
+                ]);
+
+            $certPath = storage_path('certs/cacert.pem');
+            if (is_file($certPath)) {
+                $request = $request->withOptions(['verify' => $certPath]);
+            }
+
+            $response = $request->post(self::EXPO_PUSH_URL, $messages);
+
+            $statusCode = $response->status();
+            $responseBody = $response->body();
+            $responseData = $response->json();
             
             Log::info('Expo API response received', [
                 'status' => $statusCode,

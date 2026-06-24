@@ -3,6 +3,7 @@ import FlashMessage from '@/components/FlashMessage';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -102,9 +103,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
         const assignedToId = normalizeAssigneeId(task?.assigned_to);
         const collaboratorIds = (task?.assignees || []).map(normalizeAssigneeId);
 
-        return [assignedToId, ...collaboratorIds]
-            .filter((assigneeId) => assigneeId != null)
-            .map((assigneeId) => String(assigneeId));
+        return [assignedToId, ...collaboratorIds].filter((assigneeId) => assigneeId != null).map((assigneeId) => String(assigneeId));
     };
     const getTaskAssigneeMembers = (task) =>
         getTaskAssigneeIds(task)
@@ -119,8 +118,9 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
             .filter(Boolean);
     const canEditTask = (task) =>
         canManageTasks ||
-        String(normalizeAssigneeId(task?.assigned_to)) === String(currentUserId) ||
+        getTaskAssigneeIds(task).includes(String(currentUserId)) ||
         String(task?.created_by || task?.creator?.id) === String(currentUserId);
+    const isTaskAssignedToCurrentUser = (task) => currentUserId && getTaskAssigneeIds(task).includes(String(currentUserId));
     const todayStart = useMemo(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -160,23 +160,25 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
         }
     }, [flash]);
 
+    const initialTaskData = useMemo(
+        () => ({
+            title: '',
+            description: '',
+            priority: 'medium',
+            status: 'todo',
+            assigned_to: canManageTasks ? null : (currentUserId ?? null),
+            assignees: [],
+            due_date: '',
+            notes: '',
+            tags: [],
+            progress: 0,
+            project_id: projectId,
+        }),
+        [canManageTasks, currentUserId, projectId],
+    );
+
     // Form for creating tasks
-    const {
-        data: taskData,
-        setData: setTaskData,
-        post: createTask,
-        processing: isCreating,
-    } = useForm({
-        title: '',
-        description: '',
-        priority: 'medium',
-        status: 'todo',
-        assigned_to: canManageTasks ? null : currentUserId ?? null,
-        due_date: '',
-        tags: [],
-        progress: 0,
-        project_id: projectId,
-    });
+    const { data: taskData, setData: setTaskData, post: createTask, processing: isCreating } = useForm(initialTaskData);
 
     const filteredTasks = useMemo(() => {
         let filtered = safeTasks.filter((task) => {
@@ -232,26 +234,9 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
     const handleCreateTask = (e) => {
         e.preventDefault();
 
-        // Ensure project_id is included in the data
-        const taskDataWithProject = {
-            ...taskData,
-            project_id: projectId,
-        };
-
-        //(taskDataWithProject);
-        createTask('/admin/tasks', taskDataWithProject, {
-            data: taskDataWithProject,
+        createTask('/admin/tasks', {
             onSuccess: () => {
-                setTaskData({
-                    title: '',
-                    description: '',
-                    priority: 'medium',
-                    status: 'todo',
-                    assigned_to: canManageTasks ? null : currentUserId ?? null,
-                    due_date: '',
-                    tags: [],
-                    progress: 0,
-                });
+                setTaskData(initialTaskData);
                 setIsCreateModalOpen(false);
             },
             onError: (errors) => {
@@ -346,6 +331,27 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                 },
             });
         }
+    };
+
+    const handleCreatePrimaryAssigneeChange = (value) => {
+        const assignedTo = value === 'unassigned' ? null : value ? parseInt(value) : null;
+        const assignees = (taskData.assignees || []).filter((assigneeId) => String(assigneeId) !== String(assignedTo));
+
+        setTaskData({
+            ...taskData,
+            assigned_to: assignedTo,
+            assignees,
+        });
+    };
+
+    const handleToggleCreateAssignee = (memberId) => {
+        const currentAssignees = taskData.assignees || [];
+        const isSelected = currentAssignees.some((assigneeId) => String(assigneeId) === String(memberId));
+        const assignees = isSelected
+            ? currentAssignees.filter((assigneeId) => String(assigneeId) !== String(memberId))
+            : [...currentAssignees, Number(memberId)];
+
+        setTaskData('assignees', assignees);
     };
 
     const handleUpdateStatus = (task, newStatus) => {
@@ -537,7 +543,9 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                             filteredTasks.map((task) => (
                                 <TableRow
                                     key={task.id}
-                                    className={`hover:bg-muted/50 ${task.is_pinned ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''} ${
+                                    className={`border-l-2 hover:bg-muted/50 ${
+                                        isTaskAssignedToCurrentUser(task) ? 'border-l-alpha bg-alpha/5' : 'border-l-transparent'
+                                    } ${task.is_pinned ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''} ${
                                         task.status === 'completed' ? 'text-muted-foreground opacity-75' : ''
                                     }`}
                                 >
@@ -620,26 +628,32 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                                                     )}
                                                     {canManageTasks && (
                                                         <DropdownMenuItem onClick={() => handleTogglePin(task)}>
-                                                            {task.is_pinned ? (
-                                                                <PinOff className="mr-2 h-4 w-4" />
-                                                            ) : (
-                                                                <Pin className="mr-2 h-4 w-4" />
-                                                            )}
+                                                            {task.is_pinned ? <PinOff className="mr-2 h-4 w-4" /> : <Pin className="mr-2 h-4 w-4" />}
                                                             <span>{task.is_pinned ? 'Unpin' : 'Pin'}</span>
                                                         </DropdownMenuItem>
                                                     )}
-                                                    {canEditTask(task) && (
+                                                    {canManageTasks && canEditTask(task) && task.status !== 'completed' && (
                                                         <DropdownMenuItem onClick={() => handleUpdateStatus(task, 'completed')}>
                                                             <CheckCircle className="mr-2 h-4 w-4" />
                                                             <span>Mark as Completed</span>
                                                         </DropdownMenuItem>
                                                     )}
-                                                    {canEditTask(task) && (task.status === 'completed' || task.status === 'review') && (
-                                                        <DropdownMenuItem onClick={() => handleUpdateStatus(task, 'in_progress')}>
-                                                            <AlertCircle className="mr-2 h-4 w-4" />
-                                                            <span>Mark as Incomplete</span>
-                                                        </DropdownMenuItem>
-                                                    )}
+                                                    {!canManageTasks &&
+                                                        canEditTask(task) &&
+                                                        task.status !== 'review' &&
+                                                        task.status !== 'completed' && (
+                                                            <DropdownMenuItem onClick={() => handleUpdateStatus(task, 'review')}>
+                                                                <CheckCircle className="mr-2 h-4 w-4" />
+                                                                <span>Send to Review</span>
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                    {canEditTask(task) &&
+                                                        (task.status === 'review' || (canManageTasks && task.status === 'completed')) && (
+                                                            <DropdownMenuItem onClick={() => handleUpdateStatus(task, 'in_progress')}>
+                                                                <AlertCircle className="mr-2 h-4 w-4" />
+                                                                <span>Mark as Incomplete</span>
+                                                            </DropdownMenuItem>
+                                                        )}
                                                     <DropdownMenuItem onClick={() => handleOpenTaskDetailAndFocusComment(task)}>
                                                         <MessageSquare className="mr-2 h-4 w-4" />
                                                         <span>Add Comment</span>
@@ -717,7 +731,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                                         <SelectItem value="todo">To Do</SelectItem>
                                         <SelectItem value="in_progress">In Progress</SelectItem>
                                         <SelectItem value="review">Review</SelectItem>
-                                        <SelectItem value="completed">Completed</SelectItem>
+                                        {canManageTasks && <SelectItem value="completed">Completed</SelectItem>}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -726,9 +740,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                             <Label htmlFor="assigned_to">Assign To</Label>
                             <Select
                                 value={taskData.assigned_to ? String(taskData.assigned_to) : 'unassigned'}
-                                onValueChange={(value) => {
-                                    setTaskData('assigned_to', value === 'unassigned' ? null : value ? parseInt(value) : null);
-                                }}
+                                onValueChange={handleCreatePrimaryAssigneeChange}
                                 disabled={!canManageTasks}
                             >
                                 <SelectTrigger>
@@ -736,7 +748,10 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                                 </SelectTrigger>
                                 <SelectContent>
                                     {canManageTasks && <SelectItem value="unassigned">Unassigned</SelectItem>}
-                                    {(canManageTasks ? safeTeamMembers : safeTeamMembers.filter((member) => String(member.id) === String(currentUserId))).map((member) => {
+                                    {(canManageTasks
+                                        ? safeTeamMembers
+                                        : safeTeamMembers.filter((member) => String(member.id) === String(currentUserId))
+                                    ).map((member) => {
                                         if (!member?.id) return null;
                                         return (
                                             <SelectItem key={member.id} value={String(member.id)}>
@@ -749,22 +764,47 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                             {taskData.assigned_to && (
                                 <div className="mt-2 flex flex-wrap gap-1">
                                     {(() => {
-                                        const member = safeTeamMembers.find((m) => m.id === taskData.assigned_to);
+                                        const member = safeTeamMembers.find((m) => String(m.id) === String(taskData.assigned_to));
                                         return member ? (
                                             <Badge variant="outline" className="flex items-center gap-1">
                                                 {member.name}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setTaskData('assigned_to', null)}
-                                                    className="ml-1 rounded-full p-0.5 hover:bg-gray-200"
-                                                >
-                                                    ×
-                                                </button>
+                                                {canManageTasks && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleCreatePrimaryAssigneeChange('unassigned')}
+                                                        className="ml-1 rounded-full p-0.5 hover:bg-muted"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                )}
                                             </Badge>
                                         ) : null;
                                     })()}
                                 </div>
                             )}
+                        </div>
+                        <div>
+                            <Label>Additional Assignees</Label>
+                            <div className="mt-2 grid max-h-40 gap-2 overflow-y-auto rounded-md border border-border bg-background p-3 sm:grid-cols-2">
+                                {safeTeamMembers
+                                    .filter((member) => String(member.id) !== String(taskData.assigned_to))
+                                    .map((member) => {
+                                        const checked = (taskData.assignees || []).some((assigneeId) => String(assigneeId) === String(member.id));
+
+                                        return (
+                                            <label
+                                                key={member.id}
+                                                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/60"
+                                            >
+                                                <Checkbox checked={checked} onCheckedChange={() => handleToggleCreateAssignee(member.id)} />
+                                                <span className="min-w-0 truncate">{member.name || 'Unknown'}</span>
+                                            </label>
+                                        );
+                                    })}
+                                {safeTeamMembers.filter((member) => String(member.id) !== String(taskData.assigned_to)).length === 0 && (
+                                    <span className="text-sm text-muted-foreground">No other team members available</span>
+                                )}
+                            </div>
                         </div>
                         <div>
                             <Label htmlFor="due_date">Due Date</Label>

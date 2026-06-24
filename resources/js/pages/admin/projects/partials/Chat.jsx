@@ -227,14 +227,28 @@ const Chat = ({ projectId, messages: initialMessages = [], onChatOpen, unreadCou
         };
     }, [subscribe, projectId, editingMessage]);
 
-    // Auto-scroll to bottom when chat opens or messages change
-    useEffect(() => {
-        if (chatOpen && messagesEndRef.current) {
-            setTimeout(() => {
-                messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
+    const scrollToLatestMessage = (behavior = 'smooth') => {
+        if (scrollAreaRef.current) {
+            scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
         }
-    }, [chatOpen, messages]);
+
+        messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
+    };
+
+    // Auto-scroll after the sheet opens and after the message list finishes rendering.
+    useEffect(() => {
+        if (!chatOpen) {
+            return undefined;
+        }
+
+        const animationFrame = requestAnimationFrame(() => scrollToLatestMessage('auto'));
+        const timer = setTimeout(() => scrollToLatestMessage('smooth'), 250);
+
+        return () => {
+            cancelAnimationFrame(animationFrame);
+            clearTimeout(timer);
+        };
+    }, [chatOpen, messages.length]);
 
     const [audioBlob, setAudioBlob] = useState(null);
     const [audioDuration, setAudioDuration] = useState(0);

@@ -120,7 +120,7 @@ const SidebarButton = ({ icon: Icon, label, onClick, isActive = false }) => (
 );
 
 // Helper component for status popover
-const StatusPopover = ({ currentStatus, onStatusChange, onClose, getStatusIcon, getStatusBadgeClass }) => {
+const StatusPopover = ({ currentStatus, onStatusChange, onClose, getStatusIcon, getStatusBadgeClass, canCompleteTask = false }) => {
     const statuses = [
         { value: 'todo', label: 'To Do' },
         { value: 'in_progress', label: 'In Progress' },
@@ -142,31 +142,33 @@ const StatusPopover = ({ currentStatus, onStatusChange, onClose, getStatusIcon, 
                 </Button>
             </div>
             <div className="space-y-1">
-                {statuses.map((status) => {
-                    const isSelected = currentStatus === status.value;
-                    return (
-                        <div
-                            key={status.value}
-                            onClick={() => {
-                                onStatusChange(status.value);
-                                onClose();
-                            }}
-                            className={`flex cursor-pointer items-center justify-between rounded-lg p-3 transition-colors hover:bg-accent ${
-                                isSelected ? 'border-2 border-primary/20 bg-primary/10' : 'border-2 border-transparent'
-                            }`}
-                        >
-                            <div className="flex items-center gap-2">
-                                <div
-                                    className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold ${getStatusBadgeClass(status.value)}`}
-                                >
-                                    {getStatusIcon(status.value)}
-                                    {status.label}
+                {statuses
+                    .filter((status) => status.value !== 'completed' || canCompleteTask)
+                    .map((status) => {
+                        const isSelected = currentStatus === status.value;
+                        return (
+                            <div
+                                key={status.value}
+                                onClick={() => {
+                                    onStatusChange(status.value);
+                                    onClose();
+                                }}
+                                className={`flex cursor-pointer items-center justify-between rounded-lg p-3 transition-colors hover:bg-accent ${
+                                    isSelected ? 'border-2 border-primary/20 bg-primary/10' : 'border-2 border-transparent'
+                                }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <div
+                                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold ${getStatusBadgeClass(status.value)}`}
+                                    >
+                                        {getStatusIcon(status.value)}
+                                        {status.label}
+                                    </div>
                                 </div>
+                                {isSelected && <CheckCircle className="h-4 w-4 text-primary" />}
                             </div>
-                            {isSelected && <CheckCircle className="h-4 w-4 text-primary" />}
-                        </div>
-                    );
-                })}
+                        );
+                    })}
             </div>
         </div>
     );
@@ -567,6 +569,10 @@ const TaskModal = ({
     };
 
     const handleUpdateStatus = (status) => {
+        if (status === 'completed' && !isProjectOwner) {
+            return;
+        }
+
         if (status === 'completed') {
             const hasIncompleteSubtasks = (taskData.subtasks || []).some((subtask) => !subtask.completed);
             if (hasIncompleteSubtasks) {
@@ -1008,6 +1014,7 @@ const TaskModal = ({
                                     onClose={() => setShowStatusPopover(false)}
                                     getStatusIcon={getStatusIcon}
                                     getStatusBadgeClass={getStatusBadgeClass}
+                                    canCompleteTask={isProjectOwner}
                                 />
                             )}
                         </div>

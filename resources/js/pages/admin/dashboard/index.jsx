@@ -1,7 +1,17 @@
-import StatCard from '@/components/StatCard';
 import Rolegard from '@/components/rolegard';
-import { Link } from '@inertiajs/react';
-import { ArrowRight, Building2, Calendar, Camera, Clock, FolderOpen, GraduationCap, Monitor, Timer, TrendingUp, Users, Wrench } from 'lucide-react';
+import {
+    activityPanelMeta,
+    PendingAppointmentsPanel,
+    RecentReservationsPanel,
+    RecentUsersPanel,
+    WorkspacePulsePanel,
+} from './partials/ActivityPanels';
+import { ReservationTrendChart, TaskCompletionLineChart } from './partials/DashboardCharts';
+import DashboardStatCards from './partials/DashboardStatCards';
+import ProjectOwnerActivityPanel from './partials/ProjectOwnerActivityPanel';
+import QuickActionsPanel from './partials/QuickActionsPanel';
+import SectionCard from './partials/SectionCard';
+import { BellRing, Calendar, LayoutDashboard, Monitor, TrendingUp, Users, Wrench, Zap } from 'lucide-react';
 
 const MainDashboard = ({
     stats = {},
@@ -9,12 +19,17 @@ const MainDashboard = ({
     equipmentStats = {},
     projectStats = {},
     recentReservations = [],
-    recentProjects = [],
+    pendingAppointments = [],
+    recentUsers = [],
     todayReservations = 0,
     weekReservations = 0,
     monthReservations = 0,
+    reservationTrend = [],
+    taskCompletionTrend = [],
+    isProjectOwner = false,
+    projectOwnerActivity = [],
 }) => {
-    const allOverviewStats = [
+    const overviewStats = [
         {
             title: 'Total Users',
             value: stats.users || 0,
@@ -47,243 +62,99 @@ const MainDashboard = ({
             href: '/admin/equipements',
             excludeRoles: ['coach'],
         },
-        {
-            title: 'Projects',
-            value: stats.projects || 0,
-            icon: FolderOpen,
-            description: `${projectStats.active || 0} active`,
-            href: '/admin/projects',
-            excludeRoles: ['studio_responsable'],
-        },
-        {
-            title: 'Trainings',
-            value: stats.trainings || 0,
-            icon: GraduationCap,
-            description: 'Active programs',
-            href: '/admin/training',
-            excludeRoles: ['studio_responsable'],
-        },
-        {
-            title: 'Appointments',
-            value: stats.appointments || 0,
-            icon: Clock,
-            description: 'Pending approval',
-            href: '/admin/appointments',
-            excludeRoles: [],
-        },
-        {
-            title: 'Cowork Spaces',
-            value: stats.cowork_reservations_today || 0,
-            icon: Building2,
-            description: 'Today reservations',
-            href: '/admin/places',
-            excludeRoles: ['coach'],
-        },
-    ];
-
-    const quickLinks = [
-        { title: 'Users', href: '/admin/users', icon: Users, color: 'text-blue-600', excludeRoles: ['studio_responsable'] },
-        { title: 'Reservations', href: '/admin/reservations', icon: Calendar, color: 'text-green-600', excludeRoles: ['coach'] },
-        { title: 'Appointments', href: '/admin/appointments', icon: Clock, color: 'text-yellow-600', excludeRoles: [] },
-        { title: 'Computers', href: '/admin/computers', icon: Monitor, color: 'text-purple-600', excludeRoles: ['studio_responsable'] },
-        { title: 'Equipment', href: '/admin/equipements', icon: Camera, color: 'text-orange-600', excludeRoles: ['coach'] },
-        { title: 'Projects', href: '/admin/projects', icon: FolderOpen, color: 'text-indigo-600', excludeRoles: ['studio_responsable'] },
-        { title: 'Training', href: '/admin/training', icon: GraduationCap, color: 'text-pink-600', excludeRoles: ['studio_responsable'] },
-        { title: 'Places', href: '/admin/places', icon: Building2, color: 'text-cyan-600', excludeRoles: ['coach'] },
     ];
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             <div>
-                <h2 className="mb-4 text-2xl font-bold text-foreground">Overview</h2>
-                <StatCard statsData={allOverviewStats} />
+                <div className="mb-1 flex items-center gap-2">
+                    <LayoutDashboard className="h-5 w-5 text-alpha" />
+                    <span className="text-xs font-semibold tracking-widest text-alpha uppercase">Admin workspace</span>
+                </div>
+                <h2 className="text-2xl font-bold text-beta dark:text-light">360° Overview</h2>
+                <p className="mt-1 max-w-2xl text-sm text-beta/70 dark:text-light/70">
+                    Monitor members, spaces, equipment, projects, and reservations from a single command center.
+                </p>
             </div>
 
-            <Rolegard except={['coach']}>
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    <div className="rounded-xl border border-sidebar-border/70 bg-card p-6 lg:col-span-2">
-                        <div className="mb-4 flex items-center justify-between">
-                            <h3 className="flex items-center gap-2 text-xl font-semibold text-foreground">
-                                <Calendar className="h-5 w-5" />
-                                Recent Reservations
-                            </h3>
-                            <Link href="/admin/reservations" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-                                View all <ArrowRight className="h-4 w-4" />
-                            </Link>
-                        </div>
-                        <div className="space-y-3">
-                            {recentReservations.length > 0 ? (
-                                recentReservations.map((reservation) => (
-                                    <Link
-                                        key={reservation.id}
-                                        href={`/admin/reservations/${reservation.id}/details`}
-                                        className="block rounded-lg border border-sidebar-border/50 p-4 transition-colors hover:bg-muted/50"
-                                    >
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex-1">
-                                                <p className="font-medium text-foreground">{reservation.title}</p>
-                                                <p className="mt-1 text-sm text-muted-foreground">
-                                                    {reservation.user_name} • {reservation.type}
-                                                </p>
-                                                <p className="mt-1 text-xs text-muted-foreground">
-                                                    {reservation.date} • {reservation.time}
-                                                </p>
-                                            </div>
-                                            <span className="text-xs text-muted-foreground">{reservation.created_at}</span>
-                                        </div>
-                                    </Link>
-                                ))
-                            ) : (
-                                <p className="py-4 text-center text-sm text-muted-foreground">No recent reservations</p>
-                            )}
-                        </div>
-                    </div>
+            <DashboardStatCards statsData={overviewStats} />
 
-                    <div className="rounded-xl border border-sidebar-border/70 bg-card p-6">
-                        <h3 className="mb-4 flex items-center gap-2 text-xl font-semibold text-foreground">
-                            <Timer className="h-5 w-5" />
-                            Quick Links
-                        </h3>
-                        <div className="grid grid-cols-2 gap-3">
-                            {quickLinks.map((link) => {
-                                const Icon = link.icon;
-                                return (
-                                    <Rolegard key={link.href} except={link.excludeRoles || []}>
-                                        <Link
-                                            href={link.href}
-                                            className="group flex flex-col items-center justify-center rounded-lg border border-sidebar-border/50 p-4 transition-colors hover:bg-muted/50"
-                                        >
-                                            <Icon className={`mb-2 h-6 w-6 ${link.color} transition-transform group-hover:scale-110`} />
-                                            <span className="text-sm font-medium text-foreground">{link.title}</span>
-                                        </Link>
-                                    </Rolegard>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-            </Rolegard>
-
-            {/* hadi ma3ajbatniche */}
-            {/* <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Rolegard except={['studio_responsable']}>
-                    <div className="bg-card rounded-xl border border-sidebar-border/70 p-6">
-                        <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-                            <Monitor className="h-5 w-5" />
-                            Computer Status
-                        </h3>
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-900/10">
-                                <div className="flex items-center gap-2">
-                                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                    <span className="text-sm font-medium">Working</span>
-                                </div>
-                                <span className="text-lg font-bold text-green-600">{computerStats.working || 0}</span>
-                            </div>
-                            <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-900/10">
-                                <div className="flex items-center gap-2">
-                                    <XCircle className="h-4 w-4 text-red-600" />
-                                    <span className="text-sm font-medium">Not Working</span>
-                                </div>
-                                <span className="text-lg font-bold text-red-600">{computerStats.not_working || 0}</span>
-                            </div>
-                            <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/10">
-                                <div className="flex items-center gap-2">
-                                    <AlertCircle className="h-4 w-4 text-yellow-600" />
-                                    <span className="text-sm font-medium">Damaged</span>
-                                </div>
-                                <span className="text-lg font-bold text-yellow-600">{computerStats.damaged || 0}</span>
-                            </div>
-                            <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-900/10">
-                                <div className="flex items-center gap-2">
-                                    <Users className="h-4 w-4 text-blue-600" />
-                                    <span className="text-sm font-medium">Assigned</span>
-                                </div>
-                                <span className="text-lg font-bold text-blue-600">{computerStats.assigned || 0}</span>
-                            </div>
-                        </div>
-                    </div>
-                </Rolegard>
-
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
                 <Rolegard except={['coach']}>
-                    <div className="bg-card rounded-xl border border-sidebar-border/70 p-6">
-                        <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-                            <Wrench className="h-5 w-5" />
-                            Equipment Status
-                        </h3>
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-900/10">
-                                <div className="flex items-center gap-2">
-                                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                    <span className="text-sm font-medium">Working</span>
-                                </div>
-                                <span className="text-lg font-bold text-green-600">{equipmentStats.working || 0}</span>
-                            </div>
-                            <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-900/10">
-                                <div className="flex items-center gap-2">
-                                    <XCircle className="h-4 w-4 text-red-600" />
-                                    <span className="text-sm font-medium">Not Working</span>
-                                </div>
-                                <span className="text-lg font-bold text-red-600">{equipmentStats.not_working || 0}</span>
-                            </div>
-                        </div>
-                    </div>
+                    <SectionCard title="Reservation activity" icon={TrendingUp} href="/admin/reservations" className="xl:col-span-2">
+                        <ReservationTrendChart
+                            reservationTrend={reservationTrend}
+                            todayReservations={todayReservations}
+                            weekReservations={weekReservations}
+                            monthReservations={monthReservations}
+                        />
+                    </SectionCard>
                 </Rolegard>
 
+                <SectionCard title="Quick actions" icon={Zap}>
+                    <QuickActionsPanel />
+                </SectionCard>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <Rolegard except={['studio_responsable']}>
-                    <div className="bg-card rounded-xl border border-sidebar-border/70 p-6">
-                        <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-                            <FolderOpen className="h-5 w-5" />
-                            Project Status
-                        </h3>
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-900/10">
-                                <div className="flex items-center gap-2">
-                                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                    <span className="text-sm font-medium">Active</span>
-                                </div>
-                                <span className="text-lg font-bold text-green-600">{projectStats.active || 0}</span>
-                            </div>
-                            <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-900/10">
-                                <div className="flex items-center gap-2">
-                                    <CheckCircle2 className="h-4 w-4 text-blue-600" />
-                                    <span className="text-sm font-medium">Completed</span>
-                                </div>
-                                <span className="text-lg font-bold text-blue-600">{projectStats.completed || 0}</span>
-                            </div>
-                            <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/10">
-                                <div className="flex items-center gap-2">
-                                    <AlertCircle className="h-4 w-4 text-yellow-600" />
-                                    <span className="text-sm font-medium">On Hold</span>
-                                </div>
-                                <span className="text-lg font-bold text-yellow-600">{projectStats.on_hold || 0}</span>
-                            </div>
-                        </div>
-                    </div>
+                    <SectionCard
+                        title="Task completions"
+                        icon={TrendingUp}
+                        href="/admin/projects"
+                        className={!isProjectOwner ? 'lg:col-span-2' : ''}
+                    >
+                        <p className="mb-4 text-sm text-beta/65 dark:text-light/65">Tasks marked done across all projects — last 7 days</p>
+                        <TaskCompletionLineChart taskCompletionTrend={taskCompletionTrend} />
+                    </SectionCard>
                 </Rolegard>
-            </div> */}
 
-            <Rolegard except={['coach']}>
-                <div className="rounded-xl border border-sidebar-border/70 bg-card p-6">
-                    <h3 className="mb-4 flex items-center gap-2 text-xl font-semibold text-foreground">
-                        <TrendingUp className="h-5 w-5" />
-                        Reservation Trends
-                    </h3>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                        <div className="rounded-lg border border-sidebar-border/50 bg-muted/30 p-4">
-                            <p className="mb-1 text-sm text-muted-foreground">Today</p>
-                            <p className="text-2xl font-bold text-foreground">{todayReservations}</p>
-                        </div>
-                        <div className="rounded-lg border border-sidebar-border/50 bg-muted/30 p-4">
-                            <p className="mb-1 text-sm text-muted-foreground">This Week</p>
-                            <p className="text-2xl font-bold text-foreground">{weekReservations}</p>
-                        </div>
-                        <div className="rounded-lg border border-sidebar-border/50 bg-muted/30 p-4">
-                            <p className="mb-1 text-sm text-muted-foreground">This Month</p>
-                            <p className="text-2xl font-bold text-foreground">{monthReservations}</p>
-                        </div>
-                    </div>
-                </div>
+                {isProjectOwner && (
+                    <SectionCard title="Your project updates" icon={BellRing} href="/admin/projects" hrefLabel="Manage projects">
+                        <ProjectOwnerActivityPanel items={projectOwnerActivity} />
+                    </SectionCard>
+                )}
+            </div>
+
+            <SectionCard
+                title={activityPanelMeta.pulse.title}
+                icon={activityPanelMeta.pulse.icon}
+                href={activityPanelMeta.pulse.href}
+                hrefLabel={activityPanelMeta.pulse.hrefLabel}
+            >
+                <WorkspacePulsePanel
+                    computerStats={computerStats}
+                    equipmentStats={equipmentStats}
+                    projectStats={projectStats}
+                    pendingAppointments={stats.appointments || 0}
+                />
+            </SectionCard>
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <Rolegard except={['coach']}>
+                    <SectionCard
+                        title={activityPanelMeta.reservations.title}
+                        icon={activityPanelMeta.reservations.icon}
+                        href={activityPanelMeta.reservations.href}
+                        contentClassName="py-1"
+                    >
+                        <RecentReservationsPanel items={recentReservations} />
+                    </SectionCard>
+                </Rolegard>
+
+                <SectionCard
+                    title={activityPanelMeta.appointments.title}
+                    icon={activityPanelMeta.appointments.icon}
+                    href={activityPanelMeta.appointments.href}
+                >
+                    <PendingAppointmentsPanel items={pendingAppointments} />
+                </SectionCard>
+            </div>
+
+            <Rolegard except={['studio_responsable']}>
+                <SectionCard title={activityPanelMeta.users.title} icon={activityPanelMeta.users.icon} href={activityPanelMeta.users.href}>
+                    <RecentUsersPanel items={recentUsers} />
+                </SectionCard>
             </Rolegard>
         </div>
     );
