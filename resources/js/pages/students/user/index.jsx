@@ -3,9 +3,8 @@ import CenterFeed from './partials/feed/CenterFeed';
 import LeftSideBar from './partials/feed/LeftSideBar';
 // import RightSideBar from './partials/RightSideBar';
 
-export default function StudentFeed({ user, posts }) {
+export default function StudentFeed({ user, feedPosts, feedNextCursor, feedHasMore }) {
     const currentUser = user.user;
-    const currentPosts = posts.posts;
 
     return (
         <>
@@ -16,7 +15,13 @@ export default function StudentFeed({ user, posts }) {
                         <div className="mx-auto max-w-7xl px-4 bg-blend-darken">
                             <div className="relative grid grid-cols-1 gap-6 lg:grid-cols-12">
                                 <LeftSideBar user={currentUser} />
-                                <CenterFeed user={currentUser} posts={currentPosts} />
+                                <CenterFeed
+                                    user={currentUser}
+                                    posts={feedPosts}
+                                    feedNextCursor={feedNextCursor}
+                                    feedHasMore={feedHasMore}
+                                    enableInfiniteScroll
+                                />
                                 {/* <RightSideBar /> */}
                             </div>
                         </div>

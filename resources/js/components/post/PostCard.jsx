@@ -1,14 +1,24 @@
 import ReportModal from '@/components/ReportModal';
 import { router, usePage } from '@inertiajs/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { timeAgo } from '../../lib/utils';
 import { helpers } from '../utils/helpers';
 import PostCardItem from './PostCardItem';
 
-const PostCard = ({ user, posts, openModalPostId = null, onConsumedHashModal }) => {
+const PostCard = ({
+    user,
+    posts,
+    openModalPostId = null,
+    onConsumedHashModal,
+    feedNextCursor = null,
+    feedHasMore = false,
+    enableInfiniteScroll = false,
+}) => {
     const { auth } = usePage().props;
     const { addOrRemoveFollow } = helpers();
     const [postList, setPostList] = useState(posts ?? []);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const sentinelRef = useRef(null);
     const [deletingPostId, setDeletingPostId] = useState(null);
     const [openCommentsForPostId, setOpenCommentsForPostId] = useState(null);
     const [reportingPost, setReportingPost] = useState(null);
@@ -20,6 +30,50 @@ const PostCard = ({ user, posts, openModalPostId = null, onConsumedHashModal }) 
     useEffect(() => {
         setPostList(posts ?? []);
     }, [posts]);
+
+    const loadMore = useCallback(() => {
+        if (!enableInfiniteScroll || loadingMore || !feedHasMore || !feedNextCursor) {
+            return;
+        }
+
+        router.get(
+            '/students/feed',
+            { cursor: feedNextCursor },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                preserveUrl: true,
+                only: ['feedPosts', 'feedNextCursor', 'feedHasMore'],
+                showProgress: false,
+                onStart: () => setLoadingMore(true),
+                onFinish: () => setLoadingMore(false),
+            },
+        );
+    }, [enableInfiniteScroll, feedHasMore, feedNextCursor, loadingMore]);
+
+    useEffect(() => {
+        if (!enableInfiniteScroll || !feedHasMore) {
+            return undefined;
+        }
+
+        const sentinel = sentinelRef.current;
+        if (!sentinel) {
+            return undefined;
+        }
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    loadMore();
+                }
+            },
+            { rootMargin: '300px' },
+        );
+
+        observer.observe(sentinel);
+
+        return () => observer.disconnect();
+    }, [enableInfiniteScroll, feedHasMore, loadMore]);
 
     useEffect(() => {
         const handler = (event) => {
@@ -223,6 +277,11 @@ const PostCard = ({ user, posts, openModalPostId = null, onConsumedHashModal }) 
                     onCommentPress={() => setOpenCommentsForPostId(p.id)}
                 />
             ))}
+
+            {enableInfiniteScroll && feedHasMore && <div ref={sentinelRef} aria-hidden className="h-1" />}
+            {enableInfiniteScroll && loadingMore && (
+                <p className="py-4 text-center text-sm text-foreground/60">Loading more posts...</p>
+            )}
 
             <ReportModal
                 open={Boolean(reportingPost)}

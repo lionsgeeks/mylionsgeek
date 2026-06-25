@@ -204,12 +204,18 @@ class UsersController extends Controller
     /**
      * @return array<string, mixed>
      */
-    protected function mapPostForFeed(Post $post, User $authUser): array
+    /**
+     * @param  array{followed_ids?: int[], reposted_post_ids?: int[]}  $context
+     * @return array<string, mixed>
+     */
+    protected function mapPostForFeed(Post $post, User $authUser, array $context = []): array
     {
         $interactionPost = $post;
         $isLikedByCurrentUser = $interactionPost->relationLoaded('likes')
             ? $interactionPost->likes->isNotEmpty()
             : false;
+
+        $interactionPostId = (int) $interactionPost->id;
 
         return [
             'user_id' => $post->user_id,
@@ -224,28 +230,36 @@ class UsersController extends Controller
             'description' => $post->description,
             'mention_user_ids' => PostMentionResolver::mapTokensToUserIds($post->description),
             'images' => $post->images,
-            'interaction_post_id' => $interactionPost->id,
+            'interaction_post_id' => $interactionPostId,
 
             'likes_count' => $interactionPost->likes_count ?? 0,
             'comments_count' => $interactionPost->comments_count ?? 0,
             'reposts_count' => $interactionPost->reposts_count ?? 0,
 
             'is_liked_by_current_user' => $isLikedByCurrentUser,
-            'is_reposted_by_current_user' => DB::table('reposts_posts')
-                ->where('user_id', $authUser->id)
-                ->where('post_id', $interactionPost->id)
-                ->exists(),
+            'is_reposted_by_current_user' => isset($context['reposted_post_ids'])
+                ? in_array($interactionPostId, $context['reposted_post_ids'], true)
+                : DB::table('reposts_posts')
+                    ->where('user_id', $authUser->id)
+                    ->where('post_id', $interactionPostId)
+                    ->exists(),
 
             'created_at' => $post->created_at,
 
-            'is_following' => $authUser->following()->where('followed_id', $post->user_id)->exists(),
+            'is_following' => isset($context['followed_ids'])
+                ? in_array((int) $post->user_id, $context['followed_ids'], true)
+                : $authUser->following()->where('followed_id', $post->user_id)->exists(),
         ];
     }
 
     /**
      * @return array<string, mixed>
      */
-    protected function mapRepostForFeed(object $repostRow, Post $originalPost, User $reposter, User $authUser): array
+    /**
+     * @param  array{followed_ids?: int[], reposted_post_ids?: int[]}  $context
+     * @return array<string, mixed>
+     */
+    protected function mapRepostForFeed(object $repostRow, Post $originalPost, User $reposter, User $authUser, array $context = []): array
     {
         $repostCreatedAt = null;
         try {
@@ -276,7 +290,7 @@ class UsersController extends Controller
             'mention_user_ids' => PostMentionResolver::mapTokensToUserIds((string) ($repostRow->description ?? '')),
             'images' => [],
             'interaction_post_id' => (int) $originalPost->id,
-            'repost_of' => $this->mapPostForFeed($originalPost, $authUser),
+            'repost_of' => $this->mapPostForFeed($originalPost, $authUser, $context),
 
             // Always show original stats for a repost item
             'likes_count' => (int) ($originalPost->likes_count ?? 0),
@@ -287,7 +301,197 @@ class UsersController extends Controller
             'is_reposted_by_current_user' => (int) $reposter->id === (int) $authUser->id,
             'repost_pivot_id' => (int) ($repostRow->id ?? 0),
             'created_at' => $repostCreatedAt,
-            'is_following' => $authUser->following()->where('followed_id', $reposter->id)->exists(),
+            'is_following' => isset($context['followed_ids'])
+                ? in_array((int) $reposter->id, $context['followed_ids'], true)
+                : $authUser->following()->where('followed_id', $reposter->id)->exists(),
+        ];
+    }
+
+    /**
+     * @return array{followed_ids: int[], reposted_post_ids: int[]}
+     */
+    protected function buildFeedMappingContext(User $authUser): array
+    {
+        return [
+            'followed_ids' => $authUser->following()
+                ->pluck('followed_id')
+                ->map(fn ($id) => (int) $id)
+                ->all(),
+            'reposted_post_ids' => DB::table('reposts_posts')
+                ->where('user_id', $authUser->id)
+                ->pluck('post_id')
+                ->map(fn ($id) => (int) $id)
+                ->all(),
+        ];
+    }
+
+    protected function feedItemSortKey(array $item): string
+    {
+        $type = ($item['type'] ?? 'post') === 'repost' ? 'repost' : 'post';
+        $createdAt = Carbon::parse($item['created_at'])->format('Y-m-d H:i:s.u');
+        $sortId = $type === 'repost'
+            ? (int) ($item['repost_pivot_id'] ?? (int) str_replace('repost-', '', (string) ($item['id'] ?? '0')))
+            : (int) $item['id'];
+
+        return sprintf('%s|%s|%010d', $createdAt, $type, $sortId);
+    }
+
+    protected function encodeFeedCursor(array $item): string
+    {
+        return base64_encode($this->feedItemSortKey($item));
+    }
+
+    protected function decodeFeedCursor(?string $cursor): ?string
+    {
+        if (!$cursor) {
+            return null;
+        }
+
+        $decoded = base64_decode($cursor, true);
+
+        return $decoded !== false ? $decoded : null;
+    }
+
+    protected function isFeedItemOlderThanCursor(array $item, string $cursor): bool
+    {
+        $decodedCursor = $this->decodeFeedCursor($cursor);
+
+        if (!$decodedCursor) {
+            return true;
+        }
+
+        return $this->feedItemSortKey($item) < $decodedCursor;
+    }
+
+    protected function applyFeedCursorToPostQuery($query, ?string $cursor): void
+    {
+        $decodedCursor = $this->decodeFeedCursor($cursor);
+
+        if (!$decodedCursor) {
+            return;
+        }
+
+        [$createdAt] = explode('|', $decodedCursor, 2);
+
+        $query->where('created_at', '<=', $createdAt);
+    }
+
+    protected function applyFeedCursorToRepostQuery($query, ?string $cursor): void
+    {
+        $decodedCursor = $this->decodeFeedCursor($cursor);
+
+        if (!$decodedCursor) {
+            return;
+        }
+
+        [$createdAt] = explode('|', $decodedCursor, 2);
+
+        $query->where('created_at', '<=', $createdAt);
+    }
+
+    /**
+     * Paginated main feed (posts + reposts merged). Default 10 items per page.
+     *
+     * @return array{posts: array<int, array<string, mixed>>, next_cursor: ?string, has_more: bool}
+     */
+    public function getPostsPaginated(int $perPage = 10, ?string $cursor = null): array
+    {
+        $authUser = Auth::user();
+
+        if (!$authUser) {
+            return ['posts' => [], 'next_cursor' => null, 'has_more' => false];
+        }
+
+        $fetchLimit = $perPage * 5;
+        $context = $this->buildFeedMappingContext($authUser);
+
+        $postQuery = Post::with([
+            'user.formation',
+            'likes' => function ($query) use ($authUser) {
+                $query->where('user_id', $authUser->id);
+            },
+        ])
+            ->withCount(['likes', 'comments', 'reposts'])
+            ->where(function ($q) {
+                $q->whereNull('is_hidden')->orWhere('is_hidden', false);
+            })
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+
+        $this->applyFeedCursorToPostQuery($postQuery, $cursor);
+
+        /** @var Collection<int, Post> $postModels */
+        $postModels = $postQuery->limit($fetchLimit)->get();
+        $postItems = $postModels->map(fn (Post $post) => $this->mapPostForFeed($post, $authUser, $context));
+
+        $repostRows = collect();
+        $repostItems = collect();
+
+        $repostQuery = DB::table('reposts_posts')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+
+        $this->applyFeedCursorToRepostQuery($repostQuery, $cursor);
+        $repostRows = $repostQuery->limit($fetchLimit)->get();
+
+        if ($repostRows->isNotEmpty()) {
+            $originalIds = $repostRows->pluck('post_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+            $reposterIds = $repostRows->pluck('user_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+
+            $originalPosts = Post::with(['user.formation'])
+                ->with(['likes' => function ($q) use ($authUser) {
+                    $q->where('user_id', $authUser->id);
+                }])
+                ->withCount(['likes', 'comments', 'reposts'])
+                ->where(function ($q) {
+                    $q->whereNull('is_hidden')->orWhere('is_hidden', false);
+                })
+                ->whereIn('id', $originalIds)
+                ->get()
+                ->keyBy('id');
+
+            $reposters = User::with('formation')
+                ->whereIn('id', $reposterIds)
+                ->get()
+                ->keyBy('id');
+
+            $repostItems = $repostRows
+                ->map(function ($row) use ($originalPosts, $reposters, $authUser, $context) {
+                    $original = $originalPosts[(int) $row->post_id] ?? null;
+                    $reposter = $reposters[(int) $row->user_id] ?? null;
+                    if (!$original || !$reposter) {
+                        return null;
+                    }
+
+                    return $this->mapRepostForFeed($row, $original, $reposter, $authUser, $context);
+                })
+                ->filter()
+                ->values();
+        }
+
+        $merged = $postItems
+            ->concat($repostItems)
+            ->filter(fn ($item) => $item && isset($item['created_at']) && $item['created_at'])
+            ->sortByDesc(fn ($item) => $this->feedItemSortKey($item))
+            ->values();
+
+        if ($cursor) {
+            $merged = $merged
+                ->filter(fn ($item) => $this->isFeedItemOlderThanCursor($item, $cursor))
+                ->values();
+        }
+
+        $items = $merged->take($perPage)->values();
+        $last = $items->last();
+
+        $hasMore = $merged->count() > $perPage
+            || $postModels->count() >= $fetchLimit
+            || $repostRows->count() >= $fetchLimit;
+
+        return [
+            'posts' => $items->all(),
+            'next_cursor' => is_array($last) ? $this->encodeFeedCursor($last) : null,
+            'has_more' => $hasMore && $items->isNotEmpty(),
         ];
     }
 
