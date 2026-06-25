@@ -231,6 +231,10 @@ class UsersController extends Controller
             'reposts_count' => $interactionPost->reposts_count ?? 0,
 
             'is_liked_by_current_user' => $isLikedByCurrentUser,
+            'is_reposted_by_current_user' => DB::table('reposts_posts')
+                ->where('user_id', $authUser->id)
+                ->where('post_id', $interactionPost->id)
+                ->exists(),
 
             'created_at' => $post->created_at,
 
@@ -280,6 +284,8 @@ class UsersController extends Controller
             'reposts_count' => (int) ($originalPost->reposts_count ?? 0),
 
             'is_liked_by_current_user' => $isLikedByCurrentUser,
+            'is_reposted_by_current_user' => (int) $reposter->id === (int) $authUser->id,
+            'repost_pivot_id' => (int) ($repostRow->id ?? 0),
             'created_at' => $repostCreatedAt,
             'is_following' => $authUser->following()->where('followed_id', $reposter->id)->exists(),
         ];

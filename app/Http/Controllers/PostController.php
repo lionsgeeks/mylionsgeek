@@ -298,6 +298,29 @@ class PostController extends Controller
         ]);
     }
 
+    public function unrepost(Request $request, int $id)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return $this->respondWithMessage($request, 'Unauthorized', false, 401);
+        }
+
+        $original = Post::findOrFail($id);
+
+        $deleted = DB::table('reposts_posts')
+            ->where('user_id', $user->id)
+            ->where('post_id', $original->id)
+            ->delete();
+
+        if ($deleted === 0) {
+            return $this->respondWithMessage($request, 'You have not reposted this post', false, 404);
+        }
+
+        $this->broadcastPostStats($original);
+
+        return $this->respondWithMessage($request, 'Repost removed');
+    }
+
     public function getPostComments($postId)
     {
         $post = Post::findOrFail($postId);

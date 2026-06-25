@@ -21,6 +21,35 @@ const PostCard = ({ user, posts, openModalPostId = null, onConsumedHashModal }) 
         setPostList(posts ?? []);
     }, [posts]);
 
+    useEffect(() => {
+        const handler = (event) => {
+            const detail = event?.detail || {};
+            const interactionId = Number(detail?.interaction_post_id);
+            const reposted = Boolean(detail?.reposted);
+
+            if (!interactionId || reposted || !auth?.user?.id) {
+                return;
+            }
+
+            setPostList((prev) =>
+                prev.filter((item) => {
+                    if (item?.type !== 'repost') {
+                        return true;
+                    }
+
+                    const isMyRepost =
+                        Number(item?.interaction_post_id) === interactionId &&
+                        Number(item?.user_id) === Number(auth.user.id);
+
+                    return !isMyRepost;
+                }),
+            );
+        };
+
+        window.addEventListener('post-repost-toggled', handler);
+        return () => window.removeEventListener('post-repost-toggled', handler);
+    }, [auth?.user?.id]);
+
     const handlePostRemoved = useCallback((postId) => {
         if (!postId) {
             return null;
@@ -91,6 +120,53 @@ const PostCard = ({ user, posts, openModalPostId = null, onConsumedHashModal }) 
         [deletingPostId, handlePostRemoved],
     );
 
+    const handleDeleteRepost = useCallback(
+        (post) => {
+            const originalPostId = post?.interaction_post_id;
+            const cardId = post?.id;
+
+            if (!originalPostId || !cardId) {
+                return Promise.resolve(false);
+            }
+
+            if (deletingPostId === cardId) {
+                return Promise.resolve(false);
+            }
+
+            const rollback = handlePostRemoved(cardId);
+            setDeletingPostId(cardId);
+
+            return new Promise((resolve, reject) => {
+                try {
+                    router.delete(`/posts/repost/${originalPostId}`, {
+                        preserveScroll: true,
+                        preserveState: true,
+                        onSuccess: () => {
+                            window.dispatchEvent(
+                                new CustomEvent('post-repost-toggled', {
+                                    detail: { interaction_post_id: originalPostId, reposted: false },
+                                }),
+                            );
+                            resolve(true);
+                        },
+                        onError: (errors) => {
+                            rollback?.();
+                            reject(errors || new Error('Unable to remove repost.'));
+                        },
+                        onFinish: () => {
+                            setDeletingPostId((current) => (current === cardId ? null : current));
+                        },
+                    });
+                } catch (error) {
+                    rollback?.();
+                    setDeletingPostId((current) => (current === cardId ? null : current));
+                    reject(error);
+                }
+            });
+        },
+        [deletingPostId, handlePostRemoved],
+    );
+
     const handleReportPost = useCallback((post) => {
         if (!post?.id) return;
         setReportingPost(post);
@@ -137,6 +213,7 @@ const PostCard = ({ user, posts, openModalPostId = null, onConsumedHashModal }) 
                     takeToUserProfile={takeToUserProfile}
                     timeAgo={timeAgo}
                     onDeletePost={handleDeletePost}
+                    onDeleteRepost={handleDeleteRepost}
                     onReportPost={handleReportPost}
                     addOrRemoveFollow={addOrRemoveFollow}
                     openModalPostId={openModalPostId}
