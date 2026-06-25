@@ -1,3 +1,4 @@
+import ReportModal from '@/components/ReportModal';
 import { router, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useState } from 'react';
 import { timeAgo } from '../../lib/utils';
@@ -10,6 +11,7 @@ const PostCard = ({ user, posts, openModalPostId = null, onConsumedHashModal }) 
     const [postList, setPostList] = useState(posts ?? []);
     const [deletingPostId, setDeletingPostId] = useState(null);
     const [openCommentsForPostId, setOpenCommentsForPostId] = useState(null);
+    const [reportingPost, setReportingPost] = useState(null);
 
     const clearCommentOpenIntent = useCallback(() => {
         setOpenCommentsForPostId(null);
@@ -90,26 +92,38 @@ const PostCard = ({ user, posts, openModalPostId = null, onConsumedHashModal }) 
     );
 
     const handleReportPost = useCallback((post) => {
-        const postId = post?.id;
-        if (!postId) return;
-
-        const reason = window.prompt('Why are you reporting this post? (optional)') || '';
-
-        router.post(
-            `/posts/post/${postId}/report`,
-            { reason },
-            {
-                preserveScroll: true,
-                preserveState: true,
-                onSuccess: () => {
-                    alert('Thanks. Your report has been submitted.');
-                },
-                onError: () => {
-                    alert('Failed to submit report. Please try again.');
-                },
-            },
-        );
+        if (!post?.id) return;
+        setReportingPost(post);
     }, []);
+
+    const handleSubmitReport = useCallback(
+        (reason) =>
+            new Promise((resolve, reject) => {
+                const postId = reportingPost?.id;
+                if (!postId) {
+                    reject(new Error('Post not found.'));
+                    return;
+                }
+
+                router.post(
+                    `/posts/post/${postId}/report`,
+                    { reason },
+                    {
+                        preserveScroll: true,
+                        preserveState: true,
+                        onSuccess: () => resolve(),
+                        onError: (errors) => {
+                            const message =
+                                errors?.reason ||
+                                errors?.message ||
+                                (typeof errors === 'object' ? Object.values(errors)[0] : null);
+                            reject(new Error(message || 'Failed to submit report.'));
+                        },
+                    },
+                );
+            }),
+        [reportingPost],
+    );
 
     return (
         <>
@@ -132,6 +146,15 @@ const PostCard = ({ user, posts, openModalPostId = null, onConsumedHashModal }) 
                     onCommentPress={() => setOpenCommentsForPostId(p.id)}
                 />
             ))}
+
+            <ReportModal
+                open={Boolean(reportingPost)}
+                onOpenChange={(open) => {
+                    if (!open) setReportingPost(null);
+                }}
+                onSubmit={handleSubmitReport}
+                postAuthorName={reportingPost?.user_name}
+            />
         </>
     );
 };

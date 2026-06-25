@@ -157,7 +157,7 @@ class PostController extends Controller
         }
 
         $validated = $request->validate([
-            'reason' => 'nullable|string|max:2000',
+            'reason' => 'required|string|min:10|max:2000',
         ]);
 
         $post = Post::findOrFail($id);
