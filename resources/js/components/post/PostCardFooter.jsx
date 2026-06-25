@@ -159,6 +159,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
     const likeCount = likesCountMap[post?.id] ?? 0;
     const commentCount = commentsCountMap[post?.id] ?? 0;
     const repostCount = repostsCountMap[post?.id] ?? 0;
+    const canRepost = post?.can_repost !== false && post?.type !== 'repost';
 
     const handleRepostStateChange = (reposted) => {
         setIsReposted(reposted);
@@ -257,7 +258,8 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                         <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>Comment</span>
                     </button>
 
-                    {/* Repost Button */}
+                    {/* Repost Button — only on original posts, not repost feed items */}
+                    {canRepost && (
                     <button
                         type="button"
                         className={
@@ -280,6 +282,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                             {isReposted ? 'Reposted' : 'Repost'}
                         </span>
                     </button>
+                    )}
 
                     {/* Send Button */}
                     <button

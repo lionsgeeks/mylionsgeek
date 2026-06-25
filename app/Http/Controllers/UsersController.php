@@ -216,6 +216,12 @@ class UsersController extends Controller
             : false;
 
         $interactionPostId = (int) $interactionPost->id;
+        $isRepostedByCurrentUser = isset($context['reposted_post_ids'])
+            ? in_array($interactionPostId, $context['reposted_post_ids'], true)
+            : DB::table('reposts_posts')
+                ->where('user_id', $authUser->id)
+                ->where('post_id', $interactionPostId)
+                ->exists();
 
         return [
             'user_id' => $post->user_id,
@@ -231,18 +237,17 @@ class UsersController extends Controller
             'mention_user_ids' => PostMentionResolver::mapTokensToUserIds($post->description),
             'images' => $post->images,
             'interaction_post_id' => $interactionPostId,
+            'can_repost' => true,
 
             'likes_count' => $interactionPost->likes_count ?? 0,
             'comments_count' => $interactionPost->comments_count ?? 0,
             'reposts_count' => $interactionPost->reposts_count ?? 0,
 
             'is_liked_by_current_user' => $isLikedByCurrentUser,
-            'is_reposted_by_current_user' => isset($context['reposted_post_ids'])
-                ? in_array($interactionPostId, $context['reposted_post_ids'], true)
-                : DB::table('reposts_posts')
-                    ->where('user_id', $authUser->id)
-                    ->where('post_id', $interactionPostId)
-                    ->exists(),
+            'is_reposted_by_current_user' => $isRepostedByCurrentUser,
+            'current_user_repost_description' => $isRepostedByCurrentUser
+                ? (string) (($context['reposted_descriptions'] ?? [])[$interactionPostId] ?? '')
+                : null,
 
             'created_at' => $post->created_at,
 
@@ -290,6 +295,7 @@ class UsersController extends Controller
             'mention_user_ids' => PostMentionResolver::mapTokensToUserIds((string) ($repostRow->description ?? '')),
             'images' => [],
             'interaction_post_id' => (int) $originalPost->id,
+            'can_repost' => false,
             'repost_of' => $this->mapPostForFeed($originalPost, $authUser, $context),
 
             // Always show original stats for a repost item
@@ -298,7 +304,12 @@ class UsersController extends Controller
             'reposts_count' => (int) ($originalPost->reposts_count ?? 0),
 
             'is_liked_by_current_user' => $isLikedByCurrentUser,
-            'is_reposted_by_current_user' => (int) $reposter->id === (int) $authUser->id,
+            'is_reposted_by_current_user' => isset($context['reposted_post_ids'])
+                ? in_array((int) $originalPost->id, $context['reposted_post_ids'], true)
+                : DB::table('reposts_posts')
+                    ->where('user_id', $authUser->id)
+                    ->where('post_id', (int) $originalPost->id)
+                    ->exists(),
             'repost_pivot_id' => (int) ($repostRow->id ?? 0),
             'created_at' => $repostCreatedAt,
             'is_following' => isset($context['followed_ids'])
@@ -308,20 +319,26 @@ class UsersController extends Controller
     }
 
     /**
-     * @return array{followed_ids: int[], reposted_post_ids: int[]}
+     * @return array{followed_ids: int[], reposted_post_ids: int[], reposted_descriptions: array<int, string>}
      */
     protected function buildFeedMappingContext(User $authUser): array
     {
+        $repostedRows = DB::table('reposts_posts')
+            ->where('user_id', $authUser->id)
+            ->get(['post_id', 'description']);
+
+        $repostedDescriptions = [];
+        foreach ($repostedRows as $row) {
+            $repostedDescriptions[(int) $row->post_id] = (string) ($row->description ?? '');
+        }
+
         return [
             'followed_ids' => $authUser->following()
                 ->pluck('followed_id')
                 ->map(fn ($id) => (int) $id)
                 ->all(),
-            'reposted_post_ids' => DB::table('reposts_posts')
-                ->where('user_id', $authUser->id)
-                ->pluck('post_id')
-                ->map(fn ($id) => (int) $id)
-                ->all(),
+            'reposted_post_ids' => array_keys($repostedDescriptions),
+            'reposted_descriptions' => $repostedDescriptions,
         ];
     }
 
