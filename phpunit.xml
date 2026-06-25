@@ -29,5 +29,6 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="SCHOOL_ALLOWED_IPS" value="203.0.113.1"/>
     </php>
 </phpunit>
