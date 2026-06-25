@@ -1,3 +1,4 @@
+import ReportModal from '@/components/ReportModal';
 import { router, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useState } from 'react';
 import { timeAgo } from '../../lib/utils';
@@ -10,6 +11,7 @@ const PostCard = ({ user, posts, openModalPostId = null, onConsumedHashModal }) 
     const [postList, setPostList] = useState(posts ?? []);
     const [deletingPostId, setDeletingPostId] = useState(null);
     const [openCommentsForPostId, setOpenCommentsForPostId] = useState(null);
+    const [reportingPost, setReportingPost] = useState(null);
 
     const clearCommentOpenIntent = useCallback(() => {
         setOpenCommentsForPostId(null);
@@ -18,6 +20,35 @@ const PostCard = ({ user, posts, openModalPostId = null, onConsumedHashModal }) 
     useEffect(() => {
         setPostList(posts ?? []);
     }, [posts]);
+
+    useEffect(() => {
+        const handler = (event) => {
+            const detail = event?.detail || {};
+            const interactionId = Number(detail?.interaction_post_id);
+            const reposted = Boolean(detail?.reposted);
+
+            if (!interactionId || reposted || !auth?.user?.id) {
+                return;
+            }
+
+            setPostList((prev) =>
+                prev.filter((item) => {
+                    if (item?.type !== 'repost') {
+                        return true;
+                    }
+
+                    const isMyRepost =
+                        Number(item?.interaction_post_id) === interactionId &&
+                        Number(item?.user_id) === Number(auth.user.id);
+
+                    return !isMyRepost;
+                }),
+            );
+        };
+
+        window.addEventListener('post-repost-toggled', handler);
+        return () => window.removeEventListener('post-repost-toggled', handler);
+    }, [auth?.user?.id]);
 
     const handlePostRemoved = useCallback((postId) => {
         if (!postId) {
@@ -89,27 +120,86 @@ const PostCard = ({ user, posts, openModalPostId = null, onConsumedHashModal }) 
         [deletingPostId, handlePostRemoved],
     );
 
+    const handleDeleteRepost = useCallback(
+        (post) => {
+            const originalPostId = post?.interaction_post_id;
+            const cardId = post?.id;
+
+            if (!originalPostId || !cardId) {
+                return Promise.resolve(false);
+            }
+
+            if (deletingPostId === cardId) {
+                return Promise.resolve(false);
+            }
+
+            const rollback = handlePostRemoved(cardId);
+            setDeletingPostId(cardId);
+
+            return new Promise((resolve, reject) => {
+                try {
+                    router.delete(`/posts/repost/${originalPostId}`, {
+                        preserveScroll: true,
+                        preserveState: true,
+                        onSuccess: () => {
+                            window.dispatchEvent(
+                                new CustomEvent('post-repost-toggled', {
+                                    detail: { interaction_post_id: originalPostId, reposted: false },
+                                }),
+                            );
+                            resolve(true);
+                        },
+                        onError: (errors) => {
+                            rollback?.();
+                            reject(errors || new Error('Unable to remove repost.'));
+                        },
+                        onFinish: () => {
+                            setDeletingPostId((current) => (current === cardId ? null : current));
+                        },
+                    });
+                } catch (error) {
+                    rollback?.();
+                    setDeletingPostId((current) => (current === cardId ? null : current));
+                    reject(error);
+                }
+            });
+        },
+        [deletingPostId, handlePostRemoved],
+    );
+
     const handleReportPost = useCallback((post) => {
-        const postId = post?.id;
-        if (!postId) return;
-
-        const reason = window.prompt('Why are you reporting this post? (optional)') || '';
-
-        router.post(
-            `/posts/post/${postId}/report`,
-            { reason },
-            {
-                preserveScroll: true,
-                preserveState: true,
-                onSuccess: () => {
-                    alert('Thanks. Your report has been submitted.');
-                },
-                onError: () => {
-                    alert('Failed to submit report. Please try again.');
-                },
-            },
-        );
+        if (!post?.id) return;
+        setReportingPost(post);
     }, []);
+
+    const handleSubmitReport = useCallback(
+        (reason) =>
+            new Promise((resolve, reject) => {
+                const postId = reportingPost?.id;
+                if (!postId) {
+                    reject(new Error('Post not found.'));
+                    return;
+                }
+
+                router.post(
+                    `/posts/post/${postId}/report`,
+                    { reason },
+                    {
+                        preserveScroll: true,
+                        preserveState: true,
+                        onSuccess: () => resolve(),
+                        onError: (errors) => {
+                            const message =
+                                errors?.reason ||
+                                errors?.message ||
+                                (typeof errors === 'object' ? Object.values(errors)[0] : null);
+                            reject(new Error(message || 'Failed to submit report.'));
+                        },
+                    },
+                );
+            }),
+        [reportingPost],
+    );
 
     return (
         <>
@@ -123,6 +213,7 @@ const PostCard = ({ user, posts, openModalPostId = null, onConsumedHashModal }) 
                     takeToUserProfile={takeToUserProfile}
                     timeAgo={timeAgo}
                     onDeletePost={handleDeletePost}
+                    onDeleteRepost={handleDeleteRepost}
                     onReportPost={handleReportPost}
                     addOrRemoveFollow={addOrRemoveFollow}
                     openModalPostId={openModalPostId}
@@ -132,6 +223,15 @@ const PostCard = ({ user, posts, openModalPostId = null, onConsumedHashModal }) 
                     onCommentPress={() => setOpenCommentsForPostId(p.id)}
                 />
             ))}
+
+            <ReportModal
+                open={Boolean(reportingPost)}
+                onOpenChange={(open) => {
+                    if (!open) setReportingPost(null);
+                }}
+                onSubmit={handleSubmitReport}
+                postAuthorName={reportingPost?.user_name}
+            />
         </>
     );
 };

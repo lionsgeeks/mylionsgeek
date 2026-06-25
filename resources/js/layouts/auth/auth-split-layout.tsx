@@ -1,4 +1,4 @@
-import { home } from '@/routes';
+// import { home } from '@/routes';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
@@ -52,7 +52,7 @@ export default function AuthSplitLayout({ children, title, description }: PropsW
             <div className="dark:lg: w-full bg-white lg:border-l lg:border-neutral-200 lg:p-8 dark:bg-transparent dark:lg:border-transparent">
                 <div className="mx-auto w-full max-w-[420px] rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-transparent dark:bg-transparent dark:p-0 dark:shadow-none">
                     <div className="mx-auto flex w-full flex-col justify-center space-y-6">
-                        <Link href={home()} className="relative z-20 flex items-center justify-center lg:hidden">
+                        <Link href='/' className="relative z-20 flex items-center justify-center lg:hidden">
                             <img src="/assets/images/logolionsgeek.png" alt="LionsGeek" className="h-10 sm:h-12" />
                         </Link>
                         <div className="flex flex-col items-center gap-2 text-left sm:items-center">

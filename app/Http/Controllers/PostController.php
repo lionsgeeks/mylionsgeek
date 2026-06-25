@@ -157,7 +157,7 @@ class PostController extends Controller
         }
 
         $validated = $request->validate([
-            'reason' => 'nullable|string|max:2000',
+            'reason' => 'required|string|min:10|max:2000',
         ]);
 
         $post = Post::findOrFail($id);
@@ -296,6 +296,29 @@ class PostController extends Controller
             'success' => $already ? 'Repost updated successfully' : 'Reposted successfully',
             'posts' => $posts,
         ]);
+    }
+
+    public function unrepost(Request $request, int $id)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return $this->respondWithMessage($request, 'Unauthorized', false, 401);
+        }
+
+        $original = Post::findOrFail($id);
+
+        $deleted = DB::table('reposts_posts')
+            ->where('user_id', $user->id)
+            ->where('post_id', $original->id)
+            ->delete();
+
+        if ($deleted === 0) {
+            return $this->respondWithMessage($request, 'You have not reposted this post', false, 404);
+        }
+
+        $this->broadcastPostStats($original);
+
+        return $this->respondWithMessage($request, 'Repost removed');
     }
 
     public function getPostComments($postId)

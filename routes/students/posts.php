@@ -10,6 +10,7 @@ Route::middleware(['auth', 'verified'])->prefix('posts')->group(function () {
     Route::post('/likes/{id}', [PostController::class, 'AddLike']);
     Route::post('/comments/{id}', [PostController::class, 'addPostComment']);
     Route::post('/repost/{id}', [PostController::class, 'repost']);
+    Route::delete('/repost/{id}', [PostController::class, 'unrepost'])->whereNumber('id');
     Route::get('/likes/{id}', [PostController::class, 'getPostLikes']);
     Route::get('/comments/{id}', [PostController::class, 'getPostComments']);
     Route::post('/comments/{id}/like', [PostController::class, 'toggleCommentLike']);
