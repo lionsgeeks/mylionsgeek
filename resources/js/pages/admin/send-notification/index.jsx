@@ -33,7 +33,7 @@ const INITIAL_HISTORY = [
     },
 ];
 
-export default function SendNotificationIndex() {
+export default function Announcements() {
     const { auth } = usePage().props;
     const [history, setHistory] = useState(INITIAL_HISTORY);
     const [successMessage, setSuccessMessage] = useState('');
@@ -54,33 +54,35 @@ export default function SendNotificationIndex() {
     };
 
     return (
-        <div className="flex flex-col gap-8 p-6">
-            <Head title="Send notification" />
+        <AppLayout>
+            <div className="flex flex-col gap-8 p-6">
+                <Head title="Send notification" />
 
-            <Banner
-                illustration={students}
-                userName={auth?.user?.name ?? ''}
-                title="Push notifications"
-                description="Send push notifications to mobile app users. Title and message are delivered to their devices."
-            />
+                <Banner
+                    illustration={students}
+                    userName={auth?.user?.name ?? ''}
+                    title="Push notifications"
+                    description="Send push notifications to mobile app users. Title and message are delivered to their devices."
+                />
 
-            {successMessage && (
-                <div className="rounded-lg border border-good/30 bg-good/10 px-4 py-3 text-sm text-good dark:border-good/40 dark:bg-good/15">
-                    {successMessage}
-                </div>
-            )}
+                {successMessage && (
+                    <div className="px-4 py-3 text-sm border rounded-lg border-good/30 bg-good/10 text-good dark:border-good/40 dark:bg-good/15">
+                        {successMessage}
+                    </div>
+                )}
 
-            <div className="grid gap-8 lg:grid-cols-5">
-                <div className="lg:col-span-2">
-                    <NotificationForm onSend={handleSend} />
-                </div>
+                <div className="grid gap-8 lg:grid-cols-5">
+                    <div className="lg:col-span-2">
+                        <NotificationForm onSend={handleSend} />
+                    </div>
 
-                <div className="lg:col-span-3">
-                    <NotificationHistory notifications={history} />
+                    <div className="lg:col-span-3">
+                        <NotificationHistory notifications={history} />
+                    </div>
                 </div>
             </div>
-        </div>
+        </AppLayout>
     );
 }
 
-SendNotificationIndex.layout = (page) => <AppLayout>{page}</AppLayout>;
+
