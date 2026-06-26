@@ -13,7 +13,14 @@ class AnnouncementController extends Controller
     {
         return Inertia::render('admin/send-notification/index');
     }
-    public function store() {}
+    public function store(Request $request)
+    {
+        $request->validate([
+            'title' => ['required', 'string', 'min:5', 'max:10'],
+            'message' => ['required', 'string', 'min:10', 'max:100'],
+        ]);
+        dd($request->all());
+    }
     public function update(Request $request, $id) {}
     public function destroy(Request $request, $id) {}
 }
