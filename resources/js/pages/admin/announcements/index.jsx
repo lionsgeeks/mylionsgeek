@@ -33,8 +33,9 @@ const INITIAL_HISTORY = [
     },
 ];
 
-export default function Announcements() {
+export default function Announcements({ announcements }) {
     const { auth } = usePage().props;
+
     const [history, setHistory] = useState(INITIAL_HISTORY);
     return (
         <AppLayout>

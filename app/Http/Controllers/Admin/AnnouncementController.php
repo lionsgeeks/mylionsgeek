@@ -13,7 +13,10 @@ class AnnouncementController extends Controller
     //
     public function index()
     {
-        return Inertia::render('admin/announcements/index');
+        $announcements = Announcement::latest()->get();
+        return Inertia::render('admin/announcements/index', [
+            'announcements' => $announcements
+        ]);
     }
     public function store(Request $request)
     {
