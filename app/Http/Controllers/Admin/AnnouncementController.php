@@ -24,21 +24,16 @@ class AnnouncementController extends Controller
         if (!$user) {
             return abort(403, 'Unauthorized');
         }
-        try {
-            $request->validate([
-                'data.title' => 'required|string|min:5',
-                'data.message' => 'required|string|min:10',
-            ]);
-            Announcement::create([
-                'title' => $request->data['title'],
-                'message' => $request->data['message'],
-                'created_by' => $user->id,
-            ]);
-            return redirect()->back()->with('Success', 'announcement send successfully');
-        } catch (\Exception $e) {
-            // dd($e->getMessage());
-            return Inertia::render('Error');
-        };
+        $request->validate([
+            'title' => 'required|string|min:5',
+            'message' => 'required|string|min:10',
+        ]);
+        Announcement::create([
+            'title' => $request->title,
+            'message' => $request->message,
+            'created_by' => $user->id,
+        ]);
+        return redirect()->back()->with('Success', 'announcement send successfully');
     }
     public function update(Request $request, $id) {}
     public function destroy(Request $request, $id) {}

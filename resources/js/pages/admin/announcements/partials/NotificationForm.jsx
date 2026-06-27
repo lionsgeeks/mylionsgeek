@@ -11,7 +11,7 @@ const fieldClass =
     'border border-alpha/30 bg-light text-dark placeholder:text-dark/50 focus:border-alpha focus:ring-2 focus:ring-alpha dark:bg-dark dark:text-light dark:placeholder:text-light/50';
 
 export default function NotificationForm() {
-    const { data, setData, errors, setError, processing, reset } = useForm({
+    const { data, setData, post, errors, setError, processing, reset } = useForm({
         title: '',
         message: ''
     })
@@ -19,10 +19,10 @@ export default function NotificationForm() {
     const handleCreate = (e) => {
         e.preventDefault();
         try {
-            router.post('/admin/announcements/store', { data }, {
+            post('/admin/announcements/store', {
                 onSuccess: () => {
                     reset()
-                        // alert('annoucements stored succefully')
+                    // alert('annoucements stored succefully')
                 },
                 onError: (error) => {
                     // alert('OnError Error : ' + error)
@@ -31,7 +31,7 @@ export default function NotificationForm() {
         } catch (error) {
             // alert('Catch Error : ' + error)
         }
-    };  
+    };
 
     return (
         <Card className="border-alpha/20 bg-light text-dark dark:bg-dark dark:text-light">
