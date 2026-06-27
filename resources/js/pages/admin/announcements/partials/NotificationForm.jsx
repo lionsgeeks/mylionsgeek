@@ -3,47 +3,41 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { router, useForm } from '@inertiajs/react';
 import { Bell, Send } from 'lucide-react';
 import { useState } from 'react';
 
 const fieldClass =
     'border border-alpha/30 bg-light text-dark placeholder:text-dark/50 focus:border-alpha focus:ring-2 focus:ring-alpha dark:bg-dark dark:text-light dark:placeholder:text-light/50';
 
-export default function NotificationForm({ onSend }) {
-    const [title, setTitle] = useState('');
-    const [body, setBody] = useState('');
-    const [errors, setErrors] = useState({});
-    const [sending, setSending] = useState(false);
+export default function NotificationForm() {
+    const { data, setData, errors, setError, processing, reset } = useForm({
+        title: '',
+        message: ''
+    })
 
-    const validate = () => {
-        const next = {};
-        if (!title.trim()) next.title = 'Title is required.';
-        if (!body.trim()) next.body = 'Message body is required.';
-        if (title.trim().length > 100) next.title = 'Title must be 100 characters or less.';
-        if (body.trim().length > 500) next.body = 'Message must be 500 characters or less.';
-        setErrors(next);
-        return Object.keys(next).length === 0;
-    };
-
-    const handleSubmit = (e) => {
+    const handleCreate = (e) => {
         e.preventDefault();
-        if (!validate()) return;
-
-        setSending(true);
-
-        window.setTimeout(() => {
-            onSend({ title: title.trim(), body: body.trim() });
-            setTitle('');
-            setBody('');
-            setSending(false);
-        }, 600);
-    };
+        try {
+            router.post('/admin/announcements/store', { data }, {
+                onSuccess: () => {
+                    reset()
+                        // alert('annoucements stored succefully')
+                },
+                onError: (error) => {
+                    // alert('OnError Error : ' + error)
+                }
+            })
+        } catch (error) {
+            // alert('Catch Error : ' + error)
+        }
+    };  
 
     return (
         <Card className="border-alpha/20 bg-light text-dark dark:bg-dark dark:text-light">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                    <Bell className="h-5 w-5 text-alpha" />
+                    <Bell className="w-5 h-5 text-alpha" />
                     Compose notification
                 </CardTitle>
                 <CardDescription className="text-dark/60 dark:text-light/60">
@@ -52,7 +46,7 @@ export default function NotificationForm({ onSend }) {
             </CardHeader>
 
             <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form className="space-y-4">
                     <div>
                         <Label htmlFor="notification-title" className="text-dark dark:text-light">
                             Title
@@ -60,14 +54,14 @@ export default function NotificationForm({ onSend }) {
                         <Input
                             id="notification-title"
                             className={fieldClass}
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
+                            value={data?.title}
+                            onChange={(e) => setData('title', e.target.value)}
                             placeholder="e.g. New event this Friday"
                             maxLength={100}
                         />
-                        <div className="mt-1 flex justify-between text-xs text-dark/60 dark:text-light/60">
-                            <span>{errors.title && <span className="text-error">{errors.title}</span>}</span>
-                            <span>{title.length}/100</span>
+                        <div className="flex justify-between mt-1 text-xs text-dark/60 dark:text-light/60">
+                            <span>{errors?.title && <span className="text-error">{errors?.title}</span>}</span>
+                            <span>{data?.title?.length}/100</span>
                         </div>
                     </div>
 
@@ -78,27 +72,27 @@ export default function NotificationForm({ onSend }) {
                         <Textarea
                             id="notification-body"
                             className={`min-h-[140px] resize-y ${fieldClass}`}
-                            value={body}
-                            onChange={(e) => setBody(e.target.value)}
+                            value={data?.message}
+                            onChange={(e) => setData('message', e.target.value)}
                             placeholder="Write the notification message..."
                             maxLength={500}
                         />
-                        <div className="mt-1 flex justify-between text-xs text-dark/60 dark:text-light/60">
-                            <span>{errors.body && <span className="text-error">{errors.body}</span>}</span>
-                            <span>{body.length}/500</span>
+                        <div className="flex justify-between mt-1 text-xs text-dark/60 dark:text-light/60">
+                            <span>{errors?.message && <span className="text-error">{errors?.message}</span>}</span>
+                            <span>{data?.message?.length}/500</span>
                         </div>
                     </div>
 
                     <Button
-                        type="submit"
-                        disabled={sending}
-                        className="w-full gap-2 border border-alpha bg-alpha text-beta hover:bg-dark_gray hover:text-alpha dark:text-dark dark:hover:bg-alpha/80 dark:hover:text-dark cursor-pointer"
+                        onClick={(e) => handleCreate(e)}
+                        disabled={processing}
+                        className="w-full gap-2 border cursor-pointer border-alpha bg-alpha text-beta hover:bg-dark_gray hover:text-alpha dark:text-dark dark:hover:bg-alpha/80 dark:hover:text-dark"
                     >
-                        {sending ? (
+                        {processing ? (
                             'Sending…'
                         ) : (
                             <>
-                                <Send className="h-4 w-4" />
+                                <Send className="w-4 h-4" />
                                 Send notification
                             </>
                         )}

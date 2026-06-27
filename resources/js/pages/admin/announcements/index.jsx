@@ -1,7 +1,7 @@
 import Banner from '@/components/banner';
 import AppLayout from '@/layouts/app-layout';
-import { Head, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 import students from '../../../../../public/assets/images/banner/students.png';
 import NotificationForm from './Partials/NotificationForm';
 import NotificationHistory from './Partials/NotificationHistory';
@@ -36,23 +36,6 @@ const INITIAL_HISTORY = [
 export default function Announcements() {
     const { auth } = usePage().props;
     const [history, setHistory] = useState(INITIAL_HISTORY);
-    const [successMessage, setSuccessMessage] = useState('');
-
-    const handleSend = ({ title, body }) => {
-        const newNotification = {
-            id: Date.now(),
-            title,
-            body,
-            sentAt: new Date().toISOString(),
-            status: 'sent',
-            recipientCount: 0,
-        };
-
-        setHistory((prev) => [newNotification, ...prev]);
-        setSuccessMessage('Notification sent successfully. It has been added to the history below.');
-        window.setTimeout(() => setSuccessMessage(''), 4000);
-    };
-
     return (
         <AppLayout>
             <div className="flex flex-col gap-8 p-6">
@@ -65,15 +48,9 @@ export default function Announcements() {
                     description="Send push notifications to mobile app users. Title and message are delivered to their devices."
                 />
 
-                {successMessage && (
-                    <div className="px-4 py-3 text-sm border rounded-lg border-good/30 bg-good/10 text-good dark:border-good/40 dark:bg-good/15">
-                        {successMessage}
-                    </div>
-                )}
-
                 <div className="grid gap-8 lg:grid-cols-5">
                     <div className="lg:col-span-2">
-                        <NotificationForm onSend={handleSend} />
+                        <NotificationForm />
                     </div>
 
                     <div className="lg:col-span-3">
