@@ -24,7 +24,7 @@ class PostReportController extends Controller
         }
 
         $validated = $request->validate([
-            'reason' => 'nullable|string|max:2000',
+            'reason' => 'required|string|min:10|max:2000',
         ]);
 
         $post = Post::with('user:id,name')->findOrFail($postId);

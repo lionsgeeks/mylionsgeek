@@ -29,9 +29,24 @@ const Users = ({ users, trainings }) => {
         return String(value).trim();
     };
 
+    const resolveUserPromo = (user) => {
+        const direct = normalizeValue(user.promo);
+        if (direct) {
+            return direct.toLowerCase();
+        }
+
+        const formation = trainings.find((training) => training.id === user.formation_id);
+        const fromFormation = normalizeValue(formation?.promo);
+
+        return fromFormation ? fromFormation.toLowerCase() : '';
+    };
+
     const allPromo = useMemo(() => {
-        return [...new Set(users.map((user) => normalizeValue(user.promo)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-    }, [users]);
+        const fromUsers = users.map((user) => normalizeValue(user.promo)).filter(Boolean);
+        const fromTrainings = trainings.map((training) => normalizeValue(training.promo)).filter(Boolean);
+
+        return [...new Set([...fromUsers, ...fromTrainings])].sort((a, b) => a.localeCompare(b));
+    }, [users, trainings]);
 
     const allFields = useMemo(() => {
         return [...new Set(users.map((user) => normalizeValue(user.field)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
@@ -51,8 +66,8 @@ const Users = ({ users, trainings }) => {
             .filter((user) => (filters.training === null ? true : user.formation_id === filters.training))
             .filter((user) => {
                 if (!promoFilter) return true;
-                const userPromo = normalizeValue(user.promo).toLowerCase();
-                return userPromo === promoFilter;
+
+                return resolveUserPromo(user) === promoFilter;
             })
             .filter((user) => {
                 if (!fieldFilter) return true;
@@ -75,7 +90,7 @@ const Users = ({ users, trainings }) => {
                 return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
             });
         return list;
-    }, [users, filters]);
+    }, [users, filters, trainings]);
 
     const allStatus = ADMIN_USER_STATUSES;
 

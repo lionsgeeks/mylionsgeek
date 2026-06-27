@@ -8,6 +8,7 @@ use App\Models\AttendanceListe;
 use App\Models\Note;
 use App\Models\Formation;
 use App\Models\User;
+use App\Services\AttendanceNoteService;
 use App\Services\DisciplineService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -671,6 +672,7 @@ class TrainingController extends Controller
 
         $lastAttendanceId = null;
         $disciplineService = new DisciplineService();
+        $attendanceNoteService = new AttendanceNoteService();
         $user = Auth::guard('sanctum')->user();
 
         foreach ($request->attendance as $data) {
@@ -711,22 +713,13 @@ class TrainingController extends Controller
             // Process discipline change and create notification if threshold crossed
             $disciplineService->processDisciplineChange($attendanceUser, $oldDiscipline);
 
-            // Notes dyal absence (existing code)
-            if (!empty($data['note'])) {
-                $notes = array_filter(array_map('trim', explode(' | ', (string) $data['note'])));
-                foreach ($notes as $noteText) {
-                    try {
-                        Note::create([
-                            'user_id' => $data['user_id'],
-                            'attendance_id' => $attendanceId,
-                            'note' => $noteText,
-                            'author' => $user->name ?? 'Staff',
-                        ]);
-                    } catch (\Throwable $e) {
-                        // Do not block attendance save if a note insert fails
-                    }
-                }
-            }
+            // notes were duplicated each time admin hit saved or student scan qr code 
+            $attendanceNoteService->syncNotes(
+                (int) $data['user_id'],
+                $attendanceId,
+                $data['note'] ?? null,
+                $user->name ?? 'Staff',
+            );
         }
 
         // Tag latest editor name on attendance row

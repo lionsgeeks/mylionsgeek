@@ -7,6 +7,7 @@ use App\Models\AttendanceListe;
 use App\Models\Formation;
 use App\Models\Note;
 use App\Models\User;
+use App\Services\AttendanceNoteService;
 use App\Services\CertificatePdfGenerator;
 use App\Services\CertificateTrackResolver;
 use App\Services\DisciplineService;
@@ -262,6 +263,7 @@ class FormationController extends Controller
 
         $lastAttendanceId = null;
         $disciplineService = new DisciplineService;
+        $attendanceNoteService = new AttendanceNoteService;
 
         foreach ($request->attendance as $data) {
             $attendanceId = isset($data['attendance_id']) && is_numeric($data['attendance_id'])
@@ -302,22 +304,12 @@ class FormationController extends Controller
             // Only notifies on 5% threshold changes (100, 95, 90, 85, ...)
             $disciplineService->processDisciplineChange($user, $oldDiscipline);
 
-            // Notes dyal absence (existing code)
-            if (! empty($data['note'])) {
-                $notes = array_filter(array_map('trim', explode(' | ', (string) $data['note'])));
-                foreach ($notes as $noteText) {
-                    try {
-                        Note::create([
-                            'user_id' => $data['user_id'],
-                            'attendance_id' => $attendanceId,
-                            'note' => $noteText,
-                            'author' => Auth::user()->name,
-                        ]);
-                    } catch (\Throwable $e) {
-                        // Do not block attendance save if a note insert fails
-                    }
-                }
-            }
+            $attendanceNoteService->syncNotes(
+                (int) $data['user_id'],
+                $attendanceId,
+                $data['note'] ?? null,
+                Auth::user()->name ?? 'Staff',
+            );
         }
 
         // Tag latest editor name on attendance row

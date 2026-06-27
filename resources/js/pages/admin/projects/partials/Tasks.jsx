@@ -179,6 +179,18 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
 
     // Form for creating tasks
     const { data: taskData, setData: setTaskData, post: createTask, processing: isCreating } = useForm(initialTaskData);
+    const primaryAssigneeMember = useMemo(
+        () => safeTeamMembers.find((member) => String(member.id) === String(taskData.assigned_to)),
+        [safeTeamMembers, taskData.assigned_to],
+    );
+    const additionalAssigneeOptions = useMemo(
+        () => safeTeamMembers.filter((member) => String(member.id) !== String(taskData.assigned_to)),
+        [safeTeamMembers, taskData.assigned_to],
+    );
+    const selectedAdditionalAssigneeMembers = useMemo(
+        () => additionalAssigneeOptions.filter((member) => (taskData.assignees || []).some((assigneeId) => String(assigneeId) === String(member.id))),
+        [additionalAssigneeOptions, taskData.assignees],
+    );
 
     const filteredTasks = useMemo(() => {
         let filtered = safeTasks.filter((task) => {
@@ -680,115 +692,133 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
 
             {/* Create Task Modal */}
             <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Create New Task</DialogTitle>
-                        <DialogDescription>Add a new task to your project</DialogDescription>
+                <DialogContent className="flex max-h-[90vh] w-[min(920px,calc(100vw-2rem))] !max-w-none flex-col overflow-hidden p-0">
+                    <DialogHeader className="border-b border-border px-6 py-4">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <DialogTitle>Create New Task</DialogTitle>
+                                <DialogDescription>Add a new task to your project</DialogDescription>
+                            </div>
+                            <Badge variant="outline" className="mt-0.5 shrink-0">
+                                {selectedAdditionalAssigneeMembers.length + (primaryAssigneeMember ? 1 : 0)} assigned
+                            </Badge>
+                        </div>
                     </DialogHeader>
-                    <form onSubmit={handleCreateTask} className="space-y-4">
-                        <div>
-                            <Label htmlFor="title">Task Title *</Label>
-                            <Input
-                                id="title"
-                                value={taskData.title}
-                                onChange={(e) => setTaskData('title', e.target.value)}
-                                placeholder="Enter task title..."
-                                required
-                            />
-                        </div>
-                        <div>
-                            <Label htmlFor="description">Description</Label>
-                            <Textarea
-                                id="description"
-                                value={taskData.description}
-                                onChange={(e) => setTaskData('description', e.target.value)}
-                                placeholder="Enter task description..."
-                                rows={3}
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <Label htmlFor="priority">Priority</Label>
-                                <Select value={taskData.priority} onValueChange={(value) => setTaskData('priority', value)}>
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="low">Low</SelectItem>
-                                        <SelectItem value="medium">Medium</SelectItem>
-                                        <SelectItem value="high">High</SelectItem>
-                                        <SelectItem value="urgent">Urgent</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <Label htmlFor="status">Status</Label>
-                                <Select value={taskData.status} onValueChange={(value) => setTaskData('status', value)}>
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="todo">To Do</SelectItem>
-                                        <SelectItem value="in_progress">In Progress</SelectItem>
-                                        <SelectItem value="review">Review</SelectItem>
-                                        {canManageTasks && <SelectItem value="completed">Completed</SelectItem>}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                        <div>
-                            <Label htmlFor="assigned_to">Assign To</Label>
-                            <Select
-                                value={taskData.assigned_to ? String(taskData.assigned_to) : 'unassigned'}
-                                onValueChange={handleCreatePrimaryAssigneeChange}
-                                disabled={!canManageTasks}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select assignee" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {canManageTasks && <SelectItem value="unassigned">Unassigned</SelectItem>}
-                                    {(canManageTasks
-                                        ? safeTeamMembers
-                                        : safeTeamMembers.filter((member) => String(member.id) === String(currentUserId))
-                                    ).map((member) => {
-                                        if (!member?.id) return null;
-                                        return (
-                                            <SelectItem key={member.id} value={String(member.id)}>
-                                                {member.name || 'Unknown'}
-                                            </SelectItem>
-                                        );
-                                    })}
-                                </SelectContent>
-                            </Select>
-                            {taskData.assigned_to && (
-                                <div className="mt-2 flex flex-wrap gap-1">
-                                    {(() => {
-                                        const member = safeTeamMembers.find((m) => String(m.id) === String(taskData.assigned_to));
-                                        return member ? (
-                                            <Badge variant="outline" className="flex items-center gap-1">
-                                                {member.name}
-                                                {canManageTasks && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleCreatePrimaryAssigneeChange('unassigned')}
-                                                        className="ml-1 rounded-full p-0.5 hover:bg-muted"
-                                                    >
-                                                        ×
-                                                    </button>
-                                                )}
-                                            </Badge>
-                                        ) : null;
-                                    })()}
+                    <form onSubmit={handleCreateTask} className="flex min-h-0 flex-1 flex-col">
+                        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+                            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+                                <div>
+                                    <Label htmlFor="title">Task Title *</Label>
+                                    <Input
+                                        id="title"
+                                        value={taskData.title}
+                                        onChange={(e) => setTaskData('title', e.target.value)}
+                                        placeholder="Enter task title..."
+                                        required
+                                    />
                                 </div>
-                            )}
-                        </div>
-                        <div>
-                            <Label>Additional Assignees</Label>
-                            <div className="mt-2 grid max-h-40 gap-2 overflow-y-auto rounded-md border border-border bg-background p-3 sm:grid-cols-2">
-                                {safeTeamMembers
-                                    .filter((member) => String(member.id) !== String(taskData.assigned_to))
-                                    .map((member) => {
+                                <div>
+                                    <Label htmlFor="due_date">Due Date</Label>
+                                    <Input
+                                        id="due_date"
+                                        type="date"
+                                        value={taskData.due_date}
+                                        onChange={(e) => setTaskData('due_date', e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <Label htmlFor="description">Description</Label>
+                                <Textarea
+                                    id="description"
+                                    value={taskData.description}
+                                    onChange={(e) => setTaskData('description', e.target.value)}
+                                    placeholder="Enter task description..."
+                                    rows={4}
+                                />
+                            </div>
+
+                            <div className="grid gap-4 md:grid-cols-3">
+                                <div>
+                                    <Label htmlFor="priority">Priority</Label>
+                                    <Select value={taskData.priority} onValueChange={(value) => setTaskData('priority', value)}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="low">Low</SelectItem>
+                                            <SelectItem value="medium">Medium</SelectItem>
+                                            <SelectItem value="high">High</SelectItem>
+                                            <SelectItem value="urgent">Urgent</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <Label htmlFor="status">Status</Label>
+                                    <Select value={taskData.status} onValueChange={(value) => setTaskData('status', value)}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="todo">To Do</SelectItem>
+                                            <SelectItem value="in_progress">In Progress</SelectItem>
+                                            <SelectItem value="review">Review</SelectItem>
+                                            {canManageTasks && <SelectItem value="completed">Completed</SelectItem>}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <Label htmlFor="assigned_to">Primary Assignee</Label>
+                                    <Select
+                                        value={taskData.assigned_to ? String(taskData.assigned_to) : 'unassigned'}
+                                        onValueChange={handleCreatePrimaryAssigneeChange}
+                                        disabled={!canManageTasks}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select assignee" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {canManageTasks && <SelectItem value="unassigned">Unassigned</SelectItem>}
+                                            {(canManageTasks
+                                                ? safeTeamMembers
+                                                : safeTeamMembers.filter((member) => String(member.id) === String(currentUserId))
+                                            ).map((member) => {
+                                                if (!member?.id) return null;
+                                                return (
+                                                    <SelectItem key={member.id} value={String(member.id)}>
+                                                        {member.name || 'Unknown'}
+                                                    </SelectItem>
+                                                );
+                                            })}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="rounded-md border border-border bg-card/30 p-3">
+                                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                    <Label>Additional Assignees</Label>
+                                    <span className="text-xs text-muted-foreground">{selectedAdditionalAssigneeMembers.length} selected</span>
+                                </div>
+                                {selectedAdditionalAssigneeMembers.length > 0 && (
+                                    <div className="mb-3 flex flex-wrap gap-1.5">
+                                        {selectedAdditionalAssigneeMembers.map((member) => (
+                                            <Badge key={member.id} variant="outline" className="max-w-full gap-1.5">
+                                                <span className="truncate">{member.name || 'Unknown'}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleToggleCreateAssignee(member.id)}
+                                                    className="rounded-full px-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                >
+                                                    ×
+                                                </button>
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                )}
+                                <div className="grid max-h-40 gap-2 overflow-y-auto rounded-md border border-border bg-background p-2 sm:grid-cols-2">
+                                    {additionalAssigneeOptions.map((member) => {
                                         const checked = (taskData.assignees || []).some((assigneeId) => String(assigneeId) === String(member.id));
 
                                         return (
@@ -797,30 +827,34 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                                                 className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/60"
                                             >
                                                 <Checkbox checked={checked} onCheckedChange={() => handleToggleCreateAssignee(member.id)} />
+                                                <Avatar
+                                                    className="h-6 w-6"
+                                                    image={member.image || member.user?.image}
+                                                    name={member.name || member.user?.name || 'Unknown'}
+                                                    onlineCircleClass="hidden"
+                                                />
                                                 <span className="min-w-0 truncate">{member.name || 'Unknown'}</span>
                                             </label>
                                         );
                                     })}
-                                {safeTeamMembers.filter((member) => String(member.id) !== String(taskData.assigned_to)).length === 0 && (
-                                    <span className="text-sm text-muted-foreground">No other team members available</span>
-                                )}
+                                    {additionalAssigneeOptions.length === 0 && (
+                                        <span className="text-sm text-muted-foreground">No other team members available</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div>
+                                <Label htmlFor="notes">Notes</Label>
+                                <Textarea
+                                    id="notes"
+                                    value={taskData.notes}
+                                    onChange={(e) => setTaskData('notes', e.target.value)}
+                                    placeholder="Add any additional notes..."
+                                    rows={2}
+                                />
                             </div>
                         </div>
-                        <div>
-                            <Label htmlFor="due_date">Due Date</Label>
-                            <Input id="due_date" type="date" value={taskData.due_date} onChange={(e) => setTaskData('due_date', e.target.value)} />
-                        </div>
-                        <div>
-                            <Label htmlFor="notes">Notes</Label>
-                            <Textarea
-                                id="notes"
-                                value={taskData.notes}
-                                onChange={(e) => setTaskData('notes', e.target.value)}
-                                placeholder="Add any additional notes..."
-                                rows={2}
-                            />
-                        </div>
-                        <DialogFooter>
+                        <DialogFooter className="border-t border-border px-6 py-4">
                             <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>
                                 Cancel
                             </Button>

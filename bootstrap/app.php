@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureOnSchoolNetwork;
 use App\Http\Middleware\EnsureOrganisationOnboarded;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -27,7 +28,12 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         // Trust all proxies so HTTPS reverse proxies (ngrok, load balancers) work correctly
-        $middleware->trustProxies(at: '*');
+        $middleware->trustProxies(
+            at: '*',
+            // this is the headers that are used to trust the proxies without it the $request->ip() will return the wrong ip address
+            headers: Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_HOST | Request::HEADER_X_FORWARDED_PROTO | Request::HEADER_X_FORWARDED_PORT
+           
+        );
 
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
@@ -35,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias(([
             'role' => RoleMiddleware::class,
             'organisation.onboarded' => EnsureOrganisationOnboarded::class,
+            'school.network' => EnsureOnSchoolNetwork::class,
             "learning" => VerifyLearning::class,
         ]));
 
