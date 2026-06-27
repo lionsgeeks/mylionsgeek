@@ -31,6 +31,7 @@ class AnnouncementController extends Controller
                 'message' => $request->data['message'],
                 'created_by' => $user->id,
             ]);
+            return redirect()->back()->with('Success', 'announcement send successfully');
         } catch (\Exception $e) {
             // dd($e->getMessage());
             return Inertia::render('Error');
