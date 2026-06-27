@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Announcement;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -15,7 +17,15 @@ class AnnouncementController extends Controller
     {
         $announcements = Announcement::latest()->get();
         return Inertia::render('admin/announcements/index', [
-            'announcements' => $announcements
+            'announcements' => $announcements->map(function ($announcement) {
+                $user = User::findOrFail($announcement->created_by);
+                return [
+                    'title' => $announcement->title,
+                    'message' => $announcement->message,
+                    'created_by' => $user->name,
+                    'created_at' => $announcement->created_at->format('d-m-Y'),
+                ];
+            })
         ]);
     }
     public function store(Request $request)
