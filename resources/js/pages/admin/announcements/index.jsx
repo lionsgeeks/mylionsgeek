@@ -27,8 +27,8 @@ export default function Announcements({ announcements }) {
             <Banner
                 illustration={students}
                 userName={auth?.user?.name ?? ''}
-                title="Web announcements"
-                description="Publish announcements for web users. They appear in the notification bell when users open it or refresh."
+                title="Announcements"
+                description="Publish for web and mobile. Web users see it in the notification bell; mobile users with the app get a push notification."
             />
 
             <div className="grid gap-8 lg:grid-cols-5">

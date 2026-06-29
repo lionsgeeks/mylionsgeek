@@ -11,7 +11,7 @@ export default function NotificationHistory({ announcements = [] }) {
                     Sent announcements
                 </CardTitle>
                 <CardDescription className="text-dark/60 dark:text-light/60">
-                    History of announcements published for web users.
+                    History of announcements sent to web and mobile users.
                 </CardDescription>
             </CardHeader>
 
