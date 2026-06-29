@@ -436,6 +436,7 @@ export default function NotificationIcon() {
                                         const IconComponent = getIcon(notification.iconType);
                                         const iconColor = getIconColor(notification.iconType);
                                         const isAccessRequest = notification.type === 'access_request' && isAdmin;
+                                        const isAnnouncement = notification.type === 'announcement';
 
                                         const handleApproveAccess = async (e) => {
                                             e.preventDefault();
@@ -475,9 +476,11 @@ export default function NotificationIcon() {
                                         const NotificationContent = (
                                             <div
                                                 className={cn(
-                                                    'flex items-start gap-3 p-4 transition-colors hover:bg-[var(--color-muted)]/50',
+                                                    'flex items-start gap-3 p-4 transition-colors',
                                                     notification.readAt ? 'opacity-70' : 'bg-[var(--color-muted)]/20',
-                                                    isAccessRequest ? '' : 'cursor-pointer',
+                                                    isAccessRequest || isAnnouncement
+                                                        ? ''
+                                                        : 'cursor-pointer hover:bg-[var(--color-muted)]/50',
                                                 )}
                                             >
                                                 <div className="mt-1 flex-shrink-0">
@@ -546,6 +549,14 @@ export default function NotificationIcon() {
                                         if (isAccessRequest) {
                                             return (
                                                 <div key={notification.id} onClick={() => markAsRead(notification)}>
+                                                    {NotificationContent}
+                                                </div>
+                                            );
+                                        }
+
+                                        if (isAnnouncement) {
+                                            return (
+                                                <div key={notification.id}>
                                                     {NotificationContent}
                                                 </div>
                                             );
