@@ -300,4 +300,41 @@ class ExpoPushNotificationService
         
         return $successCount;
     }
+
+    /**
+     * Broadcast an announcement to users who registered an Expo push token (100 tokens per Expo request).
+     */
+    public function sendAnnouncementPush(string $title, string $body, int $announcementId): int
+    {
+        $pushBody = \Illuminate\Support\Str::limit($body, 178);
+        $data = [
+            'type' => 'announcement',
+            'announcement_id' => $announcementId,
+        ];
+
+        $delivered = 0;
+
+        User::query()
+            ->whereNotNull('expo_push_token')
+            ->where('expo_push_token', '!=', '')
+            ->orderBy('id')
+            ->chunkById(100, function ($users) use ($title, $pushBody, $data, &$delivered) {
+                $tokens = $users->pluck('expo_push_token')->filter()->values()->all();
+
+                if (empty($tokens)) {
+                    return;
+                }
+
+                if ($this->send($tokens, $title, $pushBody, $data)) {
+                    $delivered += count($tokens);
+                }
+            });
+
+        Log::info('Announcement push completed', [
+            'announcement_id' => $announcementId,
+            'delivered' => $delivered,
+        ]);
+
+        return $delivered;
+    }
 }

@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Announcement;
+use App\Services\ExpoPushNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class AnnouncementController extends Controller
@@ -27,7 +29,7 @@ class AnnouncementController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, ExpoPushNotificationService $expoPush)
     {
         $user = Auth::user();
         if (!$user) {
@@ -39,13 +41,35 @@ class AnnouncementController extends Controller
             'message' => 'required|string|min:10|max:500',
         ]);
 
-        Announcement::create([
+        $announcement = Announcement::create([
             'title' => $request->title,
             'message' => $request->message,
             'created_by' => $user->id,
         ]);
 
-        return redirect()->back()->with('success', 'Announcement published successfully.');
+        $successMessage = 'Announcement published successfully.';
+
+        try {
+            $delivered = $expoPush->sendAnnouncementPush(
+                $announcement->title,
+                $announcement->message,
+                $announcement->id
+            );
+
+            if ($delivered > 0) {
+                $successMessage = "Announcement published. Mobile push sent to {$delivered} device(s).";
+            } else {
+                $successMessage = 'Announcement published. No mobile devices with push tokens found.';
+            }
+        } catch (\Throwable $e) {
+            Log::error('Announcement mobile push failed', [
+                'announcement_id' => $announcement->id,
+                'error' => $e->getMessage(),
+            ]);
+            $successMessage = 'Announcement published. Mobile push delivery failed.';
+        }
+
+        return redirect()->back()->with('success', $successMessage);
     }
 
     public function update(Request $request, $id) {}
