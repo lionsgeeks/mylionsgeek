@@ -27,6 +27,7 @@ require __DIR__ . '/settings.php';
 // Admin
 require __DIR__ . '/admin/dashboard.php';
 require __DIR__ . '/admin/settings.php';
+require __DIR__ . '/admin/appversion.php';
 require __DIR__ . '/admin/users.php';
 require __DIR__ . '/admin/computers.php';
 require __DIR__ . '/admin/leaderboard.php';
