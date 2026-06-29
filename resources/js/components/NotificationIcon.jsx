@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Link, usePage } from '@inertiajs/react';
 import * as Ably from 'ably';
-import { Bell, Briefcase, Calendar, CheckCircle, Clock, Flag, Lock, User, Users, XCircle } from 'lucide-react';
+import { Bell, Briefcase, Calendar, CheckCircle, Clock, Flag, Lock, Megaphone, User, Users, XCircle } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 export default function NotificationIcon() {
@@ -371,6 +371,8 @@ export default function NotificationIcon() {
                 return Flag;
             case 'message-square':
                 return Users;
+            case 'megaphone':
+                return Megaphone;
             case 'user':
             default:
                 return User;
@@ -395,6 +397,8 @@ export default function NotificationIcon() {
                 return 'text-red-600';
             case 'message-square':
                 return 'text-blue-500';
+            case 'megaphone':
+                return 'text-[var(--color-alpha)]';
             case 'user':
             default:
                 return 'text-[var(--color-alpha)]';

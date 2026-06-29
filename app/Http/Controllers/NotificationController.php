@@ -19,6 +19,7 @@ use App\Models\TaskAssignmentNotification;
 use App\Models\ProjectMessageNotification;
 use App\Models\JobApplicationNotification;
 use App\Models\PostReportNotification;
+use App\Models\AnnouncementNotification;
 use App\Models\Formation;
 use App\Models\User;
 use Ably\AblyRest;
@@ -591,6 +592,37 @@ class NotificationController extends Controller
                 }
             }
 
+            // Announcement notifications (all authenticated web users)
+            if (Schema::hasTable('announcement_notifications')) {
+                try {
+                    $announcementNotifications = AnnouncementNotification::with(['announcement.creator'])
+                        ->where('user_id', $user->id)
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    foreach ($announcementNotifications as $notif) {
+                        if (!$notif->announcement) {
+                            continue;
+                        }
+
+                        $notifications[] = [
+                            'id' => 'announcement-' . $notif->id,
+                            'type' => 'announcement',
+                            'sender_name' => $notif->announcement->title,
+                            'sender_image' => $notif->announcement->creator?->image,
+                            'message' => $notif->announcement->message,
+                            'link' => '/dashboard',
+                            'icon_type' => 'megaphone',
+                            'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
+                            'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching announcement notifications: ' . $e->getMessage());
+                }
+            }
+
             // Sort by created_at (newest first)
             usort($notifications, function ($a, $b) {
                 return strtotime($b['created_at']) - strtotime($a['created_at']);
@@ -762,6 +794,17 @@ class NotificationController extends Controller
                         }
                     }
                     break;
+                case 'announcement':
+                    if (Schema::hasTable('announcement_notifications')) {
+                        $notification = AnnouncementNotification::where('id', $id)
+                            ->where('user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
                 default:
                     return response()->json(['error' => 'Invalid notification type'], 400);
             }
@@ -837,6 +880,12 @@ class NotificationController extends Controller
 
             if (Schema::hasTable('job_application_notifications')) {
                 JobApplicationNotification::where('notified_user_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            if (Schema::hasTable('announcement_notifications')) {
+                AnnouncementNotification::where('user_id', $user->id)
                     ->whereNull('read_at')
                     ->update(['read_at' => now()]);
             }

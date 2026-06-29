@@ -1,38 +1,47 @@
 import Banner from '@/components/banner';
 import AppLayout from '@/layouts/app-layout';
-import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { Head, usePage } from '@inertiajs/react';
 import students from '../../../../../public/assets/images/banner/students.png';
-import NotificationForm from './Partials/NotificationForm';
-import NotificationHistory from './Partials/NotificationHistory';
+import NotificationForm from './partials/NotificationForm';
+import NotificationHistory from './partials/NotificationHistory';
 
 export default function Announcements({ announcements }) {
-    const { auth } = usePage().props;
-    console.log(announcements)
+    const { auth, flash } = usePage().props;
+
     return (
-        <AppLayout>
-            <div className="flex flex-col gap-8 p-6">
-                <Head title="Send notification" />
+        <div className="flex flex-col gap-8 p-6">
+            <Head title="Announcements" />
 
-                <Banner
-                    illustration={students}
-                    userName={auth?.user?.name ?? ''}
-                    title="Push notifications"
-                    description="Send push notifications to mobile app users. Title and message are delivered to their devices."
-                />
+            {flash?.success && (
+                <div className="rounded-lg border border-good/30 bg-good/10 px-4 py-3 text-sm text-good">
+                    {flash.success}
+                </div>
+            )}
 
-                <div className="grid gap-8 lg:grid-cols-5">
-                    <div className="lg:col-span-2">
-                        <NotificationForm />
-                    </div>
+            {flash?.error && (
+                <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
+                    {flash.error}
+                </div>
+            )}
 
-                    <div className="lg:col-span-3">
-                        <NotificationHistory announcements={announcements} />
-                    </div>
+            <Banner
+                illustration={students}
+                userName={auth?.user?.name ?? ''}
+                title="Web announcements"
+                description="Send in-app notifications to web users. They appear in the notification bell in real time."
+            />
+
+            <div className="grid gap-8 lg:grid-cols-5">
+                <div className="lg:col-span-2">
+                    <NotificationForm />
+                </div>
+
+                <div className="lg:col-span-3">
+                    <NotificationHistory announcements={announcements} />
                 </div>
             </div>
-        </AppLayout>
+        </div>
     );
 }
 
-
+Announcements.layout = (page) => <AppLayout>{page}</AppLayout>;
