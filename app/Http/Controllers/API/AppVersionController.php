@@ -13,7 +13,8 @@ class AppVersionController extends Controller
     {
         return response()->json([
             'version' => (string) AppSetting::get(AdminAppVersionController::VERSION_KEY, ''),
-            'update_url' => (string) AppSetting::get(AdminAppVersionController::UPDATE_URL_KEY, ''),
+            'app_store_url' => (string) AppSetting::get(AdminAppVersionController::APP_STORE_URL_KEY, ''),
+            'play_store_url' => (string) AppSetting::get(AdminAppVersionController::PLAY_STORE_URL_KEY, ''),
         ]);
     }
 }

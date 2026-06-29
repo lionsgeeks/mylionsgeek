@@ -8,7 +8,8 @@ export default function AppVersionIndex({ appVersion }) {
     const { flash } = usePage().props;
     const { data, setData, post, processing, errors } = useForm({
         version: appVersion?.version ?? '',
-        update_url: appVersion?.update_url ?? '',
+        app_store_url: appVersion?.app_store_url ?? '',
+        play_store_url: appVersion?.play_store_url ?? '',
     });
 
     const submit = (e) => {
@@ -34,7 +35,7 @@ export default function AppVersionIndex({ appVersion }) {
                 <p className="text-sm text-dark/70 dark:text-light/70">
                     Match the version in{' '}
                     <span className="font-mono text-beta dark:text-alpha">lionsgeek-mobile/app.json</span> when you
-                    release a new build. Save only after the store listing is live.
+                    release a new build. Save only after both store listings are live.
                 </p>
             </div>
 
@@ -51,18 +52,27 @@ export default function AppVersionIndex({ appVersion }) {
                 </div>
 
                 <div>
-                    <Label htmlFor="update_url">Update URL</Label>
+                    <Label htmlFor="app_store_url">App Store URL (iOS)</Label>
                     <Input
-                        id="update_url"
+                        id="app_store_url"
                         type="url"
-                        value={data.update_url}
-                        onChange={(e) => setData('update_url', e.target.value)}
+                        value={data.app_store_url}
+                        onChange={(e) => setData('app_store_url', e.target.value)}
+                        placeholder="https://apps.apple.com/app/id..."
+                    />
+                    {errors.app_store_url && <p className="mt-1 text-sm text-error">{errors.app_store_url}</p>}
+                </div>
+
+                <div>
+                    <Label htmlFor="play_store_url">Play Store URL (Android)</Label>
+                    <Input
+                        id="play_store_url"
+                        type="url"
+                        value={data.play_store_url}
+                        onChange={(e) => setData('play_store_url', e.target.value)}
                         placeholder="https://play.google.com/store/apps/details?id=..."
                     />
-                    {errors.update_url && <p className="mt-1 text-sm text-error">{errors.update_url}</p>}
-                    <p className="mt-1 text-xs text-dark/60 dark:text-light/60">
-                        App Store, Play Store, or a landing page with both links.
-                    </p>
+                    {errors.play_store_url && <p className="mt-1 text-sm text-error">{errors.play_store_url}</p>}
                 </div>
 
                 <Button
