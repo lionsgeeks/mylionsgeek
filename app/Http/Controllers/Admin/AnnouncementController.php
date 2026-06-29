@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Announcement;
-use App\Services\AnnouncementNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -40,27 +39,13 @@ class AnnouncementController extends Controller
             'message' => 'required|string|min:10|max:500',
         ]);
 
-        $announcement = Announcement::create([
+        Announcement::create([
             'title' => $request->title,
             'message' => $request->message,
             'created_by' => $user->id,
         ]);
 
-        $announcementId = $announcement->id;
-        $senderId = $user->id;
-
-        dispatch(function () use ($announcementId, $senderId) {
-            $announcement = Announcement::find($announcementId);
-            $sender = \App\Models\User::find($senderId);
-
-            if (!$announcement || !$sender) {
-                return;
-            }
-
-            app(AnnouncementNotificationService::class)->notifyAllUsers($announcement, $sender);
-        })->afterResponse();
-
-        return redirect()->back()->with('success', 'Announcement sent successfully. Notifications are being delivered to users.');
+        return redirect()->back()->with('success', 'Announcement published successfully.');
     }
 
     public function update(Request $request, $id) {}

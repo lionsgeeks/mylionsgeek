@@ -32,7 +32,7 @@ export default function NotificationForm() {
                     Compose announcement
                 </CardTitle>
                 <CardDescription className="text-dark/60 dark:text-light/60">
-                    Web users receive this in their notification bell when they are online.
+                    Users will see this in their notification bell when they open or refresh notifications.
                 </CardDescription>
             </CardHeader>
 

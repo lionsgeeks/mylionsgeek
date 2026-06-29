@@ -28,7 +28,7 @@ export default function Announcements({ announcements }) {
                 illustration={students}
                 userName={auth?.user?.name ?? ''}
                 title="Web announcements"
-                description="Send in-app notifications to web users. They appear in the notification bell in real time."
+                description="Publish announcements for web users. They appear in the notification bell when users open it or refresh."
             />
 
             <div className="grid gap-8 lg:grid-cols-5">

@@ -20,6 +20,7 @@ use App\Models\ProjectMessageNotification;
 use App\Models\JobApplicationNotification;
 use App\Models\PostReportNotification;
 use App\Models\AnnouncementNotification;
+use App\Models\Announcement;
 use App\Models\Formation;
 use App\Models\User;
 use Ably\AblyRest;
@@ -592,30 +593,33 @@ class NotificationController extends Controller
                 }
             }
 
-            // Announcement notifications (all authenticated web users)
-            if (Schema::hasTable('announcement_notifications')) {
+            // Announcements (loaded on bell open / poll — no real-time push)
+            if (Schema::hasTable('announcements')) {
                 try {
-                    $announcementNotifications = AnnouncementNotification::with(['announcement.creator'])
-                        ->where('user_id', $user->id)
-                        ->orderByDesc('created_at')
+                    $announcements = Announcement::with('creator')
+                        ->latest()
                         ->limit(20)
                         ->get();
 
-                    foreach ($announcementNotifications as $notif) {
-                        if (!$notif->announcement) {
-                            continue;
-                        }
+                    $readStates = Schema::hasTable('announcement_notifications')
+                        ? AnnouncementNotification::where('user_id', $user->id)
+                            ->whereIn('announcement_id', $announcements->pluck('id'))
+                            ->pluck('read_at', 'announcement_id')
+                        : collect();
+
+                    foreach ($announcements as $announcement) {
+                        $readAt = $readStates->get($announcement->id);
 
                         $notifications[] = [
-                            'id' => 'announcement-' . $notif->id,
+                            'id' => 'announcement-' . $announcement->id,
                             'type' => 'announcement',
-                            'sender_name' => $notif->announcement->title,
-                            'sender_image' => $notif->announcement->creator?->image,
-                            'message' => $notif->announcement->message,
+                            'sender_name' => $announcement->title,
+                            'sender_image' => $announcement->creator?->image,
+                            'message' => $announcement->message,
                             'link' => '/dashboard',
                             'icon_type' => 'megaphone',
-                            'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                            'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                            'created_at' => $announcement->created_at->format('Y-m-d H:i:s'),
+                            'read_at' => $readAt ? $readAt->format('Y-m-d H:i:s') : null,
                         ];
                     }
                 } catch (\Exception $e) {
@@ -796,13 +800,14 @@ class NotificationController extends Controller
                     break;
                 case 'announcement':
                     if (Schema::hasTable('announcement_notifications')) {
-                        $notification = AnnouncementNotification::where('id', $id)
-                            ->where('user_id', $user->id)
-                            ->first();
-                        if ($notification) {
-                            $notification->read_at = now();
-                            $notification->save();
-                        }
+                        $notification = AnnouncementNotification::firstOrCreate(
+                            [
+                                'user_id' => $user->id,
+                                'announcement_id' => $id,
+                            ]
+                        );
+                        $notification->read_at = now();
+                        $notification->save();
                     }
                     break;
                 default:
@@ -884,10 +889,18 @@ class NotificationController extends Controller
                     ->update(['read_at' => now()]);
             }
 
-            if (Schema::hasTable('announcement_notifications')) {
-                AnnouncementNotification::where('user_id', $user->id)
-                    ->whereNull('read_at')
-                    ->update(['read_at' => now()]);
+            if (Schema::hasTable('announcement_notifications') && Schema::hasTable('announcements')) {
+                $announcementIds = Announcement::latest()->limit(50)->pluck('id');
+
+                foreach ($announcementIds as $announcementId) {
+                    AnnouncementNotification::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'announcement_id' => $announcementId,
+                        ],
+                        ['read_at' => now()]
+                    );
+                }
             }
 
             // Mark all access request response notifications as read (for users)
