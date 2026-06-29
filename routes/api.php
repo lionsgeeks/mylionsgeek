@@ -3,6 +3,7 @@
 use App\Http\Controllers\API\LearningController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\UserController;
+use App\Http\Controllers\API\AppVersionController;
 use App\Http\Controllers\API\MobileAuthController;
 use App\Http\Controllers\PlacesController;
 use App\Http\Controllers\API\ReservationController;
@@ -23,6 +24,9 @@ Route::post("/invite-student", [UserController::class, "inviteStudent"]);
 // Mobile authentication endpoints (public)
 Route::post('/mobile/login', [MobileAuthController::class, 'login']);
 Route::post('/mobile/forgot-password', [MobileAuthController::class, 'forgot']);
+
+// Mobile app version check (public — no auth required)
+Route::get('/mobile/app-version', [AppVersionController::class, 'show']);
 
 // LionsGeek (lionsgeek.ma) events/info-session proxy for the mobile app.
 // Gated by the shared bearer key inside the controller, so it stays public

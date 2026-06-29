@@ -13,15 +13,21 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StudentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $userController = new UsersController;
-        $posts = $userController->getPosts();
+        $cursor = $request->query('cursor');
+        $paginated = $userController->getPostsPaginated(
+            perPage: 10,
+            cursor: is_string($cursor) && $cursor !== '' ? $cursor : null,
+        );
         $userId = Auth::user()->id;
         $user = $this->getUserInfo($userId);
 
         return Inertia::render('students/user/index', [
-            'posts' => $posts,
+            'feedPosts' => Inertia::merge($paginated['posts'])->matchOn('id'),
+            'feedNextCursor' => $paginated['next_cursor'],
+            'feedHasMore' => $paginated['has_more'],
             'user' => $user,
         ]);
     }

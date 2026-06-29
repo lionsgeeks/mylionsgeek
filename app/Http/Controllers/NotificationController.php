@@ -19,6 +19,8 @@ use App\Models\TaskAssignmentNotification;
 use App\Models\ProjectMessageNotification;
 use App\Models\JobApplicationNotification;
 use App\Models\PostReportNotification;
+use App\Models\AnnouncementNotification;
+use App\Models\Announcement;
 use App\Models\Formation;
 use App\Models\User;
 use Ably\AblyRest;
@@ -591,6 +593,40 @@ class NotificationController extends Controller
                 }
             }
 
+            // Announcements (loaded on bell open / poll — no real-time push)
+            if (Schema::hasTable('announcements')) {
+                try {
+                    $announcements = Announcement::with('creator')
+                        ->latest()
+                        ->limit(20)
+                        ->get();
+
+                    $readStates = Schema::hasTable('announcement_notifications')
+                        ? AnnouncementNotification::where('user_id', $user->id)
+                            ->whereIn('announcement_id', $announcements->pluck('id'))
+                            ->pluck('read_at', 'announcement_id')
+                        : collect();
+
+                    foreach ($announcements as $announcement) {
+                        $readAt = $readStates->get($announcement->id);
+
+                        $notifications[] = [
+                            'id' => 'announcement-' . $announcement->id,
+                            'type' => 'announcement',
+                            'sender_name' => $announcement->title,
+                            'sender_image' => $announcement->creator?->image,
+                            'message' => $announcement->message,
+                            'link' => '/dashboard',
+                            'icon_type' => 'megaphone',
+                            'created_at' => $announcement->created_at->format('Y-m-d H:i:s'),
+                            'read_at' => $readAt ? $readAt->format('Y-m-d H:i:s') : null,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching announcement notifications: ' . $e->getMessage());
+                }
+            }
+
             // Sort by created_at (newest first)
             usort($notifications, function ($a, $b) {
                 return strtotime($b['created_at']) - strtotime($a['created_at']);
@@ -762,6 +798,18 @@ class NotificationController extends Controller
                         }
                     }
                     break;
+                case 'announcement':
+                    if (Schema::hasTable('announcement_notifications')) {
+                        $notification = AnnouncementNotification::firstOrCreate(
+                            [
+                                'user_id' => $user->id,
+                                'announcement_id' => $id,
+                            ]
+                        );
+                        $notification->read_at = now();
+                        $notification->save();
+                    }
+                    break;
                 default:
                     return response()->json(['error' => 'Invalid notification type'], 400);
             }
@@ -839,6 +887,20 @@ class NotificationController extends Controller
                 JobApplicationNotification::where('notified_user_id', $user->id)
                     ->whereNull('read_at')
                     ->update(['read_at' => now()]);
+            }
+
+            if (Schema::hasTable('announcement_notifications') && Schema::hasTable('announcements')) {
+                $announcementIds = Announcement::latest()->limit(50)->pluck('id');
+
+                foreach ($announcementIds as $announcementId) {
+                    AnnouncementNotification::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'announcement_id' => $announcementId,
+                        ],
+                        ['read_at' => now()]
+                    );
+                }
             }
 
             // Mark all access request response notifications as read (for users)

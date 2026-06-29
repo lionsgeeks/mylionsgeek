@@ -277,15 +277,17 @@ class PostController extends Controller
             ]);
         }
 
-        $notification = \App\Models\PostNotification::createNotification(
-            $original->user_id,
-            $user->id,
-            $original->id,
-            'repost'
-        );
+        if (!$already) {
+            $notification = \App\Models\PostNotification::createNotification(
+                $original->user_id,
+                $user->id,
+                $original->id,
+                'repost'
+            );
 
-        if ($notification) {
-            $this->broadcastNotification($notification, $user, $original, 'repost');
+            if ($notification) {
+                $this->broadcastNotification($notification, $user, $original, 'repost');
+            }
         }
 
         $this->broadcastPostStats($original);

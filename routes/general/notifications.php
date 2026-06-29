@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\SendClassController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -9,3 +10,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/api/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('api.notifications.mark-all-read');
     Route::get('/api/notifications/ably-token', [NotificationController::class, 'getAblyToken'])->name('api.notifications.ably-token');
 });
+
+
+

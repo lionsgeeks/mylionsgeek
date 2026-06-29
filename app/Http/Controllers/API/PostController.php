@@ -67,6 +67,7 @@ class PostController extends Controller
             'hashtags' => $post->hashTags ?? [],
             'created_at' => $createdAt,
             'interaction_post_id' => $interactionId,
+            'can_repost' => true,
             'is_saved_by_user' => in_array($interactionId, $savedInteractionPostIds, true),
             'user' => [
                 'id' => $postUser->id ?? null,
@@ -124,6 +125,7 @@ class PostController extends Controller
             'image' => null,
             'created_at' => $createdAt,
             'interaction_post_id' => (int) $originalPost->id,
+            'can_repost' => false,
             'is_saved_by_user' => in_array((int) $originalPost->id, $savedInteractionPostIds, true),
             'repost_of' => $original,
             'user' => [
@@ -886,16 +888,33 @@ class PostController extends Controller
             ->where('post_id', $interactionPost->id)
             ->exists();
 
+        $description = (string) ($validated['description'] ?? '');
+
         if ($alreadyReposted) {
+            DB::table('reposts_posts')
+                ->where('user_id', $user->id)
+                ->where('post_id', $interactionPost->id)
+                ->update([
+                    'description' => $description !== '' ? $description : null,
+                    'updated_at' => now(),
+                ]);
+
             $repostsCount = (int) $interactionPost->reposts()->count();
+
+            $repostRow = DB::table('reposts_posts')
+                ->where('user_id', $user->id)
+                ->where('post_id', $interactionPost->id)
+                ->first();
+
             return response()->json([
-                'message' => 'Already reposted',
+                'message' => 'Repost updated successfully',
                 'reposted' => true,
                 'reposts_count' => $repostsCount,
+                'post' => $repostRow
+                    ? $this->mapRepostForMobileFeed($repostRow, $interactionPost, $user, $user, [])
+                    : null,
             ], 200);
         }
-
-        $description = (string) ($validated['description'] ?? '');
 
         $repostId = DB::transaction(function () use ($user, $interactionPost, $description) {
             return DB::table('reposts_posts')->insertGetId([

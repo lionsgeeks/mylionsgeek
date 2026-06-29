@@ -8,6 +8,7 @@ const RepostModal = ({ open, onOpenChange, user, post, isReposted = false, onRep
     const [mode, setMode] = useState('choice'); // 'choice' | 'thoughts'
 
     const interactionPostId = useMemo(() => post?.interaction_post_id ?? post?.id, [post]);
+    const existingDescription = post?.current_user_repost_description ?? '';
 
     const form = useForm({
         description: '',
@@ -18,8 +19,13 @@ const RepostModal = ({ open, onOpenChange, user, post, isReposted = false, onRep
     useEffect(() => {
         if (!open) {
             setMode('choice');
+            return;
         }
-    }, [open]);
+
+        if (isReposted) {
+            form.setData('description', existingDescription);
+        }
+    }, [open, isReposted, existingDescription]);
 
     const close = () => {
         form.reset();
@@ -59,16 +65,29 @@ const RepostModal = ({ open, onOpenChange, user, post, isReposted = false, onRep
     if (!open) return null;
 
     const isProcessing = form.processing || removeForm.processing;
+    const isEditingThoughts = mode === 'thoughts';
+    const modalTitle = isReposted
+        ? isEditingThoughts
+            ? 'Edit repost'
+            : 'Manage repost'
+        : isEditingThoughts
+          ? 'Repost with thoughts'
+          : 'Repost';
+    const loaderMessage = removeForm.processing
+        ? 'Removing repost...'
+        : isReposted
+          ? 'Updating repost...'
+          : 'Reposting...';
 
     return (
         <PostModalShell
             user={user}
-            title={isReposted ? 'Remove repost' : 'Repost'}
+            title={modalTitle}
             onClose={close}
             showLoader={isProcessing}
-            loaderMessage={isReposted ? 'Removing repost...' : 'Reposting...'}
+            loaderMessage={loaderMessage}
             footer={
-                isReposted ? (
+                isReposted && !isEditingThoughts ? (
                     <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
                         <button
                             type="button"
@@ -82,12 +101,20 @@ const RepostModal = ({ open, onOpenChange, user, post, isReposted = false, onRep
                             type="button"
                             disabled={isProcessing}
                             onClick={handleRemoveRepost}
-                            className="rounded-xl bg-error px-6 py-3 text-sm font-bold text-light shadow-md transition-all duration-200 hover:bg-error/90 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="rounded-xl border border-error/40 bg-transparent px-6 py-3 text-sm font-semibold text-error transition hover:bg-error/10 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                            {isProcessing ? 'Removing...' : 'Remove repost'}
+                            {removeForm.processing ? 'Removing...' : 'Remove repost'}
+                        </button>
+                        <button
+                            type="button"
+                            disabled={isProcessing}
+                            onClick={() => setMode('thoughts')}
+                            className="rounded-xl bg-[var(--color-alpha)] px-6 py-3 text-sm font-bold text-[var(--color-beta)] shadow-md transition-all duration-200 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            Edit repost
                         </button>
                     </div>
-                ) : mode === 'thoughts' ? (
+                ) : isEditingThoughts ? (
                     <div className="flex w-full items-center justify-between gap-4">
                         <button
                             type="button"
@@ -102,7 +129,7 @@ const RepostModal = ({ open, onOpenChange, user, post, isReposted = false, onRep
                             onClick={() => submit(form.data.description)}
                             className="rounded-xl bg-[var(--color-alpha)] px-8 py-3 text-sm font-bold text-[var(--color-beta)] shadow-md transition-all duration-200 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                            {isProcessing ? 'Posting...' : 'Post'}
+                            {isProcessing ? 'Posting...' : isReposted ? 'Update' : 'Post'}
                         </button>
                     </div>
                 ) : (
@@ -127,11 +154,11 @@ const RepostModal = ({ open, onOpenChange, user, post, isReposted = false, onRep
                 )
             }
         >
-            {isReposted ? (
+            {isReposted && !isEditingThoughts ? (
                 <p className="text-sm text-[var(--color-dark_gray)] dark:text-[var(--color-light)]/70">
-                    This removes your repost from the feed. The original post will not be deleted.
+                    You already reposted this post. Edit your repost or remove it from the feed. The original post will not be deleted.
                 </p>
-            ) : mode === 'thoughts' ? (
+            ) : isEditingThoughts ? (
                 <>
                     <PostTextarea
                         id="repost-thoughts-textarea"
