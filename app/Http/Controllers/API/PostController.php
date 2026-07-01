@@ -155,8 +155,15 @@ class PostController extends Controller
                 return response()->json(['message' => 'Unauthenticated'], 401);
             }
 
+            $offset = max(0, (int) $request->query('offset', 0));
+            $limit = min(20, max(5, (int) $request->query('limit', 5)));
+            // Fetch enough rows from each source to build a merged timeline page.
+            $windowSize = min(500, $offset + $limit + 50);
+
             $feed = [];
             $recentPosts = collect([]);
+            $recentPostsModels = collect([]);
+            $recentRepostRows = collect([]);
 
             // Get recent posts + recent reposts (pivot), then merge into one feed.
             try {
@@ -167,13 +174,13 @@ class PostController extends Controller
                     })
                     ->whereNotNull('created_at')
                     ->orderBy('created_at', 'desc')
-                    ->limit(20)
+                    ->limit($windowSize)
                     ->get()
                     ->filter();
 
                 $recentRepostRows = DB::table('reposts_posts')
                     ->orderByDesc('created_at')
-                    ->limit(20)
+                    ->limit($windowSize)
                     ->get();
 
                 $interactionIds = $recentPostsModels
@@ -235,16 +242,23 @@ class PostController extends Controller
                 $recentPosts = collect([]);
             }
 
-            // Sort posts by created_at and convert to array
-            $feed = $recentPosts
+            // Sort posts by created_at, paginate, and convert to array
+            $merged = $recentPosts
                 ->filter(function ($item) {
                     return $item !== null && isset($item['created_at']) && $item['created_at'] !== null;
                 })
                 ->sortByDesc('created_at')
-                ->values()
-                ->toArray();
+                ->values();
 
-            return response()->json(['feed' => $feed]);
+            $feed = $merged->slice($offset, $limit)->values()->toArray();
+            $hasMore = ($offset + $limit) < $merged->count()
+                || $recentPostsModels->count() >= $windowSize
+                || $recentRepostRows->count() >= $windowSize;
+
+            return response()->json([
+                'feed' => $feed,
+                'next_offset' => $hasMore ? $offset + $limit : null,
+            ]);
         } catch (\Throwable $e) {
             Log::error('Error in feed endpoint: ' . $e->getMessage());
             Log::error('Stack trace: ' . $e->getTraceAsString());
@@ -254,6 +268,7 @@ class PostController extends Controller
             // Return empty feed instead of error to prevent app crash
             return response()->json([
                 'feed' => [],
+                'next_offset' => null,
                 'error' => config('app.debug') ? [
                     'message' => $e->getMessage(),
                     'file' => $e->getFile(),
