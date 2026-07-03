@@ -21,6 +21,8 @@ use App\Models\JobApplicationNotification;
 use App\Models\PostReportNotification;
 use App\Models\AnnouncementNotification;
 use App\Models\Announcement;
+use App\Models\EventNotification;
+use App\Models\EventNotificationRead;
 use App\Models\Formation;
 use App\Models\User;
 use Ably\AblyRest;
@@ -627,6 +629,39 @@ class NotificationController extends Controller
                 }
             }
 
+            // Public events from lionsgeek.ma (stored when webhook fires)
+            if (Schema::hasTable('event_notifications')) {
+                try {
+                    $eventNotifications = EventNotification::latest()
+                        ->limit(20)
+                        ->get();
+
+                    $readStates = Schema::hasTable('event_notification_reads')
+                        ? EventNotificationRead::where('user_id', $user->id)
+                            ->whereIn('event_notification_id', $eventNotifications->pluck('id'))
+                            ->pluck('read_at', 'event_notification_id')
+                        : collect();
+
+                    foreach ($eventNotifications as $eventNotification) {
+                        $readAt = $readStates->get($eventNotification->id);
+
+                        $notifications[] = [
+                            'id' => 'event-' . $eventNotification->id,
+                            'type' => 'event',
+                            'event_id' => $eventNotification->lionsgeek_event_id,
+                            'sender_name' => $eventNotification->title,
+                            'message' => $eventNotification->message,
+                            'mobile_link' => '/events/' . $eventNotification->lionsgeek_event_id,
+                            'icon_type' => 'calendar',
+                            'created_at' => $eventNotification->created_at->format('Y-m-d H:i:s'),
+                            'read_at' => $readAt ? $readAt->format('Y-m-d H:i:s') : null,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching event notifications: ' . $e->getMessage());
+                }
+            }
+
             // Sort by created_at (newest first)
             usort($notifications, function ($a, $b) {
                 return strtotime($b['created_at']) - strtotime($a['created_at']);
@@ -810,6 +845,18 @@ class NotificationController extends Controller
                         $notification->save();
                     }
                     break;
+                case 'event':
+                    if (Schema::hasTable('event_notification_reads')) {
+                        $notification = EventNotificationRead::firstOrCreate(
+                            [
+                                'user_id' => $user->id,
+                                'event_notification_id' => $id,
+                            ]
+                        );
+                        $notification->read_at = now();
+                        $notification->save();
+                    }
+                    break;
                 default:
                     return response()->json(['error' => 'Invalid notification type'], 400);
             }
@@ -897,6 +944,20 @@ class NotificationController extends Controller
                         [
                             'user_id' => $user->id,
                             'announcement_id' => $announcementId,
+                        ],
+                        ['read_at' => now()]
+                    );
+                }
+            }
+
+            if (Schema::hasTable('event_notification_reads') && Schema::hasTable('event_notifications')) {
+                $eventNotificationIds = EventNotification::latest()->limit(50)->pluck('id');
+
+                foreach ($eventNotificationIds as $eventNotificationId) {
+                    EventNotificationRead::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'event_notification_id' => $eventNotificationId,
                         ],
                         ['read_at' => now()]
                     );
