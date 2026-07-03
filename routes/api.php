@@ -33,6 +33,9 @@ Route::get('/mobile/app-version', [AppVersionController::class, 'show']);
 // here (the device authenticates with the upstream key, not a sanctum token).
 require __DIR__ . '/api/events-info.php';
 
+// lionsgeek.ma → mylionsgeek webhooks (shared LIONSGEEK_MA_API_KEY bearer).
+require __DIR__ . '/api/internal.php';
+
 Route::get('/users', [ReservationController::class, 'getUserss'])
     ->name('admin.api.users');
 
