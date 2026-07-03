@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Models\EventNotification;
 use App\Services\ExpoPushNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,6 +29,14 @@ class EventPushWebhookController extends Controller
         $body = $validated['body'] ?? 'A new public event is available. Tap to register.';
 
         try {
+            EventNotification::updateOrCreate(
+                ['lionsgeek_event_id' => $validated['event_id']],
+                [
+                    'title' => $validated['title'],
+                    'message' => $body,
+                ]
+            );
+
             $delivered = $expoPush->sendEventPush(
                 $validated['title'],
                 $body,
