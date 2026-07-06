@@ -898,7 +898,7 @@ class PostController extends Controller
 
         $post = Post::create([
             'user_id' => Auth::id(),
-            'description' => $request->description ? '',
+            'description' => $request->description ?? '',
             'images' => $imagesArray,
         ]);
 
