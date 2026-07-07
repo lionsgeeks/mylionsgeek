@@ -74,9 +74,6 @@ const getDashboardItems = () => [
         href: '/admin/dashboard',
         icon: LayoutGrid,
     },
-];
-
-const getCommunityItems = () => [
     {
         id: 'members',
         title: 'Members',
@@ -84,12 +81,16 @@ const getCommunityItems = () => [
         icon: Users,
         excludedRoles: ['studio_responsable'],
     },
+];
+
+const getCommunityItems = () => [
+
     {
         id: 'leaderboard',
         title: 'LeaderBoard',
         href: '/students/leaderboard',
         icon: AwardIcon,
-        authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'],
+        authorizedRoles: ['admin', 'coach'],
     },
     {
         id: 'training',
@@ -98,19 +99,22 @@ const getCommunityItems = () => [
         icon: GraduationCap,
         authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'],
     },
+];
+const getJobsItems = () => [
+
     {
         id: 'jobs',
         title: 'Jobs',
         href: '/admin/jobs',
         icon: Briefcase,
-        authorizedRoles: ['admin', 'moderateur', 'super_admin'],
+        authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'],
     },
     {
         id: 'organisations',
         title: 'Organisations',
         href: '/admin/organisations',
         icon: UserPlus,
-        authorizedRoles: ['admin', 'moderateur', 'super_admin'],
+        authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'],
     },
 ];
 
@@ -153,7 +157,6 @@ const getGeneralItems = () => [
         icon: Smartphone,
         authorizedRoles: ['admin', 'super_admin'],
     },
-    { id: 'settings', title: 'Settings', href: '/settings', icon: Settings },
 ];
 
 function RecruiterSidebarContext() {
@@ -250,7 +253,9 @@ export function AppSidebar() {
                         <NavMain label="Community" items={navGroups.community} collapsible />
                         <NavMain label="Spaces & Resources" items={navGroups.spaces} collapsible />
                         <NavMain label="Work" items={navGroups.work} collapsible />
-                        <NavMain label="General" items={navGroups.general} collapsible />
+                        {auth.user.role.includes('admin') && (
+                            <NavMain label="General" items={navGroups.general} collapsible />
+                        )}
                     </>
                 ) : null}
             </SidebarContent>
