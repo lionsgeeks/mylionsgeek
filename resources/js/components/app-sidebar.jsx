@@ -10,8 +10,10 @@ import {
     FolderOpen,
     GraduationCap,
     LayoutGrid,
+    Megaphone,
     Monitor,
     Settings,
+    Smartphone,
     Timer,
     UserPlus,
     Users,
@@ -65,14 +67,16 @@ const getRecruiterHiringNavItems = () => [
     },
 ];
 
-const getAllNavItems = () => [
+const getDashboardItems = () => [
     {
         id: 'dashboard',
         title: 'Dashboard',
         href: '/admin/dashboard',
         icon: LayoutGrid,
     },
+];
 
+const getCommunityItems = () => [
     {
         id: 'members',
         title: 'Members',
@@ -81,35 +85,19 @@ const getAllNavItems = () => [
         excludedRoles: ['studio_responsable'],
     },
     {
-        id: 'projects',
-        title: 'Projects',
-        href: '/admin/projects',
-        icon: FolderOpen,
-        excludedRoles: ['studio_responsable'],
-    },
-
-    {
-        id: 'leaderboard',  
+        id: 'leaderboard',
         title: 'LeaderBoard',
         href: '/students/leaderboard',
         icon: AwardIcon,
         authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'],
     },
-
     {
-        id: 'spaces',
-        title: 'Spaces ',
-        href: '/admin/places',
-        icon: Building2,
-        authorizedRoles: ['admin', 'super_admin', 'moderateur', 'studio_responsable'],
+        id: 'training',
+        title: 'Training',
+        href: '/admin/training',
+        icon: GraduationCap,
+        authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'],
     },
-    { id: 'reservations', title: 'Reservations', href: '/admin/reservations', icon: Timer, excludedRoles: ['coach'] },
-    { id: 'appointments', title: 'Appointments', href: '/admin/appointments', icon: Calendar },
-
-    { id: 'computers', title: 'Computers', href: '/admin/computers', icon: Monitor, authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'] },
-    { id: 'equipment', title: 'Equipment', href: '/admin/equipements', icon: Wrench, excludedRoles: ['coach'] },
-    { id: 'training', title: 'Training', href: '/admin/training', icon: GraduationCap, authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'] },
-    // { id: 'games', title: 'Games', href: '/games', icon: Gamepad2 },
     {
         id: 'jobs',
         title: 'Jobs',
@@ -123,6 +111,47 @@ const getAllNavItems = () => [
         href: '/admin/organisations',
         icon: UserPlus,
         authorizedRoles: ['admin', 'moderateur', 'super_admin'],
+    },
+];
+
+const getSpacesItems = () => [
+    {
+        id: 'spaces',
+        title: 'Spaces',
+        href: '/admin/places',
+        icon: Building2,
+        authorizedRoles: ['admin', 'super_admin', 'moderateur', 'studio_responsable'],
+    },
+    { id: 'reservations', title: 'Reservations', href: '/admin/reservations', icon: Timer, excludedRoles: ['coach'] },
+    { id: 'appointments', title: 'Appointments', href: '/admin/appointments', icon: Calendar },
+    { id: 'computers', title: 'Computers', href: '/admin/computers', icon: Monitor, authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'] },
+    { id: 'equipment', title: 'Equipment', href: '/admin/equipements', icon: Wrench, excludedRoles: ['coach'] },
+];
+
+const getWorkItems = () => [
+    {
+        id: 'projects',
+        title: 'Projects',
+        href: '/admin/projects',
+        icon: FolderOpen,
+        excludedRoles: ['studio_responsable'],
+    },
+];
+
+const getGeneralItems = () => [
+    {
+        id: 'announcements',
+        title: 'Announcements',
+        href: '/admin/announcements',
+        icon: Megaphone,
+        authorizedRoles: ['admin'],
+    },
+    {
+        id: 'appversion',
+        title: 'App Version',
+        href: '/admin/appversion',
+        icon: Smartphone,
+        authorizedRoles: ['admin', 'super_admin'],
     },
     { id: 'settings', title: 'Settings', href: '/settings', icon: Settings },
 ];
@@ -180,19 +209,21 @@ export function AppSidebar() {
 
     const logoHref = isRecruiterOnlySidebar ? '/recruiter/dashboard' : '/admin/dashboard';
 
-    const mainNavItems = useMemo(() => {
-        if (isRecruiterOnlySidebar) {
-            return null;
-        }
+    const navGroups = useMemo(() => {
+        if (isRecruiterOnlySidebar) return null;
 
-        const allItems = getAllNavItems();
-
-        return allItems.filter((item) => {
-            if (item.id === 'appointments') {
-                return isAppointmentPerson(user);
-            }
+        const spacesItems = getSpacesItems().filter((item) => {
+            if (item.id === 'appointments') return isAppointmentPerson(user);
             return true;
         });
+
+        return {
+            dashboard: getDashboardItems(),
+            community: getCommunityItems(),
+            spaces: spacesItems,
+            work: getWorkItems(),
+            general: getGeneralItems(),
+        };
     }, [user, isRecruiterOnlySidebar]);
 
     return (
@@ -213,9 +244,15 @@ export function AppSidebar() {
             <SidebarContent>
                 {isRecruiterOnlySidebar ? (
                     <NavMain label="Hiring" items={getRecruiterHiringNavItems()} />
-                ) : (
-                    <NavMain items={mainNavItems ?? []} />
-                )}
+                ) : navGroups ? (
+                    <>
+                        <NavMain items={navGroups.dashboard} />
+                        <NavMain label="Community" items={navGroups.community} collapsible />
+                        <NavMain label="Spaces & Resources" items={navGroups.spaces} collapsible />
+                        <NavMain label="Work" items={navGroups.work} collapsible />
+                        <NavMain label="General" items={navGroups.general} collapsible />
+                    </>
+                ) : null}
             </SidebarContent>
 
             <SidebarFooter>{/* <NavUser /> */}</SidebarFooter>
