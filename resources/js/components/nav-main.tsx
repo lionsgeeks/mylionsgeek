@@ -15,6 +15,35 @@ import { Link, usePage } from '@inertiajs/react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
+const GROUPS_STORAGE_KEY = 'sidebar_nav_groups_open';
+const ITEMS_STORAGE_KEY = 'sidebar_nav_items_open';
+
+function readStoredGroups(): Record<string, boolean> {
+    if (typeof window === 'undefined') return {};
+    try {
+        return JSON.parse(localStorage.getItem(GROUPS_STORAGE_KEY) || '{}');
+    } catch {
+        return {};
+    }
+}
+
+function writeStoredGroups(groups: Record<string, boolean>) {
+    localStorage.setItem(GROUPS_STORAGE_KEY, JSON.stringify(groups));
+}
+
+function readStoredItems(): Record<string, boolean> {
+    if (typeof window === 'undefined') return {};
+    try {
+        return JSON.parse(localStorage.getItem(ITEMS_STORAGE_KEY) || '{}');
+    } catch {
+        return {};
+    }
+}
+
+function writeStoredItems(items: Record<string, boolean>) {
+    localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(items));
+}
+
 export function NavMain({
     items = [],
     label,
@@ -27,11 +56,30 @@ export function NavMain({
     defaultGroupOpen?: boolean;
 }) {
     const page = usePage();
-    const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
-    const [isGroupOpen, setIsGroupOpen] = useState(defaultGroupOpen);
+    const groupKey = label ?? 'default';
 
-    const toggleOpen = (key: string) => setOpenMap((prev) => ({ ...prev, [key]: !prev[key] }));
-    const toggleGroup = () => setIsGroupOpen((prev) => !prev);
+    const [openMap, setOpenMap] = useState<Record<string, boolean>>(() => readStoredItems());
+    const [isGroupOpen, setIsGroupOpen] = useState(() => {
+        const stored = readStoredGroups()[groupKey];
+        if (stored !== undefined) return stored;
+        return defaultGroupOpen;
+    });
+
+    const toggleOpen = (key: string) => {
+        setOpenMap((prev) => {
+            const next = { ...prev, [key]: !prev[key] };
+            writeStoredItems(next);
+            return next;
+        });
+    };
+
+    const toggleGroup = () => {
+        setIsGroupOpen((prev) => {
+            const next = !prev;
+            writeStoredGroups({ ...readStoredGroups(), [groupKey]: next });
+            return next;
+        });
+    };
 
     return (
         <SidebarGroup className="px-2 py-0">
