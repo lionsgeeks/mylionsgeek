@@ -872,7 +872,7 @@ class PostController extends Controller
         );
 
         $post->update([
-            'description' => $request->input('description', $post->description),
+            'description' => $request->description ?? '',
             'images' => $finalImages,
         ]);
 
@@ -898,7 +898,7 @@ class PostController extends Controller
 
         $post = Post::create([
             'user_id' => Auth::id(),
-            'description' => $request->description,
+            'description' => $request->description ?? '',
             'images' => $imagesArray,
         ]);
 
