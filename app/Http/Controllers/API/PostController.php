@@ -6,8 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Comment;
 use App\Models\CommentLike;
 use App\Models\Like;
-use App\Models\Project;
-use App\Models\Reservation;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -32,18 +30,19 @@ class PostController extends Controller
 
         if (is_array($images) && count($images) > 0) {
             foreach ($images as $image) {
-                if (!$image) {
+                if (! $image) {
                     continue;
                 }
                 if (strpos($image, 'http') === 0) {
                     $imageUrls[] = $image;
+
                     continue;
                 }
                 $imagePath = ltrim((string) $image, '/');
                 if (strpos($imagePath, 'img/posts/') !== false) {
-                    $imageUrls[] = url('storage/' . $imagePath);
+                    $imageUrls[] = url('storage/'.$imagePath);
                 } else {
-                    $imageUrls[] = url('storage/img/posts/' . $imagePath);
+                    $imageUrls[] = url('storage/img/posts/'.$imagePath);
                 }
             }
         }
@@ -72,12 +71,13 @@ class PostController extends Controller
             'user' => [
                 'id' => $postUser->id ?? null,
                 'name' => $postUser->name ?? 'User',
-                'avatar' => ($postUser && $postUser->image) ? (function() use ($postUser) {
-                    $imagePath = ltrim((string)$postUser->image, '/');
+                'avatar' => ($postUser && $postUser->image) ? (function () use ($postUser) {
+                    $imagePath = ltrim((string) $postUser->image, '/');
                     if (strpos($imagePath, 'img/profile/') !== false) {
-                        return url('storage/' . $imagePath);
+                        return url('storage/'.$imagePath);
                     }
-                    return url('storage/img/profile/' . $imagePath);
+
+                    return url('storage/img/profile/'.$imagePath);
                 })() : null,
                 'image' => $postUser->image ?? null,
             ],
@@ -104,7 +104,7 @@ class PostController extends Controller
         $original = $this->mapPostForMobileFeed($originalPost, $authUser, $savedInteractionPostIds);
 
         $createdAt = null;
-        if (!empty($repostRow->created_at)) {
+        if (! empty($repostRow->created_at)) {
             $createdAt = is_string($repostRow->created_at) ? $repostRow->created_at : (string) $repostRow->created_at;
         }
 
@@ -112,8 +112,8 @@ class PostController extends Controller
         if ($reposter?->image) {
             $imagePath = ltrim((string) $reposter->image, '/');
             $reposterAvatar = str_contains($imagePath, 'img/profile/')
-                ? url('storage/' . $imagePath)
-                : url('storage/img/profile/' . $imagePath);
+                ? url('storage/'.$imagePath)
+                : url('storage/img/profile/'.$imagePath);
         }
 
         return [
@@ -150,8 +150,8 @@ class PostController extends Controller
     {
         try {
             $user = Auth::guard('sanctum')->user();
-            
-            if (!$user) {
+
+            if (! $user) {
                 return response()->json(['message' => 'Unauthenticated'], 401);
             }
 
@@ -192,7 +192,7 @@ class PostController extends Controller
                     ->all();
 
                 $savedInteractionIds = [];
-                if (!empty($interactionIds)) {
+                if (! empty($interactionIds)) {
                     $savedInteractionIds = DB::table('post_saves')
                         ->where('user_id', $user->id)
                         ->whereIn('post_id', $interactionIds)
@@ -225,11 +225,12 @@ class PostController extends Controller
                 $recentReposts = $recentRepostRows
                     ->map(function ($row) use ($originalPostsById, $repostersById, $user, $savedInteractionIds) {
                         $original = $originalPostsById[(int) $row->post_id] ?? null;
-                        if (!$original) {
+                        if (! $original) {
                             return null;
                         }
 
                         $reposter = $repostersById[(int) $row->user_id] ?? null;
+
                         return $this->mapRepostForMobileFeed($row, $original, $reposter, $user, $savedInteractionIds);
                     })
                     ->filter()
@@ -237,8 +238,8 @@ class PostController extends Controller
 
                 $recentPosts = $recentPosts->concat($recentReposts)->values();
             } catch (\Exception $e) {
-                Log::error('Error fetching posts for feed: ' . $e->getMessage());
-                Log::error('Stack trace: ' . $e->getTraceAsString());
+                Log::error('Error fetching posts for feed: '.$e->getMessage());
+                Log::error('Stack trace: '.$e->getTraceAsString());
                 $recentPosts = collect([]);
             }
 
@@ -259,12 +260,12 @@ class PostController extends Controller
                 'feed' => $feed,
                 'next_offset' => $hasMore ? $offset + $limit : null,
             ]);
-        } catch (\Throwable $e) {
-            Log::error('Error in feed endpoint: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
-            Log::error('File: ' . $e->getFile() . ' Line: ' . $e->getLine());
-            Log::error('Exception class: ' . get_class($e));
-            
+        } catch (Throwable $e) {
+            Log::error('Error in feed endpoint: '.$e->getMessage());
+            Log::error('Stack trace: '.$e->getTraceAsString());
+            Log::error('File: '.$e->getFile().' Line: '.$e->getLine());
+            Log::error('Exception class: '.get_class($e));
+
             // Return empty feed instead of error to prevent app crash
             return response()->json([
                 'feed' => [],
@@ -281,14 +282,14 @@ class PostController extends Controller
     public function store(Request $request)
     {
         $user = Auth::guard('sanctum')->user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
         $request->validate([
             'description' => 'nullable|string|max:5000',
-            'images' => 'array|max:' . Post::MAX_IMAGES,
+            'images' => 'array|max:'.Post::MAX_IMAGES,
             'images.*' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:10240',
         ]);
 
@@ -301,7 +302,7 @@ class PostController extends Controller
 
         $post = Post::create([
             'user_id' => $user->id,
-            'description' => (string) ($request->input('description') ?? ''),
+            'description' => $request->description ?? '',
             'images' => $imagesArray,
         ]);
 
@@ -314,7 +315,7 @@ class PostController extends Controller
     public function showPost(int $id)
     {
         $user = Auth::guard('sanctum')->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -332,7 +333,7 @@ class PostController extends Controller
     public function updatePost(Request $request, int $id)
     {
         $user = Auth::guard('sanctum')->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -377,7 +378,7 @@ class PostController extends Controller
 
         $this->deleteStoredImages($removedImages->toArray());
 
-        $post->description = (string) ($request->input('description') ?? '');
+        $post->description = $request->description ?? '';
         $post->images = $nextImages;
         $post->save();
 
@@ -390,7 +391,7 @@ class PostController extends Controller
     public function deletePost(int $id)
     {
         $user = Auth::guard('sanctum')->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -415,7 +416,7 @@ class PostController extends Controller
         $images = $post->images ?? [];
         if (is_array($images) && count($images) > 0) {
             foreach ($images as $image) {
-                if (!$image) {
+                if (! $image) {
                     continue;
                 }
                 if (strpos($image, 'http') === 0) {
@@ -423,9 +424,9 @@ class PostController extends Controller
                 } else {
                     $imagePath = ltrim((string) $image, '/');
                     if (strpos($imagePath, 'img/posts/') !== false) {
-                        $imageUrls[] = url('storage/' . $imagePath);
+                        $imageUrls[] = url('storage/'.$imagePath);
                     } else {
-                        $imageUrls[] = url('storage/img/posts/' . $imagePath);
+                        $imageUrls[] = url('storage/img/posts/'.$imagePath);
                     }
                 }
             }
@@ -445,9 +446,10 @@ class PostController extends Controller
                 'avatar' => ($postUser && $postUser->image) ? (function () use ($postUser) {
                     $imagePath = ltrim((string) $postUser->image, '/');
                     if (strpos($imagePath, 'img/profile/') !== false) {
-                        return url('storage/' . $imagePath);
+                        return url('storage/'.$imagePath);
                     }
-                    return url('storage/img/profile/' . $imagePath);
+
+                    return url('storage/img/profile/'.$imagePath);
                 })() : null,
                 'image' => $postUser?->image ?? null,
             ],
@@ -469,7 +471,7 @@ class PostController extends Controller
 
         try {
             $storage = Storage::disk($disk);
-            if (!$storage->exists(self::POST_IMAGES_DIR)) {
+            if (! $storage->exists(self::POST_IMAGES_DIR)) {
                 $storage->makeDirectory(self::POST_IMAGES_DIR, 0755, true);
             }
         } catch (Throwable $e) {
@@ -477,7 +479,7 @@ class PostController extends Controller
         }
 
         foreach ($files as $image) {
-            if (!$image || !$image->isValid()) {
+            if (! $image || ! $image->isValid()) {
                 continue;
             }
 
@@ -487,7 +489,7 @@ class PostController extends Controller
                     $stored[] = basename($path);
                 }
             } catch (Throwable $e) {
-                Log::error('Failed to store post image: ' . $e->getMessage());
+                Log::error('Failed to store post image: '.$e->getMessage());
                 report($e);
             }
         }
@@ -501,13 +503,13 @@ class PostController extends Controller
         $storage = Storage::disk($disk);
 
         foreach ($filenames as $fileName) {
-            if (!$fileName) {
+            if (! $fileName) {
                 continue;
             }
 
             $value = ltrim((string) $fileName, '/');
-            if (!str_contains($value, self::POST_IMAGES_DIR . '/')) {
-                $value = self::POST_IMAGES_DIR . '/' . basename($value);
+            if (! str_contains($value, self::POST_IMAGES_DIR.'/')) {
+                $value = self::POST_IMAGES_DIR.'/'.basename($value);
             }
 
             try {
@@ -528,7 +530,7 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -557,7 +559,7 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -579,12 +581,12 @@ class PostController extends Controller
         if ($avatarValue) {
             $imagePath = ltrim((string) $avatarValue, '/');
             $avatar = str_contains($imagePath, 'img/profile/')
-                ? url('storage/' . $imagePath)
-                : url('storage/img/profile/' . $imagePath);
+                ? url('storage/'.$imagePath)
+                : url('storage/img/profile/'.$imagePath);
         }
 
-        $likeCount     = $comment->likes?->count() ?? 0;
-        $isLiked       = $comment->likes?->contains('user_id', $authUserId) ?? false;
+        $likeCount = $comment->likes?->count() ?? 0;
+        $isLiked = $comment->likes?->contains('user_id', $authUserId) ?? false;
 
         $replies = $comment->replies
             ? $comment->replies
@@ -595,16 +597,16 @@ class PostController extends Controller
             : [];
 
         return [
-            'id'         => $comment->id,
-            'parent_id'  => $comment->parent_id,
-            'body'       => $comment->comment,
+            'id' => $comment->id,
+            'parent_id' => $comment->parent_id,
+            'body' => $comment->comment,
             'created_at' => $comment->created_at?->toDateTimeString(),
-            'likes_count'       => $likeCount,
-            'is_liked_by_user'  => $isLiked,
-            'replies'    => $replies,
-            'user'       => [
-                'id'     => $comment->user?->id,
-                'name'   => $comment->user?->name ?? 'User',
+            'likes_count' => $likeCount,
+            'is_liked_by_user' => $isLiked,
+            'replies' => $replies,
+            'user' => [
+                'id' => $comment->user?->id,
+                'name' => $comment->user?->name ?? 'User',
                 'avatar' => $avatar,
             ],
         ];
@@ -618,20 +620,20 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
         $request->validate([
-            'comment'   => 'required|string|max:2000',
+            'comment' => 'required|string|max:2000',
             'parent_id' => 'nullable|integer|exists:comments,id',
         ]);
 
         $post = Post::findOrFail($id);
 
         $comment = $post->comments()->create([
-            'user_id'   => $user->id,
-            'comment'   => $request->comment,
+            'user_id' => $user->id,
+            'comment' => $request->comment,
             'parent_id' => $request->parent_id ?? null,
         ]);
 
@@ -649,7 +651,7 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -671,7 +673,7 @@ class PostController extends Controller
         $count = CommentLike::query()->where('comment_id', $commentId)->count('*');
 
         return response()->json([
-            'liked'       => $liked,
+            'liked' => $liked,
             'likes_count' => $count,
         ]);
     }
@@ -683,7 +685,7 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -716,7 +718,7 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -739,7 +741,7 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -758,7 +760,7 @@ class PostController extends Controller
         $post->loadCount('likes');
 
         return response()->json([
-            'liked'       => $liked,
+            'liked' => $liked,
             'likes_count' => $post->likes_count,
         ]);
     }
@@ -767,7 +769,7 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -806,7 +808,7 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -842,7 +844,7 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -863,8 +865,8 @@ class PostController extends Controller
                 if ($imageValue) {
                     $imagePath = ltrim((string) $imageValue, '/');
                     $avatar = str_contains($imagePath, 'img/profile/')
-                        ? url('storage/' . $imagePath)
-                        : url('storage/img/profile/' . $imagePath);
+                        ? url('storage/'.$imagePath)
+                        : url('storage/img/profile/'.$imagePath);
                 }
 
                 $likedUserId = (int) ($likedUser?->id ?? 0);
@@ -885,8 +887,8 @@ class PostController extends Controller
     public function repost(Request $request)
     {
         $user = Auth::guard('sanctum')->user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -963,7 +965,7 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -979,8 +981,9 @@ class PostController extends Controller
             ->where('post_id', $interactionPost->id)
             ->first();
 
-        if (!$repostPivot) {
+        if (! $repostPivot) {
             $repostsCount = (int) $interactionPost->reposts()->count();
+
             return response()->json([
                 'message' => 'Not reposted',
                 'reposted' => false,
@@ -1004,4 +1007,3 @@ class PostController extends Controller
         ], 200);
     }
 }
-
