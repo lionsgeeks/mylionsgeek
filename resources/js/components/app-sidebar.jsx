@@ -7,6 +7,7 @@ import {
     Building2,
     Calendar,
     ClipboardList,
+    Flag,
     FolderOpen,
     GraduationCap,
     LayoutGrid,
@@ -143,6 +144,13 @@ const getWorkItems = () => [
 ];
 
 const getGeneralItems = () => [
+    {
+        id: 'post_reports',
+        title: 'Post Reports',
+        href: '/admin/post-reports',
+        icon: Flag,
+        authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach', 'studio_responsable'],
+    },
     {
         id: 'announcements',
         title: 'Announcements',

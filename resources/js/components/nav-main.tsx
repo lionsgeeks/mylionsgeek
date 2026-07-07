@@ -19,14 +19,16 @@ export function NavMain({
     items = [],
     label,
     collapsible = false,
+    defaultGroupOpen = false,
 }: {
     items: NavItem[];
     label?: string;
     collapsible?: boolean;
+    defaultGroupOpen?: boolean;
 }) {
     const page = usePage();
     const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
-    const [isGroupOpen, setIsGroupOpen] = useState(true);
+    const [isGroupOpen, setIsGroupOpen] = useState(defaultGroupOpen);
 
     const toggleOpen = (key: string) => setOpenMap((prev) => ({ ...prev, [key]: !prev[key] }));
     const toggleGroup = () => setIsGroupOpen((prev) => !prev);

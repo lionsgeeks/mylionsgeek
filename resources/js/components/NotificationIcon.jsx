@@ -155,7 +155,8 @@ export default function NotificationIcon() {
                         senderImage: message.data.sender_image,
                         message: message.data.message,
                         link: message.data.link,
-                        iconType: message.data.icon_type,
+                        iconType:
+                            message.data.icon_type || (message.data.type === 'post_report' ? 'flag' : 'user'),
                         timestamp: new Date(message.data.created_at),
                         readAt: message.data.read_at ? new Date(message.data.read_at) : null,
                     };

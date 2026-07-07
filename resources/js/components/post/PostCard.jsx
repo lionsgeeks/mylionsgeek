@@ -229,8 +229,8 @@ const PostCard = ({
     const handleSubmitReport = useCallback(
         (reason) =>
             new Promise((resolve, reject) => {
-                const postId = reportingPost?.id;
-                if (!postId) {
+                const postId = Number(reportingPost?.interaction_post_id ?? reportingPost?.id);
+                if (!Number.isFinite(postId) || postId <= 0) {
                     reject(new Error('Post not found.'));
                     return;
                 }
@@ -289,7 +289,7 @@ const PostCard = ({
                     if (!open) setReportingPost(null);
                 }}
                 onSubmit={handleSubmitReport}
-                postAuthorName={reportingPost?.user_name}
+                postAuthorName={reportingPost?.repost_of?.user_name ?? reportingPost?.user_name}
             />
         </>
     );
