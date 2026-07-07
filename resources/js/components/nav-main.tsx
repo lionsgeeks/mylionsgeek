@@ -181,7 +181,7 @@ export function NavMain({
                                         <SidebarMenuSubItem>
                                             <SidebarMenuSubButton asChild isActive={isActive}>
                                                 <Link href={item.href} prefetch>
-                                                    {item.icon && <item.icon className="text-[var(--color-alpha)]" />}
+                                                    {item.icon && <item.icon className="dark:text-[#ffc801] text-[#d8a200] " />}
                                                     <span>{item.title}</span>
                                                 </Link>
                                             </SidebarMenuSubButton>
