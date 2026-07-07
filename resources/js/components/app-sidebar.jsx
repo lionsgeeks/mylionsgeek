@@ -260,10 +260,10 @@ export function AppSidebar() {
                     <>
                         <NavMain items={navGroups.dashboard} />
                         {/* <NavMain label="Community" items={navGroups.community} collapsible /> */}
-                        <NavMain label="Spaces & Resources" items={navGroups.spaces} collapsible />
+                        <NavMain label="Spaces & Resources" labelIcon={Building2} items={navGroups.spaces} collapsible />
                         {/* <NavMain label="Work" items={navGroups.work} collapsible /> */}
                         {auth.user.role.includes('admin') && (
-                            <NavMain label="General" items={navGroups.general} collapsible />
+                            <NavMain label="General" labelIcon={Settings} items={navGroups.general} collapsible />
                         )}
                     </>
                 ) : null}
