@@ -82,17 +82,6 @@ const getDashboardItems = () => [
         icon: Users,
         excludedRoles: ['studio_responsable'],
     },
-];
-
-const getCommunityItems = () => [
-
-    {
-        id: 'leaderboard',
-        title: 'LeaderBoard',
-        href: '/students/leaderboard',
-        icon: AwardIcon,
-        authorizedRoles: ['admin', 'coach'],
-    },
     {
         id: 'training',
         title: 'Training',
@@ -100,7 +89,25 @@ const getCommunityItems = () => [
         icon: GraduationCap,
         authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'],
     },
+    {
+        id: 'projects',
+        title: 'Projects',
+        href: '/admin/projects',
+        icon: FolderOpen,
+        excludedRoles: ['studio_responsable'],
+    },
 ];
+
+// const getTraining = () => [
+
+//     // {
+//     //     id: 'leaderboard',
+//     //     title: 'LeaderBoard',
+//     //     href: '/students/leaderboard',
+//     //     icon: AwardIcon,
+//     //     authorizedRoles: ['admin', 'coach'],
+//     // },
+// ];
 const getJobsItems = () => [
 
     {
@@ -133,15 +140,9 @@ const getSpacesItems = () => [
     { id: 'equipment', title: 'Equipment', href: '/admin/equipements', icon: Wrench, excludedRoles: ['coach'] },
 ];
 
-const getWorkItems = () => [
-    {
-        id: 'projects',
-        title: 'Projects',
-        href: '/admin/projects',
-        icon: FolderOpen,
-        excludedRoles: ['studio_responsable'],
-    },
-];
+// const getWorkItems = () => [
+
+// ];
 
 const getGeneralItems = () => [
     {
@@ -230,9 +231,9 @@ export function AppSidebar() {
 
         return {
             dashboard: getDashboardItems(),
-            community: getCommunityItems(),
+            // community: getTraining(),
             spaces: spacesItems,
-            work: getWorkItems(),
+            // work: getWorkItems(),
             general: getGeneralItems(),
         };
     }, [user, isRecruiterOnlySidebar]);
@@ -258,9 +259,9 @@ export function AppSidebar() {
                 ) : navGroups ? (
                     <>
                         <NavMain items={navGroups.dashboard} />
-                        <NavMain label="Community" items={navGroups.community} collapsible />
+                        {/* <NavMain label="Community" items={navGroups.community} collapsible /> */}
                         <NavMain label="Spaces & Resources" items={navGroups.spaces} collapsible />
-                        <NavMain label="Work" items={navGroups.work} collapsible />
+                        {/* <NavMain label="Work" items={navGroups.work} collapsible /> */}
                         {auth.user.role.includes('admin') && (
                             <NavMain label="General" items={navGroups.general} collapsible />
                         )}
