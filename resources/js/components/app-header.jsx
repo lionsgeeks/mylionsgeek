@@ -44,11 +44,11 @@ export function AppHeader({ breadcrumbs = [] }) {
         },
         { title: 'Reservations', url: '/students/reservations', icon: Timer },
 
-        {
-            title: 'Projects',
-            url: '/students/projects',
-            icon: Folder,
-        },
+        // {
+        //     title: 'Projects',
+        //     url: '/students/projects',
+        //     icon: Folder,
+        // },
     ];
     const getInitials = useInitials();
 

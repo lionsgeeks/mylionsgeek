@@ -45,10 +45,12 @@ class NotificationController extends Controller
         try {
             $roles = is_array($user->role) ? $user->role : [$user->role];
             $isAdmin = in_array('admin', $roles);
+            $isSuperAdmin = in_array('super_admin', $roles);
             $isModerator = in_array('moderateur', $roles);
             $isStudioResponsable = in_array('studio_responsable', $roles);
             $isCoach = in_array('coach', $roles);
             $isRecruiter = in_array('recruiter', $roles);
+            $isStaff = $isAdmin || $isSuperAdmin || $isModerator || $isCoach || $isStudioResponsable;
 
             //  1. DISCIPLINE CHANGE NOTIFICATIONS (Admin, Moderator, Coach)
             // Using new DisciplineNotification model
@@ -397,7 +399,7 @@ class NotificationController extends Controller
             }
 
             // 4.5. POST REPORT NOTIFICATIONS (Staff)
-            if (($isAdmin || $isModerator || $isCoach || $isStudioResponsable) && Schema::hasTable('post_report_notifications')) {
+            if ($isStaff && Schema::hasTable('post_report_notifications')) {
                 try {
                     $reportNotifs = PostReportNotification::query()
                         ->with([
