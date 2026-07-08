@@ -7,7 +7,6 @@ use Inertia\Inertia;
 use App\Http\Controllers\Controller;
 use App\Mail\CompleteUserProfile;
 use App\Mail\UserWelcomeMail;
-use App\Mail\NewsletterMail;
 use App\Jobs\SendNewsletterEmail;
 use App\Models\AttendanceListe;
 use App\Models\Computer;

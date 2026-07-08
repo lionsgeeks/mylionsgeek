@@ -7,7 +7,7 @@ import { usePage } from '@inertiajs/react';
 import AddUserDialog from './components/AddUserDialog';
 import ExportStudentsDialog from './components/ExportStudentsDialog';
 
-const Header = ({ message, roles, trainings, filteredUsers }) => {
+const Header = ({ trainings, filteredUsers }) => {
     const { auth } = usePage().props;
     const [isAddUserOpen, setIsAddUserOpen] = useState(false);
     const [isExportOpen, setIsExportOpen] = useState(false);
