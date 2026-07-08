@@ -7,8 +7,6 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
     SidebarMenuSub,
-    SidebarMenuSubButton,
-    SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
@@ -100,11 +98,11 @@ export function NavMain({
                             aria-expanded={isOpen}
                             onClick={() => toggleOpen(item.title)}
                         >
-                            {item.icon && <item.icon className="text-[var(--color-alpha)]" />}
+                            {item.icon && <item.icon className="size-4 text-[var(--color-alpha)]" />}
                             <span>{item.title}</span>
                             <ChevronDown
                                 data-chevron
-                                className={`text-[var(--color-alpha)] opacity-80 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                                className={`size-4 text-[var(--color-alpha)] opacity-80 transition-transform ${isOpen ? 'rotate-180' : ''}`}
                             />
                         </SidebarMenuButton>
                     ) : (
@@ -115,9 +113,11 @@ export function NavMain({
                             className="py-5.5 [&>[data-chevron]]:ml-auto"
                         >
                             <Link href={item.href} prefetch>
-                                {item.icon && <item.icon className="text-[#d8a200] dark:text-[var(--color-alpha)]" />}
+                                {item.icon && <item.icon className="size-4 text-[#d8a200] dark:text-[var(--color-alpha)]" />}
                                 <span>{item.title}</span>
-                                {item.chevron && <ChevronRight data-chevron className="text-[var(--color-alpha)] opacity-80" />}
+                                {item.chevron && (
+                                    <ChevronRight data-chevron className="size-4 text-[var(--color-alpha)] opacity-80" />
+                                )}
                             </Link>
                         </SidebarMenuButton>
                     )}
@@ -125,19 +125,26 @@ export function NavMain({
                         <SidebarMenuBadge className="bg-destructive text-destructive-foreground">{item.badge}</SidebarMenuBadge>
                     )}
                     {hasChildren && (
-                        <SidebarMenuSub className={`${isOpen ? 'block' : 'hidden'} mt-1 ml-8 border-l border-sidebar-border/50 pl-2`}>
+                        <SidebarMenuSub className={`${isOpen ? 'block' : 'hidden'} mt-1 mx-0 translate-x-0 border-0 px-0 py-0`}>
                             {item.children?.map((sub) => {
                                 const subHref = typeof sub.href === 'string' ? sub.href : sub.href.url;
                                 const subActive = page.url.startsWith(subHref);
                                 return (
-                                    <SidebarMenuSubItem key={sub.title}>
-                                        <SidebarMenuSubButton asChild isActive={subActive}>
+                                    <SidebarMenuItem key={sub.title}>
+                                        <SidebarMenuButton
+                                            asChild
+                                            isActive={subActive}
+                                            tooltip={{ children: sub.title }}
+                                            className="py-5.5"
+                                        >
                                             <Link href={sub.href} prefetch>
-                                                {sub.icon && <sub.icon className="text-[var(--color-alpha)]" />}
+                                                {sub.icon && (
+                                                    <sub.icon className="size-4 text-[#d8a200] dark:text-[var(--color-alpha)]" />
+                                                )}
                                                 <span>{sub.title}</span>
                                             </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
                                 );
                             })}
                         </SidebarMenuSub>
@@ -159,15 +166,15 @@ export function NavMain({
                             aria-expanded={isGroupOpen}
                             onClick={toggleGroup}
                         >
-                            {LabelIcon && <LabelIcon className="text-[#d8a200] dark:text-[var(--color-alpha)]" />}
+                            {LabelIcon && <LabelIcon className="size-4 text-[#d8a200] dark:text-[var(--color-alpha)]" />}
                             <span>{label}</span>
                             <ChevronDown
                                 data-chevron
-                                className={`text-[var(--color-alpha)] opacity-80 transition-transform ${isGroupOpen ? 'rotate-180' : ''}`}
+                                className={`size-4 text-[var(--color-alpha)] opacity-80 transition-transform ${isGroupOpen ? 'rotate-180' : ''}`}
                             />
                         </SidebarMenuButton>
                         <SidebarMenuSub
-                            className={`${isGroupOpen ? 'block' : 'hidden'} mt-1 ml-8 border-l border-sidebar-border/50 pl-2`}
+                            className={`${isGroupOpen ? 'block' : 'hidden'} mt-1 mx-0 translate-x-0 border-0 px-0 py-0`}
                         >
                             {items.map((item) => {
                                 const href = typeof item.href === 'string' ? item.href : item.href.url;
@@ -178,14 +185,21 @@ export function NavMain({
                                         authorized={item.authorizedRoles ?? []}
                                         except={item.excludedRoles ?? []}
                                     >
-                                        <SidebarMenuSubItem>
-                                            <SidebarMenuSubButton asChild isActive={isActive}>
+                                        <SidebarMenuItem>
+                                            <SidebarMenuButton
+                                                asChild
+                                                isActive={isActive}
+                                                tooltip={{ children: item.title }}
+                                                className="py-5.5"
+                                            >
                                                 <Link href={item.href} prefetch>
-                                                    {item.icon && <item.icon className="dark:text-[#ffc801] text-[#d8a200] " />}
+                                                    {item.icon && (
+                                                        <item.icon className="size-4 text-[#d8a200] dark:text-[var(--color-alpha)]" />
+                                                    )}
                                                     <span>{item.title}</span>
                                                 </Link>
-                                            </SidebarMenuSubButton>
-                                        </SidebarMenuSubItem>
+                                            </SidebarMenuButton>
+                                        </SidebarMenuItem>
                                     </Rolegard>
                                 );
                             })}
