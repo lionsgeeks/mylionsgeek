@@ -24,7 +24,7 @@ const isEmptyHtml = (html) => {
     return text.length === 0;
 };
 
-export default function NewsletterForm({ users = [], trainings = [], roles = [] }) {
+export default function NewsletterForm({ users = [], trainings = [], roles = [], canSelectRoles = true }) {
     const [isRecipientsOpen, setIsRecipientsOpen] = useState(false);
     const [activeLang, setActiveLang] = useState('fr');
     const [recipientMode, setRecipientMode] = useState('training');
@@ -115,6 +115,15 @@ export default function NewsletterForm({ users = [], trainings = [], roles = [] 
     };
 
     const buildAudiencePayload = () => {
+        if (!canSelectRoles && recipientMode === 'role') {
+            return {
+                mode: 'training',
+                training_ids: selectAllTrainings ? null : selectedTrainingIds,
+                role_ids: null,
+                user_ids: null,
+            };
+        }
+
         if (recipientMode === 'training') {
             return {
                 mode: 'training',
@@ -371,6 +380,7 @@ export default function NewsletterForm({ users = [], trainings = [], roles = [] 
                 users={users}
                 trainings={trainings}
                 roles={roles}
+                canSelectRoles={canSelectRoles}
                 recipientMode={recipientMode}
                 setRecipientMode={setRecipientMode}
                 selectedTrainingIds={selectedTrainingIds}

@@ -4,7 +4,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 export default function RecipientsModal({
     open,
@@ -12,6 +12,7 @@ export default function RecipientsModal({
     users = [],
     trainings = [],
     roles = [],
+    canSelectRoles = true,
     recipientMode,
     setRecipientMode,
     selectedTrainingIds,
@@ -27,6 +28,14 @@ export default function RecipientsModal({
     recipientsCount,
 }) {
     const [userSearchQuery, setUserSearchQuery] = useState('');
+
+    useEffect(() => {
+        if (!canSelectRoles && recipientMode === 'role') {
+            setRecipientMode('training');
+            setSelectedRoles([]);
+            setSelectAllRoles(false);
+        }
+    }, [canSelectRoles, recipientMode, setRecipientMode, setSelectedRoles, setSelectAllRoles]);
 
     const searchedUsers = useMemo(() => {
         if (!userSearchQuery.trim()) return users;
@@ -52,6 +61,10 @@ export default function RecipientsModal({
     };
 
     const handleModeChange = (mode) => {
+        if (!canSelectRoles && mode === 'role') {
+            return;
+        }
+
         setRecipientMode(mode);
         if (mode === 'training') {
             clearRoles();
@@ -91,30 +104,36 @@ export default function RecipientsModal({
     const formatRoleLabel = (role) =>
         role === 'studio_responsable' ? 'Responsable Studio' : role.charAt(0).toUpperCase() + role.slice(1);
 
+    const tabCols = canSelectRoles ? 'grid-cols-3' : 'grid-cols-2';
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogContent className="max-h-[90vh] max-w-[90vw] min-w-[60vw] overflow-y-auto px-6">
                 <DialogHeader className="pb-4">
                     <DialogTitle className="text-2xl font-bold">Select recipients</DialogTitle>
                     <DialogDescription className="text-base">
-                        Choose one method: by training, by role, or by individual users. Selections do not combine.
+                        {canSelectRoles
+                            ? 'Choose one method: by training, by role, or by individual users. Selections do not combine.'
+                            : 'Choose recipients from your assigned trainings or pick individual students from those trainings.'}
                     </DialogDescription>
                 </DialogHeader>
 
                 <Tabs value={recipientMode} onValueChange={handleModeChange} className="w-full">
-                    <TabsList className="mb-4 grid h-auto w-full grid-cols-3 gap-1 bg-alpha/10 p-1 dark:bg-light/10">
+                    <TabsList className={`mb-4 grid h-auto w-full ${tabCols} gap-1 bg-alpha/10 p-1 dark:bg-light/10`}>
                         <TabsTrigger
                             value="training"
                             className="data-[state=active]:bg-alpha data-[state=active]:text-black data-[state=active]:shadow-sm"
                         >
                             By Training
                         </TabsTrigger>
-                        <TabsTrigger
-                            value="role"
-                            className="data-[state=active]:bg-alpha data-[state=active]:text-black data-[state=active]:shadow-sm"
-                        >
-                            By Role
-                        </TabsTrigger>
+                        {canSelectRoles && (
+                            <TabsTrigger
+                                value="role"
+                                className="data-[state=active]:bg-alpha data-[state=active]:text-black data-[state=active]:shadow-sm"
+                            >
+                                By Role
+                            </TabsTrigger>
+                        )}
                         <TabsTrigger
                             value="users"
                             className="data-[state=active]:bg-alpha data-[state=active]:text-black data-[state=active]:shadow-sm"
@@ -127,101 +146,113 @@ export default function RecipientsModal({
                         <div className="space-y-4 rounded-xl border bg-muted/30 p-5">
                             <Label className="text-base font-semibold">Select Training(s)</Label>
 
-                            <div className="flex items-center gap-3 rounded-lg border bg-background p-3 transition-colors hover:bg-alpha/10">
-                                <Checkbox
-                                    checked={selectAllTrainings}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onCheckedChange={() => handleTrainingToggle('all')}
-                                />
-                                <label
-                                    onClick={() => handleTrainingToggle('all')}
-                                    className="flex-1 cursor-pointer text-sm font-medium"
-                                >
-                                    All Trainings ({users.length} users)
-                                </label>
-                            </div>
-
-                            <div className="max-h-70 space-y-2 overflow-y-auto rounded-lg border bg-background p-3">
-                                {trainings.map((t) => {
-                                    const count = users.filter((u) => u.formation_id === t.id).length;
-                                    const isSelected = selectedTrainingIds.includes(t.id);
-
-                                    return (
-                                        <div
-                                            key={t.id}
-                                            className="flex items-center gap-3 rounded-md p-2.5 transition-colors hover:bg-alpha/10"
+                            {trainings.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">No trainings assigned to you.</p>
+                            ) : (
+                                <>
+                                    <div className="flex items-center gap-3 rounded-lg border bg-background p-3 transition-colors hover:bg-alpha/10">
+                                        <Checkbox
+                                            checked={selectAllTrainings}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onCheckedChange={() => handleTrainingToggle('all')}
+                                        />
+                                        <label
+                                            onClick={() => handleTrainingToggle('all')}
+                                            className="flex-1 cursor-pointer text-sm font-medium"
                                         >
-                                            <Checkbox
-                                                checked={isSelected}
-                                                onClick={(e) => e.stopPropagation()}
-                                                onCheckedChange={() => handleTrainingToggle(t.id)}
-                                            />
-                                            <label
-                                                className="flex cursor-pointer flex-col"
-                                                onClick={() => handleTrainingToggle(t.id)}
-                                            >
-                                                <span className="text-sm font-medium">
-                                                    {t.name} <span className="text-muted-foreground">({count})</span>
-                                                </span>
-                                                <span className="text-xs text-muted-foreground">
-                                                    Coach: {t.coach?.name || '—'}
-                                                </span>
-                                            </label>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                            All Trainings ({users.length} users)
+                                        </label>
+                                    </div>
+
+                                    <div className="max-h-70 space-y-2 overflow-y-auto rounded-lg border bg-background p-3">
+                                        {trainings.map((t) => {
+                                            const count = users.filter((u) => u.formation_id === t.id).length;
+                                            const isSelected = selectedTrainingIds.includes(t.id);
+
+                                            return (
+                                                <div
+                                                    key={t.id}
+                                                    className="flex items-center gap-3 rounded-md p-2.5 transition-colors hover:bg-alpha/10"
+                                                >
+                                                    <Checkbox
+                                                        checked={isSelected}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        onCheckedChange={() => handleTrainingToggle(t.id)}
+                                                    />
+                                                    <label
+                                                        className="flex cursor-pointer flex-col"
+                                                        onClick={() => handleTrainingToggle(t.id)}
+                                                    >
+                                                        <span className="text-sm font-medium">
+                                                            {t.name}{' '}
+                                                            <span className="text-muted-foreground">({count})</span>
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground">
+                                                            Coach: {t.coach?.name || '—'}
+                                                        </span>
+                                                    </label>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="role" className="mt-0 space-y-4">
-                        <div className="space-y-4 rounded-xl border bg-muted/30 p-5">
-                            <Label className="text-base font-semibold">Select Role(s)</Label>
+                    {canSelectRoles && (
+                        <TabsContent value="role" className="mt-0 space-y-4">
+                            <div className="space-y-4 rounded-xl border bg-muted/30 p-5">
+                                <Label className="text-base font-semibold">Select Role(s)</Label>
 
-                            <div className="flex items-center gap-3 rounded-lg border bg-background p-3 transition-colors hover:bg-alpha/10">
-                                <Checkbox
-                                    checked={selectAllRoles}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onCheckedChange={() => handleRoleToggle('all')}
-                                />
-                                <label className="flex-1 cursor-pointer text-sm" onClick={() => handleRoleToggle('all')}>
-                                    All Roles ({users.length} users)
-                                </label>
-                            </div>
+                                <div className="flex items-center gap-3 rounded-lg border bg-background p-3 transition-colors hover:bg-alpha/10">
+                                    <Checkbox
+                                        checked={selectAllRoles}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onCheckedChange={() => handleRoleToggle('all')}
+                                    />
+                                    <label
+                                        className="flex-1 cursor-pointer text-sm"
+                                        onClick={() => handleRoleToggle('all')}
+                                    >
+                                        All Roles ({users.length} users)
+                                    </label>
+                                </div>
 
-                            <div className="max-h-70 space-y-2 overflow-y-auto rounded-lg border bg-background p-3">
-                                {roles.map((role) => {
-                                    const count = users.filter((u) => {
-                                        const userRoles = Array.isArray(u.role) ? u.role : [u.role];
-                                        return userRoles.some((r) => r?.toLowerCase() === role.toLowerCase());
-                                    }).length;
-                                    const isSelected = selectedRoles.includes(role.toLowerCase());
+                                <div className="max-h-70 space-y-2 overflow-y-auto rounded-lg border bg-background p-3">
+                                    {roles.map((role) => {
+                                        const count = users.filter((u) => {
+                                            const userRoles = Array.isArray(u.role) ? u.role : [u.role];
+                                            return userRoles.some((r) => r?.toLowerCase() === role.toLowerCase());
+                                        }).length;
+                                        const isSelected = selectedRoles.includes(role.toLowerCase());
 
-                                    return (
-                                        <div
-                                            key={role}
-                                            className="flex items-center gap-3 rounded-md p-2.5 transition-colors hover:bg-alpha/10"
-                                        >
-                                            <Checkbox
-                                                checked={isSelected}
-                                                onClick={(e) => e.stopPropagation()}
-                                                onCheckedChange={() => handleRoleToggle(role.toLowerCase())}
-                                            />
-                                            <label
-                                                className="flex flex-1 cursor-pointer items-center"
-                                                onClick={() => handleRoleToggle(role.toLowerCase())}
+                                        return (
+                                            <div
+                                                key={role}
+                                                className="flex items-center gap-3 rounded-md p-2.5 transition-colors hover:bg-alpha/10"
                                             >
-                                                <span className="text-sm font-medium">
-                                                    {formatRoleLabel(role)}{' '}
-                                                    <span className="text-muted-foreground">({count})</span>
-                                                </span>
-                                            </label>
-                                        </div>
-                                    );
-                                })}
+                                                <Checkbox
+                                                    checked={isSelected}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    onCheckedChange={() => handleRoleToggle(role.toLowerCase())}
+                                                />
+                                                <label
+                                                    className="flex flex-1 cursor-pointer items-center"
+                                                    onClick={() => handleRoleToggle(role.toLowerCase())}
+                                                >
+                                                    <span className="text-sm font-medium">
+                                                        {formatRoleLabel(role)}{' '}
+                                                        <span className="text-muted-foreground">({count})</span>
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        </div>
-                    </TabsContent>
+                        </TabsContent>
+                    )}
 
                     <TabsContent value="users" className="mt-0 space-y-4">
                         <div className="space-y-4 rounded-xl border bg-muted/30 p-5">

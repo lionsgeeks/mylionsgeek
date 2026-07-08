@@ -5,7 +5,14 @@ import students from '../../../../../public/assets/images/banner/students.png';
 import NewsletterForm from './partials/NewsletterForm';
 import NewsletterHistory from './partials/NewsletterHistory';
 
-export default function Newsletter({ users = [], trainings = [], roles = [], history = [] }) {
+export default function Newsletter({
+    users = [],
+    trainings = [],
+    roles = [],
+    history = [],
+    canSelectRoles = true,
+    isCoachScoped = false,
+}) {
     const { auth } = usePage().props;
 
     return (
@@ -16,10 +23,19 @@ export default function Newsletter({ users = [], trainings = [], roles = [], his
                 illustration={students}
                 userName={auth?.user?.name ?? ''}
                 title="Newsletter"
-                description="Compose rich multilingual emails and send them to members by training, role, or individual selection."
+                description={
+                    isCoachScoped
+                        ? 'Send multilingual emails to students in the trainings assigned to you.'
+                        : 'Compose rich multilingual emails and send them to members by training, role, or individual selection.'
+                }
             />
 
-            <NewsletterForm users={users} trainings={trainings} roles={roles} />
+            <NewsletterForm
+                users={users}
+                trainings={trainings}
+                roles={roles}
+                canSelectRoles={canSelectRoles}
+            />
 
             <NewsletterHistory history={history} />
         </div>

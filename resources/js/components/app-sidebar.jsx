@@ -198,7 +198,7 @@ const getCommunicationItems = () => [
         title: 'Newsletter',
         href: '/admin/newsletter',
         icon: Newspaper,
-        authorizedRoles: ['admin'],
+        authorizedRoles: ['admin', 'coach'],
     },
 ];
 
@@ -336,7 +336,7 @@ export function AppSidebar() {
                             </Rolegard>
                         )}
                         {!restrictedCodingPro && (
-                            <Rolegard authorized={['admin']}>
+                            <Rolegard authorized={['admin', 'coach']}>
                                 <NavMain
                                     label="Communication"
                                     labelIcon={MessageSquare}

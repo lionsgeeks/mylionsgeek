@@ -1304,8 +1304,18 @@ class UsersController extends Controller
         $user = $request->user();
         $roles = is_array($user->role) ? $user->role : [$user->role];
 
-        if (! in_array('admin', $roles, true)) {
+        if (! in_array('admin', $roles, true) && ! in_array('coach', $roles, true)) {
             abort(403);
+        }
+
+        $isAdmin = in_array('admin', $roles, true);
+        $isCoachOnly = ! $isAdmin && in_array('coach', $roles, true);
+
+        $coachTrainingIds = collect();
+        if ($isCoachOnly) {
+            $coachTrainingIds = Formation::query()
+                ->where('user_id', $user->id)
+                ->pluck('id');
         }
 
         $validated = $request->validate([
@@ -1343,18 +1353,53 @@ class UsersController extends Controller
             }
         }
 
+        // Coaches can only target their assigned trainings / students (no role broadcast).
+        if ($isCoachOnly) {
+            if ($mode === 'role') {
+                return response()->json([
+                    'error' => 'Coaches cannot send newsletters by role.',
+                ], 403);
+            }
+
+            if ($coachTrainingIds->isEmpty()) {
+                return response()->json([
+                    'error' => 'You have no trainings assigned.',
+                ], 400);
+            }
+        }
+
         $users = collect();
 
         if ($mode === 'training') {
             if (is_null($validated['training_ids'] ?? null)) {
-                $users = User::query()->whereNotNull('email')->get();
+                $query = User::query()->whereNotNull('email');
+                if ($isCoachOnly) {
+                    $query->whereIn('formation_id', $coachTrainingIds);
+                }
+                $users = $query->get();
             } elseif (! empty($validated['training_ids'])) {
+                $trainingIds = array_values($validated['training_ids']);
+                if ($isCoachOnly) {
+                    $trainingIds = array_values(array_intersect($trainingIds, $coachTrainingIds->all()));
+                    if (empty($trainingIds)) {
+                        return response()->json([
+                            'error' => 'You can only send to your assigned trainings.',
+                        ], 403);
+                    }
+                }
+
                 $users = User::query()
-                    ->whereIn('formation_id', array_values($validated['training_ids']))
+                    ->whereIn('formation_id', $trainingIds)
                     ->whereNotNull('email')
                     ->get();
             }
         } elseif ($mode === 'role') {
+            if (! $isAdmin) {
+                return response()->json([
+                    'error' => 'Only admins can send newsletters by role.',
+                ], 403);
+            }
+
             if (is_null($validated['role_ids'] ?? null)) {
                 $users = User::query()->whereNotNull('email')->get();
             } elseif (! empty($validated['role_ids'])) {
@@ -1368,10 +1413,15 @@ class UsersController extends Controller
             }
         } elseif ($mode === 'users') {
             if (! empty($validated['user_ids'])) {
-                $users = User::query()
+                $query = User::query()
                     ->whereIn('id', array_values($validated['user_ids']))
-                    ->whereNotNull('email')
-                    ->get();
+                    ->whereNotNull('email');
+
+                if ($isCoachOnly) {
+                    $query->whereIn('formation_id', $coachTrainingIds);
+                }
+
+                $users = $query->get();
             }
         }
 

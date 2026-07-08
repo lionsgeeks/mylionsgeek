@@ -6,16 +6,39 @@ use App\Http\Controllers\Controller;
 use App\Models\Formation;
 use App\Models\NewsletterEmail;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class NewsletterController extends Controller
 {
     public function index()
     {
-        $users = User::query()
+        $authUser = Auth::user();
+        $authRoles = is_array($authUser?->role) ? $authUser->role : [$authUser?->role];
+        $isAdmin = in_array('admin', $authRoles, true);
+        $isCoachOnly = ! $isAdmin && in_array('coach', $authRoles, true);
+
+        $coachTrainingIds = collect();
+        if ($isCoachOnly) {
+            $coachTrainingIds = Formation::query()
+                ->where('user_id', $authUser->id)
+                ->pluck('id');
+        }
+
+        $usersQuery = User::query()
             ->where('role', '!=', 'admin')
             ->whereNotNull('email')
-            ->orderByDesc('created_at')
+            ->orderByDesc('created_at');
+
+        if ($isCoachOnly) {
+            if ($coachTrainingIds->isEmpty()) {
+                $usersQuery->whereRaw('1 = 0');
+            } else {
+                $usersQuery->whereIn('formation_id', $coachTrainingIds);
+            }
+        }
+
+        $users = $usersQuery
             ->get()
             ->filter(fn (User $user) => ! $user->isRecruiter())
             ->values()
@@ -27,8 +50,12 @@ class NewsletterController extends Controller
                 'formation_id' => $user->formation_id,
             ]);
 
-        $trainings = Formation::with(['coach:id,name'])
-            ->orderByDesc('created_at')
+        $trainingsQuery = Formation::with(['coach:id,name'])->orderByDesc('created_at');
+        if ($isCoachOnly) {
+            $trainingsQuery->where('user_id', $authUser->id);
+        }
+
+        $trainings = $trainingsQuery
             ->get()
             ->map(fn (Formation $formation) => [
                 'id' => $formation->id,
@@ -38,15 +65,21 @@ class NewsletterController extends Controller
                     : null,
             ]);
 
-        $roles = $users
-            ->flatMap(fn ($user) => is_array($user['role']) ? $user['role'] : [$user['role']])
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
+        $roles = $isCoachOnly
+            ? []
+            : $users
+                ->flatMap(fn ($user) => is_array($user['role']) ? $user['role'] : [$user['role']])
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
 
-        $history = NewsletterEmail::with('sender:id,name')
-            ->latest()
+        $historyQuery = NewsletterEmail::with('sender:id,name')->latest();
+        if ($isCoachOnly) {
+            $historyQuery->where('sent_by', $authUser->id);
+        }
+
+        $history = $historyQuery
             ->get()
             ->map(fn (NewsletterEmail $email) => [
                 'id' => $email->id,
@@ -66,6 +99,8 @@ class NewsletterController extends Controller
             'trainings' => $trainings,
             'roles' => $roles,
             'history' => $history,
+            'canSelectRoles' => $isAdmin,
+            'isCoachScoped' => $isCoachOnly,
         ]);
     }
 }
