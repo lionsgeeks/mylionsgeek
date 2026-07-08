@@ -91,7 +91,7 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                         <TableHead>Email</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Role</TableHead>
-                        <Rolegard authorized={['admin', 'super_admin', 'moderateur', 'coach']}>
+                        <Rolegard authorized={['admin', 'super_admin']}>
                             <TableHead>Menu</TableHead>
                         </Rolegard>
                     </TableRow>
@@ -148,7 +148,7 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                                 </div>
                             </TableCell>
 
-                            <Rolegard authorized={['admin', 'super_admin', 'moderateur', 'coach']}>
+                            <Rolegard authorized={['admin', 'super_admin']}>
                                 <TableCell className="flex items-center gap-2 font-medium">
                                     <Button
                                         className="bg-transparent p-2 duration-200 hover:bg-transparent"

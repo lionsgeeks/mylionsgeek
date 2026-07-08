@@ -13,8 +13,25 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StudentController extends Controller
 {
+    private function authorizeFeedAccess(): void
+    {
+        $user = Auth::user();
+        $roles = is_array($user->role) ? $user->role : array_filter([$user->role]);
+
+        if (! in_array('recruiter', $roles, true)) {
+            return;
+        }
+
+        $rolesExcludingRecruiter = array_values(array_filter($roles, fn ($role) => $role !== 'recruiter'));
+
+        if ($rolesExcludingRecruiter === []) {
+            abort(403);
+        }
+    }
+
     public function index(Request $request)
     {
+        $this->authorizeFeedAccess();
         $userController = new UsersController;
         $cursor = $request->query('cursor');
         $paginated = $userController->getPostsPaginated(

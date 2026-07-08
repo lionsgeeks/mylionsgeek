@@ -68,6 +68,13 @@ class UsersController extends Controller
     {
         $requestedFields = array_filter(array_map('trim', explode(',', (string) $request->query('fields', 'name,email,cin'))));
 
+        $user = $request->user();
+        $roles = is_array($user->role) ? $user->role : [$user->role];
+
+        if (! in_array('admin', $roles, true) && ! in_array('super_admin', $roles, true)) {
+            $requestedFields = array_values(array_diff($requestedFields, ['cin', 'phone', 'role']));
+        }
+
         $fieldMap = [
             'id' => 'id',
             'name' => 'name',
@@ -1294,6 +1301,13 @@ class UsersController extends Controller
      */
     public function sendEmail(Request $request)
     {
+        $user = $request->user();
+        $roles = is_array($user->role) ? $user->role : [$user->role];
+
+        if (! in_array('admin', $roles, true)) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'training_ids' => 'nullable|array',
             'training_ids.*' => 'integer|exists:formations,id',

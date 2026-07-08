@@ -1,29 +1,54 @@
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-export default function ExportStudentsDialog({ open, setOpen }) {
-    const [exportFields, setExportFields] = useState({
-        name: true,
-        email: true,
-        cin: true,
-        phone: false,
-        formation: true,
-        access_studio: false,
-        access_cowork: false,
-        role: false,
-        status: false,
+const DEFAULT_EXPORT_FIELDS = {
+    name: true,
+    email: true,
+    cin: true,
+    phone: false,
+    formation: true,
+    access_studio: false,
+    access_cowork: false,
+    role: false,
+    status: false,
+};
+
+const buildExportFields = (hiddenFields = []) => {
+    const fields = { ...DEFAULT_EXPORT_FIELDS };
+
+    hiddenFields.forEach((field) => {
+        if (field in fields) {
+            fields[field] = false;
+        }
     });
+
+    return fields;
+};
+
+export default function ExportStudentsDialog({ open, setOpen, hiddenFields = [] }) {
+    const [exportFields, setExportFields] = useState(() => buildExportFields(hiddenFields));
+
+    useEffect(() => {
+        if (open) {
+            setExportFields(buildExportFields(hiddenFields));
+        }
+    }, [open, hiddenFields]);
+
+    const visibleFieldKeys = useMemo(
+        () => Object.keys(exportFields).filter((key) => !hiddenFields.includes(key)),
+        [exportFields, hiddenFields],
+    );
 
     const exportQuery = useMemo(() => {
         const selected = Object.entries(exportFields)
-            .filter(([, v]) => v)
-            .map(([k]) => k)
+            .filter(([key, value]) => value && !hiddenFields.includes(key))
+            .map(([key]) => key)
             .join(',');
 
-        return selected.length ? selected : 'name,email,cin';
-    }, [exportFields]);
+        return selected.length ? selected : 'name,email';
+    }, [exportFields, hiddenFields]);
 
     const triggerExport = () => {
         window.open(`/admin/users/export?fields=${encodeURIComponent(exportQuery)}`, '_blank');
@@ -38,7 +63,7 @@ export default function ExportStudentsDialog({ open, setOpen }) {
                 </DialogHeader>
 
                 <div className="grid grid-cols-2 gap-4 py-4">
-                    {Object.keys(exportFields).map((key) => (
+                    {visibleFieldKeys.map((key) => (
                         <div key={key} className="flex items-center space-x-3">
                             <Checkbox
                                 checked={exportFields[key]}
@@ -64,12 +89,6 @@ export default function ExportStudentsDialog({ open, setOpen }) {
                     >
                         Export
                     </Button>
-                    {/* <Button
-                        onClick={() => window.open("/admin/users/export", "_blank")}
-                        className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
-                    >
-                        Export All
-                    </Button> */}
                 </DialogFooter>
             </DialogContent>
         </Dialog>

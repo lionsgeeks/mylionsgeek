@@ -1,4 +1,5 @@
 import { NavMain } from '@/components/nav-main';
+import Rolegard from '@/components/rolegard';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Link, usePage } from '@inertiajs/react';
 import {
@@ -22,6 +23,9 @@ import {
 } from 'lucide-react';
 import { useMemo } from 'react';
 import AppLogo from './app-logo';
+
+/** Roles that use the staff sidebar (students/coworkers use the top header instead). */
+const STAFF_SIDEBAR_ROLES = ['admin', 'super_admin', 'moderateur', 'studio_responsable', 'coach', 'pro'];
 
 const getRecruiterHiringNavItems = () => [
     {
@@ -68,61 +72,82 @@ const getRecruiterHiringNavItems = () => [
     },
 ];
 
-const getDashboardItems = () => [
-    {
-        id: 'dashboard',
-        title: 'Dashboard',
-        href: '/admin/dashboard',
-        icon: LayoutGrid,
-    },
-    {
-        id: 'members',
-        title: 'Members',
-        href: '/admin/users',
-        icon: Users,
-        excludedRoles: ['studio_responsable'],
-    },
-    {
-        id: 'training',
-        title: 'Training',
-        href: '/admin/training',
-        icon: GraduationCap,
-        authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'],
-    },
-    {
-        id: 'projects',
-        title: 'Projects',
-        href: '/admin/projects',
-        icon: FolderOpen,
-        excludedRoles: ['studio_responsable'],
-    },
-];
+const getDashboardNavItem = () => ({
+    id: 'dashboard',
+    title: 'Dashboard',
+    href: '/admin/dashboard',
+    icon: LayoutGrid,
+});
 
-// const getTraining = () => [
+const isCodingPro = (user, userRoles) => {
+    const field = String(user?.field ?? '')
+        .toLowerCase()
+        .trim();
 
-//     // {
-//     //     id: 'leaderboard',
-//     //     title: 'LeaderBoard',
-//     //     href: '/students/leaderboard',
-//     //     icon: AwardIcon,
-//     //     authorizedRoles: ['admin', 'coach'],
-//     // },
-// ];
-const getJobsItems = () => [
+    return userRoles.includes('pro') && field === 'coding';
+};
 
+const canAccessProjects = (user, userRoles) => {
+    if (userRoles.includes('admin')) {
+        return true;
+    }
+
+    return isCodingPro(user, userRoles);
+};
+
+/** Pro + coding without elevated staff roles: limited sidebar (dashboard, members, projects) + feed. */
+const isRestrictedCodingPro = (user, userRoles) => {
+    if (!isCodingPro(user, userRoles)) {
+        return false;
+    }
+
+    const elevatedStaff = ['admin', 'super_admin', 'moderateur', 'studio_responsable', 'coach'];
+
+    return !userRoles.some((role) => elevatedStaff.includes(role));
+};
+
+const getManagementItems = (user, userRoles) => {
+    const membersExcludedRoles = isCodingPro(user, userRoles) ? ['recruiter'] : ['recruiter', 'student'];
+
+    return [
+        {
+            id: 'members',
+            title: 'Members',
+            href: '/admin/users',
+            icon: Users,
+            excludedRoles: membersExcludedRoles,
+        },
+        {
+            id: 'training',
+            title: 'Training',
+            href: '/admin/training',
+            icon: GraduationCap,
+            authorizedRoles: ['admin', 'coach'],
+        },
+        {
+            id: 'projects',
+            title: 'Projects',
+            href: '/admin/projects',
+            icon: FolderOpen,
+            authorizedRoles: ['admin', 'pro'],
+        },
+    ];
+};
+
+const getWorkItems = () => [
     {
         id: 'jobs',
         title: 'Jobs',
         href: '/admin/jobs',
         icon: Briefcase,
-        authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'],
+        authorizedRoles: ['admin'],
     },
     {
         id: 'organisations',
         title: 'Organisations',
         href: '/admin/organisations',
         icon: UserPlus,
-        authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'],
+        authorizedRoles: ['admin'],
     },
 ];
 
@@ -132,17 +157,31 @@ const getSpacesItems = () => [
         title: 'Spaces',
         href: '/admin/places',
         icon: Building2,
-        authorizedRoles: ['admin', 'super_admin', 'moderateur', 'studio_responsable'],
+        authorizedRoles: ['admin', 'studio_responsable'],
     },
-    { id: 'reservations', title: 'Reservations', href: '/admin/reservations', icon: Timer, excludedRoles: ['coach'] },
+    {
+        id: 'reservations',
+        title: 'Reservations',
+        href: '/admin/reservations',
+        icon: Timer,
+        authorizedRoles: ['admin', 'studio_responsable'],
+    },
     { id: 'appointments', title: 'Appointments', href: '/admin/appointments', icon: Calendar },
-    { id: 'computers', title: 'Computers', href: '/admin/computers', icon: Monitor, authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'] },
-    { id: 'equipment', title: 'Equipment', href: '/admin/equipements', icon: Wrench, excludedRoles: ['coach'] },
+    {
+        id: 'computers',
+        title: 'Computers',
+        href: '/admin/computers',
+        icon: Monitor,
+        authorizedRoles: ['admin', 'coach', 'moderateur'],
+    },
+    {
+        id: 'equipment',
+        title: 'Equipment',
+        href: '/admin/equipements',
+        icon: Wrench,
+        authorizedRoles: ['admin', 'studio_responsable', 'moderateur'],
+    },
 ];
-
-// const getWorkItems = () => [
-
-// ];
 
 const getGeneralItems = () => [
     {
@@ -150,7 +189,7 @@ const getGeneralItems = () => [
         title: 'Post Reports',
         href: '/admin/post-reports',
         icon: Flag,
-        authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach', 'studio_responsable'],
+        authorizedRoles: ['admin'],
     },
     {
         id: 'announcements',
@@ -164,7 +203,7 @@ const getGeneralItems = () => [
         title: 'App Version',
         href: '/admin/appversion',
         icon: Smartphone,
-        authorizedRoles: ['admin', 'super_admin'],
+        authorizedRoles: ['admin'],
     },
 ];
 
@@ -218,6 +257,7 @@ export function AppSidebar() {
     const userRoles = Array.isArray(user?.role) ? user.role : user?.role ? [user.role] : [];
     const isStaff = userRoles.some((r) => ['admin', 'moderateur', 'studio_responsable', 'coach', 'super_admin', 'pro'].includes(r));
     const isRecruiterOnlySidebar = userRoles.includes('recruiter') && !isStaff;
+    const restrictedCodingPro = isRestrictedCodingPro(user, userRoles);
 
     const logoHref = isRecruiterOnlySidebar ? '/recruiter/dashboard' : '/admin/dashboard';
 
@@ -230,13 +270,24 @@ export function AppSidebar() {
         });
 
         return {
-            dashboard: getDashboardItems(),
+            dashboard: [getDashboardNavItem()],
+            management: getManagementItems(user, userRoles).filter((item) => {
+                if (item.id === 'projects') {
+                    return canAccessProjects(user, userRoles);
+                }
+
+                if (restrictedCodingPro) {
+                    return item.id === 'members';
+                }
+
+                return true;
+            }),
             // community: getTraining(),
             spaces: spacesItems,
-            // work: getWorkItems(),
+            work: getWorkItems(),
             general: getGeneralItems(),
         };
-    }, [user, isRecruiterOnlySidebar]);
+    }, [user, userRoles, isRecruiterOnlySidebar, restrictedCodingPro]);
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -258,12 +309,23 @@ export function AppSidebar() {
                     <NavMain label="Hiring" items={getRecruiterHiringNavItems()} />
                 ) : navGroups ? (
                     <>
-                        <NavMain items={navGroups.dashboard} />
+                        <Rolegard authorized={STAFF_SIDEBAR_ROLES}>
+                            <NavMain items={navGroups.dashboard} />
+                        </Rolegard>
+                        <NavMain items={navGroups.management} />
                         {/* <NavMain label="Community" items={navGroups.community} collapsible /> */}
-                        <NavMain label="Spaces & Resources" labelIcon={Building2} items={navGroups.spaces} collapsible />
-                        {/* <NavMain label="Work" items={navGroups.work} collapsible /> */}
-                        {auth.user.role.includes('admin') && (
-                            <NavMain label="General" labelIcon={Settings} items={navGroups.general} collapsible />
+                        {!restrictedCodingPro && (
+                            <NavMain label="Spaces & Resources" labelIcon={Building2} items={navGroups.spaces} collapsible />
+                        )}
+                        {!restrictedCodingPro && (
+                            <Rolegard authorized={['admin']}>
+                                <NavMain label="Work" labelIcon={Briefcase} items={navGroups.work} collapsible />
+                            </Rolegard>
+                        )}
+                        {!restrictedCodingPro && (
+                            <Rolegard authorized={['admin']}>
+                                <NavMain label="General" labelIcon={Settings} items={navGroups.general} collapsible />
+                            </Rolegard>
                         )}
                     </>
                 ) : null}
