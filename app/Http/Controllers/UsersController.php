@@ -7,10 +7,10 @@ use Inertia\Inertia;
 use App\Http\Controllers\Controller;
 use App\Mail\CompleteUserProfile;
 use App\Mail\UserWelcomeMail;
-use App\Mail\NewsletterMail;
 use App\Jobs\SendNewsletterEmail;
 use App\Models\AttendanceListe;
 use App\Models\Computer;
+use App\Models\NewsletterEmail;
 use App\Models\User;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
@@ -67,6 +67,13 @@ class UsersController extends Controller
     public function export(Request $request)
     {
         $requestedFields = array_filter(array_map('trim', explode(',', (string) $request->query('fields', 'name,email,cin'))));
+
+        $user = $request->user();
+        $roles = is_array($user->role) ? $user->role : [$user->role];
+
+        if (! in_array('admin', $roles, true) && ! in_array('super_admin', $roles, true)) {
+            $requestedFields = array_values(array_diff($requestedFields, ['cin', 'phone', 'role']));
+        }
 
         $fieldMap = [
             'id' => 'id',
@@ -1294,7 +1301,25 @@ class UsersController extends Controller
      */
     public function sendEmail(Request $request)
     {
+        $user = $request->user();
+        $roles = is_array($user->role) ? $user->role : [$user->role];
+
+        if (! in_array('admin', $roles, true) && ! in_array('coach', $roles, true)) {
+            abort(403);
+        }
+
+        $isAdmin = in_array('admin', $roles, true);
+        $isCoachOnly = ! $isAdmin && in_array('coach', $roles, true);
+
+        $coachTrainingIds = collect();
+        if ($isCoachOnly) {
+            $coachTrainingIds = Formation::query()
+                ->where('user_id', $user->id)
+                ->pluck('id');
+        }
+
         $validated = $request->validate([
+            'mode' => 'nullable|string|in:training,role,users',
             'training_ids' => 'nullable|array',
             'training_ids.*' => 'integer|exists:formations,id',
             'role_ids' => 'nullable|array',
@@ -1315,59 +1340,91 @@ class UsersController extends Controller
             ], 400);
         }
 
+        $mode = $validated['mode'] ?? null;
+        if (! $mode) {
+            // Backward-compatible inference when mode is omitted.
+            if (! empty($validated['user_ids'])) {
+                $mode = 'users';
+            } elseif (array_key_exists('role_ids', $validated) && (is_null($validated['role_ids']) || count($validated['role_ids']) > 0)
+                && empty($validated['training_ids'])) {
+                $mode = 'role';
+            } else {
+                $mode = 'training';
+            }
+        }
+
+        // Coaches can only target their assigned trainings / students (no role broadcast).
+        if ($isCoachOnly) {
+            if ($mode === 'role') {
+                return response()->json([
+                    'error' => 'Coaches cannot send newsletters by role.',
+                ], 403);
+            }
+
+            if ($coachTrainingIds->isEmpty()) {
+                return response()->json([
+                    'error' => 'You have no trainings assigned.',
+                ], 400);
+            }
+        }
+
         $users = collect();
 
-        // Check if "All Users" is selected (training_ids is null and role_ids is null)
-        $isAllUsers = is_null($validated['training_ids']) && is_null($validated['role_ids']);
+        if ($mode === 'training') {
+            if (is_null($validated['training_ids'] ?? null)) {
+                $query = User::query()->whereNotNull('email');
+                if ($isCoachOnly) {
+                    $query->whereIn('formation_id', $coachTrainingIds);
+                }
+                $users = $query->get();
+            } elseif (! empty($validated['training_ids'])) {
+                $trainingIds = array_values($validated['training_ids']);
+                if ($isCoachOnly) {
+                    $trainingIds = array_values(array_intersect($trainingIds, $coachTrainingIds->all()));
+                    if (empty($trainingIds)) {
+                        return response()->json([
+                            'error' => 'You can only send to your assigned trainings.',
+                        ], 403);
+                    }
+                }
 
-        if ($isAllUsers) {
-            // Send to all users (including those with and without training)
-            $users = User::query()->whereNotNull('email', 'and')->get();
-        } else {
-            $hasTrainingFilter = isset($validated['training_ids']) && count($validated['training_ids']) > 0;
-            $hasRoleFilter = isset($validated['role_ids']) && count($validated['role_ids']) > 0;
-
-            // Start with training filter if provided
-            if ($hasTrainingFilter) {
                 $users = User::query()
-                    ->whereIn('formation_id', array_values($validated['training_ids']), 'and', false)
-                    ->whereNotNull('email', 'and')
+                    ->whereIn('formation_id', $trainingIds)
+                    ->whereNotNull('email')
                     ->get();
             }
+        } elseif ($mode === 'role') {
+            if (! $isAdmin) {
+                return response()->json([
+                    'error' => 'Only admins can send newsletters by role.',
+                ], 403);
+            }
 
-            // Apply role filter: if both filters exist, use intersection (AND logic)
-            // If only roles are selected, use role users
-            if ($hasRoleFilter) {
-                $roleUsers = User::query()->whereNotNull('email', 'and')->get()->filter(function ($user) use ($validated) {
-                    $userRoles = is_array($user->role) ? $user->role : ($user->role ? [$user->role] : []);
-                    return collect($userRoles)->map(fn($r) => strtolower($r ?? ''))->intersect(
-                        collect($validated['role_ids'])->map(fn($r) => strtolower($r))
+            if (is_null($validated['role_ids'] ?? null)) {
+                $users = User::query()->whereNotNull('email')->get();
+            } elseif (! empty($validated['role_ids'])) {
+                $users = User::query()->whereNotNull('email')->get()->filter(function ($candidate) use ($validated) {
+                    $userRoles = is_array($candidate->role) ? $candidate->role : ($candidate->role ? [$candidate->role] : []);
+
+                    return collect($userRoles)->map(fn ($r) => strtolower($r ?? ''))->intersect(
+                        collect($validated['role_ids'])->map(fn ($r) => strtolower($r))
                     )->isNotEmpty();
-                });
+                })->values();
+            }
+        } elseif ($mode === 'users') {
+            if (! empty($validated['user_ids'])) {
+                $query = User::query()
+                    ->whereIn('id', array_values($validated['user_ids']))
+                    ->whereNotNull('email');
 
-                // If we have training filter, intersect; otherwise use role users
-                if ($hasTrainingFilter && $users->isNotEmpty()) {
-                    $roleUserIds = $roleUsers->pluck('id')->toArray();
-                    $users = $users->filter(function ($user) use ($roleUserIds) {
-                        return in_array($user->id, $roleUserIds);
-                    });
-                } else {
-                    $users = $roleUsers;
+                if ($isCoachOnly) {
+                    $query->whereIn('formation_id', $coachTrainingIds);
                 }
+
+                $users = $query->get();
             }
         }
 
-        // Add users from user_ids (users without training or specific users)
-        // This works even if "All Users" is selected (they'll be deduplicated)
-        if (isset($validated['user_ids']) && count($validated['user_ids']) > 0) {
-            $specificUsers = User::query()
-                ->whereIn('id', array_values($validated['user_ids']), 'and', false)
-                ->whereNotNull('email', 'and')
-                ->get();
-            $users = $users->merge($specificUsers);
-        }
-
-        // Remove duplicates
         $users = $users->unique('id');
 
         if ($users->isEmpty()) {
@@ -1378,10 +1435,11 @@ class UsersController extends Controller
 
         // Dispatch jobs for each user
         $totalUsers = $users->count();
+        $senderId = $request->user()->id;
 
-        foreach ($users as $user) {
+        foreach ($users as $recipient) {
             SendNewsletterEmail::dispatch(
-                $user,
+                $recipient,
                 $validated['subject'],
                 $validated['body'] ?? null,
                 $validated['body_fr'] ?? null,
@@ -1390,9 +1448,19 @@ class UsersController extends Controller
             );
         }
 
+        NewsletterEmail::create([
+            'subject' => $validated['subject'],
+            'body' => $validated['body'] ?? null,
+            'body_fr' => $validated['body_fr'] ?? null,
+            'body_ar' => $validated['body_ar'] ?? null,
+            'body_en' => $validated['body_en'] ?? null,
+            'recipients_count' => $totalUsers,
+            'sent_by' => $senderId,
+        ]);
+
         // Send notification email to admins after jobs are queued
         try {
-            $notificationEmails = ['forkanimahdi@gmail.com', 'boujjarr@gmail.com'];
+            $notificationEmails = ['forkanimahdi@gmail.com', 'boujjarr@gmail.com', 'yahyamoussair05@gmail.com'];
             $notificationSubject = 'Newsletter Jobs Queued';
             $notificationBody = "Newsletter emails have been queued for processing.\n\n";
             $notificationBody .= "Subject: {$validated['subject']}\n";

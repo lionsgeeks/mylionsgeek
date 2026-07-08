@@ -98,7 +98,7 @@ const Users = ({ users, trainings }) => {
         <AppLayout>
             <div className="flex flex-col gap-10 p-6">
                 <Banner illustration={students} />
-                <Header trainings={trainings} filteredUsers={filteredUsers} roles={allRoles} status={allStatus} />
+                <Header trainings={trainings} filteredUsers={filteredUsers} />
                 <FilterPart
                     filters={filters}
                     setFilters={setFilters}

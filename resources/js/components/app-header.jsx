@@ -54,7 +54,8 @@ export function AppHeader({ breadcrumbs = [] }) {
 
     const navPath = page.url.split('?')[0];
     const userRoles = Array.isArray(auth.user.role) ? auth.user.role : [auth.user.role];
-    const showAdminDashboardIcon = userRoles.includes('admin') || userRoles.includes('super_admin');
+    // Show for all roles that use the staff area — hide for student-only and recruiter-only.
+    const showAdminDashboardIcon = userRoles.some((role) => role && !['student', 'recruiter'].includes(role));
 
     const isNavActive = (item) => {
         if (item.url === '/students/jobs') {
