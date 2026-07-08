@@ -3,8 +3,9 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, usePage } from '@inertiajs/react';
 import students from '../../../../../public/assets/images/banner/students.png';
 import NewsletterForm from './partials/NewsletterForm';
+import NewsletterHistory from './partials/NewsletterHistory';
 
-export default function Newsletter({ users = [], trainings = [], roles = [] }) {
+export default function Newsletter({ users = [], trainings = [], roles = [], history = [] }) {
     const { auth } = usePage().props;
 
     return (
@@ -15,12 +16,12 @@ export default function Newsletter({ users = [], trainings = [], roles = [] }) {
                 illustration={students}
                 userName={auth?.user?.name ?? ''}
                 title="Newsletter"
-                description="Send multilingual newsletter emails to members by training, role, or individual selection."
+                description="Compose rich multilingual emails and send them to members by training, role, or individual selection."
             />
 
-            <div className="mx-auto w-full max-w-5xl">
-                <NewsletterForm users={users} trainings={trainings} roles={roles} />
-            </div>
+            <NewsletterForm users={users} trainings={trainings} roles={roles} />
+
+            <NewsletterHistory history={history} />
         </div>
     );
 }

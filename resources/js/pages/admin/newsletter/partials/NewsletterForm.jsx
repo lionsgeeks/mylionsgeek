@@ -1,113 +1,144 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Mail, Send } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { router } from '@inertiajs/react';
+import { CheckCircle2, Mail, Send, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import NewsletterBodyEditor from './NewsletterBodyEditor';
+import RecipientsModal from './RecipientsModal';
 
-const fieldClass =
-    'border border-alpha/30 bg-light text-dark placeholder:text-dark/50 focus:border-alpha focus:ring-2 focus:ring-alpha dark:bg-dark dark:text-light dark:placeholder:text-light/50';
+const LANGS = [
+    { id: 'fr', label: 'Français', flag: '🇫🇷', dir: 'ltr', placeholder: 'Rédigez le contenu en français…' },
+    { id: 'ar', label: 'العربية', flag: '🇲🇦', dir: 'rtl', placeholder: 'اكتب محتوى النشرة بالعربية…' },
+    { id: 'en', label: 'English', flag: '🇬🇧', dir: 'ltr', placeholder: 'Write the English content…' },
+];
+
+const isEmptyHtml = (html) => {
+    if (!html) return true;
+    const text = html
+        .replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .trim();
+    return text.length === 0;
+};
 
 export default function NewsletterForm({ users = [], trainings = [], roles = [] }) {
+    const [isRecipientsOpen, setIsRecipientsOpen] = useState(false);
+    const [activeLang, setActiveLang] = useState('fr');
+    const [recipientMode, setRecipientMode] = useState('training');
+
     const [selectedTrainingIds, setSelectedTrainingIds] = useState([]);
     const [selectedRoles, setSelectedRoles] = useState([]);
     const [selectAllTrainings, setSelectAllTrainings] = useState(false);
     const [selectAllRoles, setSelectAllRoles] = useState(false);
     const [selectedUserIds, setSelectedUserIds] = useState([]);
-    const [userSearchQuery, setUserSearchQuery] = useState('');
 
     const [emailSubject, setEmailSubject] = useState('');
-    const [emailBody, setEmailBody] = useState('');
     const [emailBodyFr, setEmailBodyFr] = useState('');
     const [emailBodyAr, setEmailBodyAr] = useState('');
     const [emailBodyEn, setEmailBodyEn] = useState('');
+    const [editorKey, setEditorKey] = useState(0);
 
     const [emailProcessing, setEmailProcessing] = useState(false);
     const [statusMessage, setStatusMessage] = useState(null);
     const [statusError, setStatusError] = useState(null);
 
-    const searchedUsers = useMemo(() => {
-        if (!userSearchQuery.trim()) return users;
-        const q = userSearchQuery.toLowerCase();
-        return users.filter(
-            (user) => (user.name || '').toLowerCase().includes(q) || (user.email || '').toLowerCase().includes(q),
-        );
-    }, [userSearchQuery, users]);
-
-    const handleTrainingToggle = (trainingId) => {
-        if (trainingId === 'all') {
-            setSelectAllTrainings(!selectAllTrainings);
-            setSelectedTrainingIds([]);
-            return;
-        }
-
-        const id = Number(trainingId);
-        setSelectedTrainingIds((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
-        setSelectAllTrainings(false);
+    const bodies = {
+        fr: emailBodyFr,
+        ar: emailBodyAr,
+        en: emailBodyEn,
     };
 
-    const handleRoleToggle = (role) => {
-        if (role === 'all') {
-            setSelectAllRoles(!selectAllRoles);
-            setSelectedRoles([]);
-            return;
-        }
-
-        setSelectedRoles((prev) => (prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]));
-        setSelectAllRoles(false);
+    const setBody = {
+        fr: setEmailBodyFr,
+        ar: setEmailBodyAr,
+        en: setEmailBodyEn,
     };
-
-    const formatRoleLabel = (role) =>
-        role === 'studio_responsable' ? 'Responsable Studio' : role.charAt(0).toUpperCase() + role.slice(1);
 
     const selectedRecipients = useMemo(() => {
-        let result = [];
-
-        if (selectAllTrainings) {
-            result = users;
-        } else if (selectedTrainingIds.length > 0) {
-            result = users.filter((u) => selectedTrainingIds.includes(u.formation_id));
+        if (recipientMode === 'training') {
+            if (selectAllTrainings) return users;
+            if (selectedTrainingIds.length === 0) return [];
+            return users.filter((u) => selectedTrainingIds.includes(u.formation_id));
         }
 
-        if (selectAllRoles) {
-            if (result.length === 0 && selectedTrainingIds.length === 0) {
-                result = users;
-            }
-        } else if (selectedRoles.length > 0) {
-            const roleUsers = users.filter((u) => {
+        if (recipientMode === 'role') {
+            if (selectAllRoles) return users;
+            if (selectedRoles.length === 0) return [];
+            return users.filter((u) => {
                 const userRoles = Array.isArray(u.role) ? u.role : [u.role];
                 return userRoles.some((r) => selectedRoles.includes(r?.toLowerCase()));
             });
-
-            if (result.length > 0) {
-                const ids = new Set(roleUsers.map((u) => u.id));
-                result = result.filter((u) => ids.has(u.id));
-            } else {
-                result = roleUsers;
-            }
         }
 
-        if (selectedUserIds.length > 0) {
-            result = [...result, ...users.filter((u) => selectedUserIds.includes(u.id))];
-        }
+        if (selectedUserIds.length === 0) return [];
+        return users.filter((u) => selectedUserIds.includes(u.id));
+    }, [
+        recipientMode,
+        selectAllTrainings,
+        selectAllRoles,
+        selectedTrainingIds,
+        selectedRoles,
+        selectedUserIds,
+        users,
+    ]);
 
-        return result.filter((u, i, arr) => arr.findIndex((x) => x.id === u.id) === i);
-    }, [selectAllTrainings, selectAllRoles, selectedTrainingIds, selectedRoles, selectedUserIds, users]);
+    const hasAudience =
+        recipientMode === 'training'
+            ? selectAllTrainings || selectedTrainingIds.length > 0
+            : recipientMode === 'role'
+              ? selectAllRoles || selectedRoles.length > 0
+              : selectedUserIds.length > 0;
+
+    const hasContent =
+        !isEmptyHtml(emailBodyFr) || !isEmptyHtml(emailBodyAr) || !isEmptyHtml(emailBodyEn);
+
+    const canSend = hasAudience && selectedRecipients.length > 0 && emailSubject.trim() && hasContent;
+
+    const filledLangs = LANGS.filter((lang) => !isEmptyHtml(bodies[lang.id]));
 
     const resetForm = () => {
+        setRecipientMode('training');
         setSelectedTrainingIds([]);
         setSelectAllTrainings(false);
         setSelectedRoles([]);
         setSelectAllRoles(false);
         setSelectedUserIds([]);
-        setUserSearchQuery('');
         setEmailSubject('');
-        setEmailBody('');
         setEmailBodyFr('');
         setEmailBodyAr('');
         setEmailBodyEn('');
+        setEditorKey((k) => k + 1);
+        setActiveLang('fr');
+    };
+
+    const buildAudiencePayload = () => {
+        if (recipientMode === 'training') {
+            return {
+                mode: 'training',
+                training_ids: selectAllTrainings ? null : selectedTrainingIds,
+                role_ids: null,
+                user_ids: null,
+            };
+        }
+
+        if (recipientMode === 'role') {
+            return {
+                mode: 'role',
+                training_ids: null,
+                role_ids: selectAllRoles ? null : selectedRoles,
+                user_ids: null,
+            };
+        }
+
+        return {
+            mode: 'users',
+            training_ids: null,
+            role_ids: null,
+            user_ids: selectedUserIds,
+        };
     };
 
     const handleSendEmail = async (e) => {
@@ -115,8 +146,8 @@ export default function NewsletterForm({ users = [], trainings = [], roles = [] 
         setStatusMessage(null);
         setStatusError(null);
 
-        if (!emailSubject.trim() || (!emailBody.trim() && !emailBodyFr.trim() && !emailBodyAr.trim() && !emailBodyEn.trim())) {
-            setStatusError('Please provide a subject and at least one language content.');
+        if (!canSend) {
+            setStatusError('Select recipients and provide a subject with at least one language content.');
             return;
         }
 
@@ -131,14 +162,12 @@ export default function NewsletterForm({ users = [], trainings = [], roles = [] 
                 },
                 credentials: 'same-origin',
                 body: JSON.stringify({
-                    training_ids: selectAllTrainings ? null : selectedTrainingIds,
-                    role_ids: selectAllRoles ? null : selectedRoles,
-                    user_ids: selectedUserIds.length > 0 ? selectedUserIds : null,
+                    ...buildAudiencePayload(),
                     subject: emailSubject,
-                    body: emailBody.trim() || null,
-                    body_fr: emailBodyFr.trim() || null,
-                    body_ar: emailBodyAr.trim() || null,
-                    body_en: emailBodyEn.trim() || null,
+                    body: null,
+                    body_fr: isEmptyHtml(emailBodyFr) ? null : emailBodyFr,
+                    body_ar: isEmptyHtml(emailBodyAr) ? null : emailBodyAr,
+                    body_en: isEmptyHtml(emailBodyEn) ? null : emailBodyEn,
                 }),
             });
 
@@ -147,6 +176,7 @@ export default function NewsletterForm({ users = [], trainings = [], roles = [] 
             if (response.ok) {
                 setStatusMessage(result.message || `Email sent to ${result.total_users || result.sent_count} users.`);
                 resetForm();
+                router.reload({ only: ['history'] });
             } else {
                 setStatusError(result.error || 'Error sending email.');
             }
@@ -157,305 +187,204 @@ export default function NewsletterForm({ users = [], trainings = [], roles = [] 
         setEmailProcessing(false);
     };
 
-    const hasAudience =
-        selectAllTrainings ||
-        selectAllRoles ||
-        selectedTrainingIds.length > 0 ||
-        selectedRoles.length > 0 ||
-        selectedUserIds.length > 0;
-
     return (
-        <Card className="border-alpha/20 bg-light text-dark dark:bg-dark dark:text-light">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Mail className="h-5 w-5 text-alpha" />
-                    Compose newsletter
-                </CardTitle>
-                <CardDescription className="text-dark/60 dark:text-light/60">
-                    Select recipients by training, role, or individual users, then compose a multilingual email.
-                </CardDescription>
-            </CardHeader>
+        <>
+            {statusMessage && (
+                <div className="rounded-lg border border-good/30 bg-good/10 px-4 py-3 text-sm text-good">
+                    {statusMessage}
+                </div>
+            )}
+            {statusError && (
+                <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
+                    {statusError}
+                </div>
+            )}
 
-            <CardContent>
-                {statusMessage && (
-                    <div className="mb-4 rounded-lg border border-good/30 bg-good/10 px-4 py-3 text-sm text-good">
-                        {statusMessage}
-                    </div>
-                )}
-                {statusError && (
-                    <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
-                        {statusError}
-                    </div>
-                )}
+            <form onSubmit={handleSendEmail} className="space-y-6">
+                <div className="grid gap-6 lg:grid-cols-5">
+                    <Card className="border-alpha/20 bg-light text-dark lg:col-span-2 dark:bg-dark dark:text-light">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                <Users className="h-5 w-5 text-alpha" />
+                                Recipients
+                            </CardTitle>
+                            <CardDescription className="text-dark/60 dark:text-light/60">
+                                Choose who receives this newsletter before sending.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <Button
+                                type="button"
+                                onClick={() => setIsRecipientsOpen(true)}
+                                className="w-full gap-2 border border-alpha bg-alpha text-black hover:bg-transparent hover:text-alpha"
+                            >
+                                <Users className="h-4 w-4" />
+                                Select recipients
+                            </Button>
 
-                <form onSubmit={handleSendEmail} className="space-y-6">
-                    <div>
-                        <Label className="text-dark dark:text-light">Search users</Label>
-                        <Input
-                            value={userSearchQuery}
-                            onChange={(e) => setUserSearchQuery(e.target.value)}
-                            placeholder="Search for individual users..."
-                            className={`mt-1 ${fieldClass}`}
-                        />
-                    </div>
+                            <div
+                                className={`rounded-lg border px-4 py-3 ${
+                                    hasAudience
+                                        ? 'border-alpha/30 bg-alpha/10'
+                                        : 'border-alpha/15 bg-muted/30'
+                                }`}
+                            >
+                                <p className="text-sm font-medium">
+                                    {hasAudience ? (
+                                        <>
+                                            <span className="text-2xl font-bold text-beta dark:text-alpha">
+                                                {selectedRecipients.length}
+                                            </span>{' '}
+                                            <span className="text-dark/70 dark:text-light/70">
+                                                user{selectedRecipients.length !== 1 ? 's' : ''} selected
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <span className="text-dark/60 dark:text-light/60">No recipients selected yet</span>
+                                    )}
+                                </p>
+                            </div>
 
-                    {!userSearchQuery.trim() && (
-                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                            <div className="space-y-3 rounded-xl border border-alpha/20 p-4">
-                                <Label className="text-base font-semibold">Select Training(s)</Label>
+                            <div className="space-y-2">
+                                <Label htmlFor="newsletter-subject">Email subject</Label>
+                                <Input
+                                    id="newsletter-subject"
+                                    value={emailSubject}
+                                    onChange={(e) => setEmailSubject(e.target.value)}
+                                    placeholder="Enter email subject..."
+                                    className="border-alpha/30 bg-white dark:bg-dark_gray"
+                                />
+                            </div>
 
-                                <div className="flex items-center gap-3 rounded-lg border border-alpha/15 p-3 transition-colors hover:bg-alpha/10">
-                                    <Checkbox
-                                        checked={selectAllTrainings}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onCheckedChange={() => handleTrainingToggle('all')}
-                                    />
-                                    <label
-                                        onClick={() => handleTrainingToggle('all')}
-                                        className="flex-1 cursor-pointer text-sm font-medium"
-                                    >
-                                        All Trainings ({users.length} users)
-                                    </label>
-                                </div>
-
-                                <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-alpha/15 p-3">
-                                    {trainings.map((t) => {
-                                        const count = users.filter((u) => u.formation_id === t.id).length;
-                                        const isSelected = selectedTrainingIds.includes(t.id);
-
+                            <div className="rounded-lg border border-alpha/15 bg-muted/20 p-3">
+                                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-dark/50 dark:text-light/50">
+                                    Languages ready
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                    {LANGS.map((lang) => {
+                                        const filled = !isEmptyHtml(bodies[lang.id]);
                                         return (
-                                            <div
-                                                key={t.id}
-                                                className="flex items-center gap-3 rounded-md p-2.5 transition-colors hover:bg-alpha/10"
+                                            <span
+                                                key={lang.id}
+                                                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+                                                    filled
+                                                        ? 'bg-good/15 text-good'
+                                                        : 'bg-muted text-dark/50 dark:text-light/50'
+                                                }`}
                                             >
-                                                <Checkbox
-                                                    checked={isSelected}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    onCheckedChange={() => handleTrainingToggle(t.id)}
-                                                />
-                                                <label
-                                                    className="flex cursor-pointer flex-col"
-                                                    onClick={() => handleTrainingToggle(t.id)}
-                                                >
-                                                    <span className="text-sm font-medium">
-                                                        {t.name}{' '}
-                                                        <span className="text-dark/50 dark:text-light/50">({count})</span>
-                                                    </span>
-                                                    <span className="text-xs text-dark/50 dark:text-light/50">
-                                                        Coach: {t.coach?.name || '—'}
-                                                    </span>
-                                                </label>
-                                            </div>
+                                                {filled && <CheckCircle2 className="h-3 w-3" />}
+                                                {lang.flag} {lang.label}
+                                            </span>
                                         );
                                     })}
                                 </div>
                             </div>
 
-                            <div className="space-y-3 rounded-xl border border-alpha/20 p-4">
-                                <Label className="text-base font-semibold">Select Role(s)</Label>
-
-                                <div className="flex items-center gap-3 rounded-lg border border-alpha/15 p-3 transition-colors hover:bg-alpha/10">
-                                    <Checkbox
-                                        checked={selectAllRoles}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onCheckedChange={() => handleRoleToggle('all')}
-                                    />
-                                    <label className="flex-1 cursor-pointer text-sm" onClick={() => handleRoleToggle('all')}>
-                                        All Roles ({users.length} users)
-                                    </label>
-                                </div>
-
-                                <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-alpha/15 p-3">
-                                    {roles.map((role) => {
-                                        const count = users.filter((u) => {
-                                            const userRoles = Array.isArray(u.role) ? u.role : [u.role];
-                                            return userRoles.some((r) => r?.toLowerCase() === role.toLowerCase());
-                                        }).length;
-
-                                        const isSelected = selectedRoles.includes(role.toLowerCase());
-
-                                        return (
-                                            <div
-                                                key={role}
-                                                className="flex items-center gap-3 rounded-md p-2.5 transition-colors hover:bg-alpha/10"
-                                            >
-                                                <Checkbox
-                                                    checked={isSelected}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    onCheckedChange={() => handleRoleToggle(role.toLowerCase())}
-                                                />
-                                                <label
-                                                    className="flex flex-1 cursor-pointer items-center"
-                                                    onClick={() => handleRoleToggle(role.toLowerCase())}
-                                                >
-                                                    <span className="text-sm font-medium">
-                                                        {formatRoleLabel(role)}{' '}
-                                                        <span className="text-dark/50 dark:text-light/50">({count})</span>
-                                                    </span>
-                                                </label>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {userSearchQuery.trim() && (
-                        <div className="space-y-3 rounded-xl border border-alpha/20 p-4">
-                            <Label className="text-base font-semibold">Select Individual Users</Label>
-                            <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-alpha/15 p-3">
-                                {searchedUsers.length > 0 ? (
-                                    searchedUsers.map((user) => {
-                                        const isSelected = selectedUserIds.includes(user.id);
-                                        const toggle = () =>
-                                            setSelectedUserIds((prev) =>
-                                                prev.includes(user.id)
-                                                    ? prev.filter((id) => id !== user.id)
-                                                    : [...prev, user.id],
-                                            );
-
-                                        return (
-                                            <div
-                                                key={user.id}
-                                                className="flex items-center gap-3 rounded-md p-2.5 transition-colors hover:bg-alpha/10"
-                                            >
-                                                <Checkbox
-                                                    checked={isSelected}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    onCheckedChange={toggle}
-                                                />
-                                                <label className="flex flex-1 cursor-pointer flex-col" onClick={toggle}>
-                                                    <span className="text-sm font-medium">{user.name || 'No name'}</span>
-                                                    <span className="text-xs text-dark/50 dark:text-light/50">
-                                                        {user.email}
-                                                    </span>
-                                                </label>
-                                            </div>
-                                        );
-                                    })
+                            <Button
+                                type="submit"
+                                disabled={emailProcessing || !canSend}
+                                className="w-full gap-2 border border-alpha bg-alpha text-black hover:bg-transparent hover:text-alpha disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {emailProcessing ? (
+                                    'Sending…'
                                 ) : (
-                                    <span className="text-xs text-dark/50 dark:text-light/50">No user found</span>
+                                    <>
+                                        <Send className="h-4 w-4" />
+                                        {hasAudience
+                                            ? `Send to ${selectedRecipients.length} user${selectedRecipients.length !== 1 ? 's' : ''}`
+                                            : 'Send newsletter'}
+                                    </>
                                 )}
-                            </div>
-
-                            {selectedUserIds.length > 0 && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setSelectedUserIds([])}
-                                    className="w-full py-2 text-sm"
-                                >
-                                    Clear User Selection ({selectedUserIds.length})
-                                </Button>
+                            </Button>
+                            {!canSend && (
+                                <p className="text-center text-xs text-dark/50 dark:text-light/50">
+                                    Select recipients, add a subject, and fill at least one language.
+                                </p>
                             )}
-                        </div>
-                    )}
+                        </CardContent>
+                    </Card>
 
-                    {hasAudience && (
-                        <div className="rounded-lg border border-alpha/20 bg-alpha/10 p-4">
-                            <p className="text-sm font-medium">
-                                <span className="text-dark/60 dark:text-light/60">Sending to:</span>{' '}
-                                <strong className="text-base">
-                                    {selectedRecipients.length}
-                                </strong>{' '}
-                                user{selectedRecipients.length !== 1 && 's'}
-                            </p>
-                        </div>
-                    )}
+                    <Card className="border-alpha/20 bg-light text-dark lg:col-span-3 dark:bg-dark dark:text-light">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                <Mail className="h-5 w-5 text-alpha" />
+                                Message content
+                            </CardTitle>
+                            <CardDescription className="text-dark/60 dark:text-light/60">
+                                Write rich content per language. At least one language is required.
+                                {filledLangs.length > 0 && (
+                                    <span className="ml-1 text-good">
+                                        ({filledLangs.length}/{LANGS.length} filled)
+                                    </span>
+                                )}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Tabs value={activeLang} onValueChange={setActiveLang} className="w-full">
+                                <TabsList className="mb-4 grid h-auto w-full grid-cols-3 gap-1 bg-alpha/10 p-1 dark:bg-light/10">
+                                    {LANGS.map((lang) => {
+                                        const filled = !isEmptyHtml(bodies[lang.id]);
+                                        return (
+                                            <TabsTrigger
+                                                key={lang.id}
+                                                value={lang.id}
+                                                className="gap-1.5 data-[state=active]:bg-alpha data-[state=active]:text-black data-[state=active]:shadow-sm"
+                                            >
+                                                <span>{lang.flag}</span>
+                                                <span className="hidden sm:inline">{lang.label}</span>
+                                                {filled && <span className="h-1.5 w-1.5 rounded-full bg-good" />}
+                                            </TabsTrigger>
+                                        );
+                                    })}
+                                </TabsList>
 
-                    <div>
-                        <Label htmlFor="newsletter-subject" className="text-dark dark:text-light">
-                            Email Subject
-                        </Label>
-                        <Input
-                            id="newsletter-subject"
-                            value={emailSubject}
-                            onChange={(e) => setEmailSubject(e.target.value)}
-                            placeholder="Enter email subject..."
-                            className={`mt-1 ${fieldClass}`}
-                            required
-                        />
-                    </div>
+                                {LANGS.map((lang) => (
+                                    <TabsContent key={lang.id} value={lang.id} className="mt-0 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-sm font-medium">
+                                                {lang.flag} {lang.label}
+                                            </Label>
+                                            {lang.dir === 'rtl' && (
+                                                <span className="text-xs text-dark/50 dark:text-light/50">RTL layout</span>
+                                            )}
+                                        </div>
+                                        {activeLang === lang.id && (
+                                            <NewsletterBodyEditor
+                                                key={`${lang.id}-${editorKey}`}
+                                                value={bodies[lang.id]}
+                                                onChange={setBody[lang.id]}
+                                                placeholder={lang.placeholder}
+                                                dir={lang.dir}
+                                            />
+                                        )}
+                                    </TabsContent>
+                                ))}
+                            </Tabs>
+                        </CardContent>
+                    </Card>
+                </div>
+            </form>
 
-                    <div className="space-y-4">
-                        <Label className="text-dark dark:text-light">
-                            Message Content{' '}
-                            <span className="text-xs font-normal text-dark/50 dark:text-light/50">
-                                (at least 1 language required)
-                            </span>
-                        </Label>
-
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                            <div className="space-y-2">
-                                <Label className="text-sm font-semibold">French 🇫🇷</Label>
-                                <Textarea
-                                    rows={6}
-                                    value={emailBodyFr}
-                                    onChange={(e) => setEmailBodyFr(e.target.value)}
-                                    placeholder="French content..."
-                                    className={`resize-y ${fieldClass}`}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-semibold">Arabic 🇸🇦</Label>
-                                <Textarea
-                                    rows={6}
-                                    dir="rtl"
-                                    value={emailBodyAr}
-                                    onChange={(e) => setEmailBodyAr(e.target.value)}
-                                    placeholder="المحتوى العربي..."
-                                    className={`resize-y ${fieldClass}`}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-semibold">English 🇬🇧</Label>
-                                <Textarea
-                                    rows={6}
-                                    value={emailBodyEn}
-                                    onChange={(e) => setEmailBodyEn(e.target.value)}
-                                    placeholder="English content..."
-                                    className={`resize-y ${fieldClass}`}
-                                />
-                            </div>
-                        </div>
-
-                        <details>
-                            <summary className="cursor-pointer py-2 text-xs text-dark/50 hover:text-dark dark:text-light/50 dark:hover:text-light">
-                                Legacy Single Body Field (Optional)
-                            </summary>
-                            <Textarea
-                                rows={4}
-                                className={`mt-2 resize-y ${fieldClass}`}
-                                value={emailBody}
-                                onChange={(e) => setEmailBody(e.target.value)}
-                                placeholder="Legacy body content..."
-                            />
-                        </details>
-                    </div>
-
-                    <Button
-                        type="submit"
-                        disabled={
-                            emailProcessing ||
-                            !hasAudience ||
-                            !emailSubject.trim() ||
-                            (!emailBody.trim() && !emailBodyFr.trim() && !emailBodyAr.trim() && !emailBodyEn.trim())
-                        }
-                        className="w-full cursor-pointer gap-2 border border-alpha bg-alpha text-beta hover:bg-dark_gray hover:text-alpha dark:text-dark dark:hover:bg-alpha/80 dark:hover:text-dark"
-                    >
-                        {emailProcessing ? (
-                            'Sending…'
-                        ) : (
-                            <>
-                                <Send className="h-4 w-4" />
-                                Send to {selectedRecipients.length} user{selectedRecipients.length !== 1 ? 's' : ''}
-                            </>
-                        )}
-                    </Button>
-                </form>
-            </CardContent>
-        </Card>
+            <RecipientsModal
+                open={isRecipientsOpen}
+                setOpen={setIsRecipientsOpen}
+                users={users}
+                trainings={trainings}
+                roles={roles}
+                recipientMode={recipientMode}
+                setRecipientMode={setRecipientMode}
+                selectedTrainingIds={selectedTrainingIds}
+                setSelectedTrainingIds={setSelectedTrainingIds}
+                selectAllTrainings={selectAllTrainings}
+                setSelectAllTrainings={setSelectAllTrainings}
+                selectedRoles={selectedRoles}
+                setSelectedRoles={setSelectedRoles}
+                selectAllRoles={selectAllRoles}
+                setSelectAllRoles={setSelectAllRoles}
+                selectedUserIds={selectedUserIds}
+                setSelectedUserIds={setSelectedUserIds}
+                recipientsCount={selectedRecipients.length}
+            />
+        </>
     );
 }

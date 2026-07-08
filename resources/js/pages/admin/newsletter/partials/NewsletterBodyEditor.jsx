@@ -1,0 +1,264 @@
+import { Button } from '@/components/ui/button';
+import { Toggle } from '@/components/ui/toggle';
+import { cn } from '@/lib/utils';
+import Bold from '@tiptap/extension-bold';
+import Document from '@tiptap/extension-document';
+import Gapcursor from '@tiptap/extension-gapcursor';
+import Heading from '@tiptap/extension-heading';
+import History from '@tiptap/extension-history';
+import Italic from '@tiptap/extension-italic';
+import { ListKit } from '@tiptap/extension-list/kit';
+import Paragraph from '@tiptap/extension-paragraph';
+import Placeholder from '@tiptap/extension-placeholder';
+import Text from '@tiptap/extension-text';
+import TextAlign from '@tiptap/extension-text-align';
+import Underline from '@tiptap/extension-underline';
+import { EditorContent, useEditor } from '@tiptap/react';
+import {
+    AlignCenter,
+    AlignLeft,
+    AlignRight,
+    Bold as BoldIcon,
+    Heading2,
+    Heading3,
+    Italic as ItalicIcon,
+    List,
+    ListOrdered,
+    Underline as UnderlineIcon,
+} from 'lucide-react';
+import { useEffect, useMemo, useRef } from 'react';
+
+function stopToolbarFromStealingFocus(event) {
+    if (event.button !== 0) {
+        return;
+    }
+    event.preventDefault();
+}
+
+export default function NewsletterBodyEditor({ value = '', onChange, placeholder = 'Write your newsletter content…', dir = 'ltr' }) {
+    const skipExternalContentSync = useRef(false);
+    const initialHtmlRef = useRef(value ?? '');
+
+    const extensions = useMemo(
+        () => [
+            Document,
+            Paragraph,
+            Text,
+            Bold,
+            Italic,
+            Underline,
+            Heading.configure({ levels: [2, 3] }),
+            ListKit.configure({
+                bulletList: {},
+                orderedList: {},
+                listItem: {},
+                listKeymap: {},
+                taskItem: false,
+                taskList: false,
+            }),
+            History,
+            Gapcursor,
+            TextAlign.configure({ types: ['heading', 'paragraph'] }),
+            Placeholder.configure({
+                placeholder,
+            }),
+        ],
+        [placeholder],
+    );
+
+    const editor = useEditor(
+        {
+            extensions,
+            shouldRerenderOnTransaction: true,
+            editorProps: {
+                attributes: {
+                    class: cn(
+                        'min-h-[220px] max-w-none px-3 py-2 outline-none',
+                        'text-beta dark:text-light',
+                        'focus-visible:outline-none',
+                        dir === 'rtl' && 'text-right',
+                    ),
+                    dir,
+                },
+            },
+            onCreate: ({ editor: ed }) => {
+                const html = initialHtmlRef.current;
+                if (html) {
+                    ed.commands.setContent(html, { emitUpdate: false });
+                }
+            },
+            onUpdate: ({ editor: ed }) => {
+                skipExternalContentSync.current = true;
+                onChange?.(ed.getHTML());
+            },
+        },
+        [extensions, dir],
+    );
+
+    useEffect(() => {
+        initialHtmlRef.current = value ?? '';
+    }, [value]);
+
+    useEffect(() => {
+        if (!editor || editor.isDestroyed) {
+            return;
+        }
+        if (skipExternalContentSync.current) {
+            skipExternalContentSync.current = false;
+            return;
+        }
+        const incoming = value || '';
+        const current = editor.getHTML();
+        if (incoming === current) {
+            return;
+        }
+        editor.commands.setContent(incoming, { emitUpdate: false });
+    }, [value, editor]);
+
+    useEffect(() => {
+        if (!editor || editor.isDestroyed) {
+            return;
+        }
+        editor.view.dom.setAttribute('dir', dir);
+        editor.view.dom.classList.toggle('text-right', dir === 'rtl');
+    }, [dir, editor]);
+
+    return (
+        <div
+            className={cn(
+                'overflow-hidden rounded-lg border border-alpha/30 bg-white dark:border-light/15 dark:bg-dark_gray',
+            )}
+        >
+            {editor ? (
+                <div className="flex flex-col">
+                    <div
+                        className="flex flex-wrap gap-1 border-b border-alpha/15 bg-alpha/5 p-2 dark:border-light/10 dark:bg-light/5"
+                        onMouseDown={stopToolbarFromStealingFocus}
+                        onPointerDownCapture={stopToolbarFromStealingFocus}
+                        role="toolbar"
+                        aria-label="Formatting"
+                    >
+                        <Toggle
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            pressed={editor.isActive('bold')}
+                            onPressedChange={() => editor.chain().focus().toggleBold().run()}
+                            aria-label="Bold"
+                        >
+                            <BoldIcon className="h-4 w-4" />
+                        </Toggle>
+                        <Toggle
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            pressed={editor.isActive('italic')}
+                            onPressedChange={() => editor.chain().focus().toggleItalic().run()}
+                            aria-label="Italic"
+                        >
+                            <ItalicIcon className="h-4 w-4" />
+                        </Toggle>
+                        <Toggle
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            pressed={editor.isActive('underline')}
+                            onPressedChange={() => editor.chain().focus().toggleUnderline().run()}
+                            aria-label="Underline"
+                        >
+                            <UnderlineIcon className="h-4 w-4" />
+                        </Toggle>
+                        <span className="mx-1 hidden h-6 w-px bg-alpha/20 sm:inline dark:bg-light/20" aria-hidden />
+                        <Toggle
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            pressed={editor.isActive('heading', { level: 2 })}
+                            onPressedChange={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                            aria-label="Heading 2"
+                        >
+                            <Heading2 className="h-4 w-4" />
+                        </Toggle>
+                        <Toggle
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            pressed={editor.isActive('heading', { level: 3 })}
+                            onPressedChange={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+                            aria-label="Heading 3"
+                        >
+                            <Heading3 className="h-4 w-4" />
+                        </Toggle>
+                        <span className="mx-1 hidden h-6 w-px bg-alpha/20 sm:inline dark:bg-light/20" aria-hidden />
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant={editor.isActive('bulletList') ? 'secondary' : 'outline'}
+                            className="h-8 px-2"
+                            onMouseDown={stopToolbarFromStealingFocus}
+                            onPointerDownCapture={stopToolbarFromStealingFocus}
+                            onClick={() => editor.chain().focus().toggleBulletList().run()}
+                            aria-label="Bullet list"
+                        >
+                            <List className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant={editor.isActive('orderedList') ? 'secondary' : 'outline'}
+                            className="h-8 px-2"
+                            onMouseDown={stopToolbarFromStealingFocus}
+                            onPointerDownCapture={stopToolbarFromStealingFocus}
+                            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                            aria-label="Numbered list"
+                        >
+                            <ListOrdered className="h-4 w-4" />
+                        </Button>
+                        <span className="mx-1 hidden h-6 w-px bg-alpha/20 sm:inline dark:bg-light/20" aria-hidden />
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant={editor.isActive({ textAlign: 'left' }) ? 'secondary' : 'outline'}
+                            className="h-8 px-2"
+                            onMouseDown={stopToolbarFromStealingFocus}
+                            onPointerDownCapture={stopToolbarFromStealingFocus}
+                            onClick={() => editor.chain().focus().setTextAlign('left').run()}
+                            aria-label="Align left"
+                        >
+                            <AlignLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant={editor.isActive({ textAlign: 'center' }) ? 'secondary' : 'outline'}
+                            className="h-8 px-2"
+                            onMouseDown={stopToolbarFromStealingFocus}
+                            onPointerDownCapture={stopToolbarFromStealingFocus}
+                            onClick={() => editor.chain().focus().setTextAlign('center').run()}
+                            aria-label="Align center"
+                        >
+                            <AlignCenter className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant={editor.isActive({ textAlign: 'right' }) ? 'secondary' : 'outline'}
+                            className="h-8 px-2"
+                            onMouseDown={stopToolbarFromStealingFocus}
+                            onPointerDownCapture={stopToolbarFromStealingFocus}
+                            onClick={() => editor.chain().focus().setTextAlign('right').run()}
+                            aria-label="Align right"
+                        >
+                            <AlignRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <div className="prose prose-sm dark:prose-invert max-h-[min(50vh,28rem)] max-w-none overflow-y-auto p-1 text-beta dark:text-light [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold">
+                        <EditorContent editor={editor} />
+                    </div>
+                </div>
+            ) : (
+                <div className="min-h-[220px] animate-pulse bg-muted/40" aria-hidden />
+            )}
+        </div>
+    );
+}
