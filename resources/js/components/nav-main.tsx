@@ -125,7 +125,7 @@ export function NavMain({
                         <SidebarMenuBadge className="bg-destructive text-destructive-foreground">{item.badge}</SidebarMenuBadge>
                     )}
                     {hasChildren && (
-                        <SidebarMenuSub className={`${isOpen ? 'block' : 'hidden'} mt-1 mx-0 translate-x-0 border-0 px-0 py-0`}>
+                        <SidebarMenuSub className={`${isOpen ? 'block' : 'hidden'} mt-1 mx-0 translate-x-0 border-0 px-0 py-0 pl-4`}>
                             {item.children?.map((sub) => {
                                 const subHref = typeof sub.href === 'string' ? sub.href : sub.href.url;
                                 const subActive = page.url.startsWith(subHref);
@@ -174,7 +174,7 @@ export function NavMain({
                             />
                         </SidebarMenuButton>
                         <SidebarMenuSub
-                            className={`${isGroupOpen ? 'block' : 'hidden'} mt-1 mx-0 translate-x-0 border-0 px-0 py-0`}
+                            className={`${isGroupOpen ? 'block' : 'hidden'} mt-1 mx-0 translate-x-0 border-0 px-0 py-0 pl-4`}
                         >
                             {items.map((item) => {
                                 const href = typeof item.href === 'string' ? item.href : item.href.url;
