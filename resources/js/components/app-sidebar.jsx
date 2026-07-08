@@ -13,7 +13,9 @@ import {
     GraduationCap,
     LayoutGrid,
     Megaphone,
+    MessageSquare,
     Monitor,
+    Newspaper,
     Settings,
     Smartphone,
     Timer,
@@ -183,19 +185,29 @@ const getSpacesItems = () => [
     },
 ];
 
+const getCommunicationItems = () => [
+    {
+        id: 'announcements',
+        title: 'App Notification',
+        href: '/admin/announcements',
+        icon: Megaphone,
+        authorizedRoles: ['admin'],
+    },
+    {
+        id: 'newsletter',
+        title: 'Newsletter',
+        href: '/admin/newsletter',
+        icon: Newspaper,
+        authorizedRoles: ['admin'],
+    },
+];
+
 const getGeneralItems = () => [
     {
         id: 'post_reports',
         title: 'Post Reports',
         href: '/admin/post-reports',
         icon: Flag,
-        authorizedRoles: ['admin'],
-    },
-    {
-        id: 'announcements',
-        title: 'Announcements',
-        href: '/admin/announcements',
-        icon: Megaphone,
         authorizedRoles: ['admin'],
     },
     {
@@ -285,6 +297,7 @@ export function AppSidebar() {
             // community: getTraining(),
             spaces: spacesItems,
             work: getWorkItems(),
+            communication: getCommunicationItems(),
             general: getGeneralItems(),
         };
     }, [user, userRoles, isRecruiterOnlySidebar, restrictedCodingPro]);
@@ -320,6 +333,16 @@ export function AppSidebar() {
                         {!restrictedCodingPro && (
                             <Rolegard authorized={['admin']}>
                                 <NavMain label="Work" labelIcon={Briefcase} items={navGroups.work} collapsible />
+                            </Rolegard>
+                        )}
+                        {!restrictedCodingPro && (
+                            <Rolegard authorized={['admin']}>
+                                <NavMain
+                                    label="Communication"
+                                    labelIcon={MessageSquare}
+                                    items={navGroups.communication}
+                                    collapsible
+                                />
                             </Rolegard>
                         )}
                         {!restrictedCodingPro && (

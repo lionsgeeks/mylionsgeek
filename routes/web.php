@@ -44,6 +44,7 @@ require __DIR__ . '/admin/games.php';
 require __DIR__ . '/admin/project-approvals.php';
 require __DIR__ . '/admin/post-reports.php';
 require __DIR__ . '/admin/announcements.php';
+require __DIR__ . '/admin/newsletter.php';
 
 // Students
 require __DIR__ . '/students/exercises.php';
