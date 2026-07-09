@@ -4,19 +4,26 @@ import { useState } from 'react';
 import { helpers } from '../utils/helpers';
 import PostMenuDropDown from './PostMenuDropDown';
 
-const PostCardHeader = ({ post, user, takeUserProfile, timeAgo, onDeletePost, onReportPost, isDeleting = false }) => {
+const PostCardHeader = ({ post, user, takeUserProfile, timeAgo, onDeletePost, onDeleteRepost, onReportPost, isDeleting = false }) => {
     const { addOrRemoveFollow } = helpers();
     const [openDetails, setOpenDetails] = useState(null);
     const [openDeletePost, setOpenDeletePost] = useState(false);
     const [openEditPost, setOpenEditPost] = useState(false);
 
-    //! Delete Post
+    //! Delete Post or remove repost
     const handleDeletePost = () => {
-        if (!post?.id || !onDeletePost || isDeleting) {
+        if (!post?.id || isDeleting) {
             return Promise.resolve(false);
         }
 
-        return onDeletePost(post.id).then((result) => {
+        const deleteAction =
+            post?.type === 'repost' && typeof onDeleteRepost === 'function'
+                ? onDeleteRepost(post)
+                : onDeletePost
+                  ? onDeletePost(post.id)
+                  : Promise.resolve(false);
+
+        return Promise.resolve(deleteAction).then((result) => {
             setOpenDetails(null);
             setOpenDeletePost(false);
             return result;

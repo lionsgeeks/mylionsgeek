@@ -21,7 +21,17 @@ function parseFeedPostIdFromHash() {
     return null;
 }
 
-export default function CenterFeed({ user, posts, showComposer = true, lead = null, displayAddPost = true, profileBackHref = null }) {
+export default function CenterFeed({
+    user,
+    posts,
+    showComposer = true,
+    lead = null,
+    displayAddPost = true,
+    profileBackHref = null,
+    feedNextCursor = null,
+    feedHasMore = false,
+    enableInfiniteScroll = false,
+}) {
     const profileHref = profileBackHref ?? `/students/${user.id}`;
     const [openAddPost, setOpenAddPost] = useState(false);
     const [openModalPostIdFromHash, setOpenModalPostIdFromHash] = useState(null);
@@ -81,7 +91,15 @@ export default function CenterFeed({ user, posts, showComposer = true, lead = nu
 
                 {/* Post Card */}
 
-                <PostCard user={user} posts={posts} openModalPostId={openModalPostIdFromHash} onConsumedHashModal={clearFeedPostHash} />
+                <PostCard
+                    user={user}
+                    posts={posts}
+                    openModalPostId={openModalPostIdFromHash}
+                    onConsumedHashModal={clearFeedPostHash}
+                    feedNextCursor={feedNextCursor}
+                    feedHasMore={feedHasMore}
+                    enableInfiniteScroll={enableInfiniteScroll}
+                />
                 {/* <div className="bg-white dark:bg-gray-800 rounded-lg shadow"> */}
                 {/* Post Header */}
                 {/* <div className="p-4">

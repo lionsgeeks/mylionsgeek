@@ -1,4 +1,5 @@
 import { NavMain } from '@/components/nav-main';
+import Rolegard from '@/components/rolegard';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Link, usePage } from '@inertiajs/react';
 import {
@@ -7,11 +8,16 @@ import {
     Building2,
     Calendar,
     ClipboardList,
+    Flag,
     FolderOpen,
     GraduationCap,
     LayoutGrid,
+    Megaphone,
+    MessageSquare,
     Monitor,
+    Newspaper,
     Settings,
+    Smartphone,
     Timer,
     UserPlus,
     Users,
@@ -19,6 +25,9 @@ import {
 } from 'lucide-react';
 import { useMemo } from 'react';
 import AppLogo from './app-logo';
+
+/** Roles that use the staff sidebar (students/coworkers use the top header instead). */
+const STAFF_SIDEBAR_ROLES = ['admin', 'super_admin', 'moderateur', 'studio_responsable', 'coach', 'pro'];
 
 const getRecruiterHiringNavItems = () => [
     {
@@ -65,66 +74,149 @@ const getRecruiterHiringNavItems = () => [
     },
 ];
 
-const getAllNavItems = () => [
-    {
-        id: 'dashboard',
-        title: 'Dashboard',
-        href: '/admin/dashboard',
-        icon: LayoutGrid,
-    },
+const getDashboardNavItem = () => ({
+    id: 'dashboard',
+    title: 'Dashboard',
+    href: '/admin/dashboard',
+    icon: LayoutGrid,
+});
 
-    {
-        id: 'members',
-        title: 'Members',
-        href: '/admin/users',
-        icon: Users,
-        excludedRoles: ['studio_responsable'],
-    },
-    {
-        id: 'projects',
-        title: 'Projects',
-        href: '/admin/projects',
-        icon: FolderOpen,
-        excludedRoles: ['studio_responsable'],
-    },
+const isCodingPro = (user, userRoles) => {
+    const field = String(user?.field ?? '')
+        .toLowerCase()
+        .trim();
 
-    {
-        id: 'leaderboard',  
-        title: 'LeaderBoard',
-        href: '/students/leaderboard',
-        icon: AwardIcon,
-        authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'],
-    },
+    return userRoles.includes('pro') && field === 'coding';
+};
 
-    {
-        id: 'spaces',
-        title: 'Spaces ',
-        href: '/admin/places',
-        icon: Building2,
-        authorizedRoles: ['admin', 'super_admin', 'moderateur', 'studio_responsable'],
-    },
-    { id: 'reservations', title: 'Reservations', href: '/admin/reservations', icon: Timer, excludedRoles: ['coach'] },
-    { id: 'appointments', title: 'Appointments', href: '/admin/appointments', icon: Calendar },
+const canAccessProjects = (user, userRoles) => {
+    if (userRoles.includes('admin')) {
+        return true;
+    }
 
-    { id: 'computers', title: 'Computers', href: '/admin/computers', icon: Monitor, authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'] },
-    { id: 'equipment', title: 'Equipment', href: '/admin/equipements', icon: Wrench, excludedRoles: ['coach'] },
-    { id: 'training', title: 'Training', href: '/admin/training', icon: GraduationCap, authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'] },
-    // { id: 'games', title: 'Games', href: '/games', icon: Gamepad2 },
+    return isCodingPro(user, userRoles);
+};
+
+/** Pro + coding without elevated staff roles: limited sidebar (dashboard, members, projects) + feed. */
+const isRestrictedCodingPro = (user, userRoles) => {
+    if (!isCodingPro(user, userRoles)) {
+        return false;
+    }
+
+    const elevatedStaff = ['admin', 'super_admin', 'moderateur', 'studio_responsable', 'coach'];
+
+    return !userRoles.some((role) => elevatedStaff.includes(role));
+};
+
+const getManagementItems = (user, userRoles) => {
+    const membersExcludedRoles = isCodingPro(user, userRoles) ? ['recruiter'] : ['recruiter', 'student'];
+
+    return [
+        {
+            id: 'members',
+            title: 'Members',
+            href: '/admin/users',
+            icon: Users,
+            excludedRoles: membersExcludedRoles,
+        },
+        {
+            id: 'training',
+            title: 'Training',
+            href: '/admin/training',
+            icon: GraduationCap,
+            authorizedRoles: ['admin', 'coach'],
+        },
+        {
+            id: 'projects',
+            title: 'Projects',
+            href: '/admin/projects',
+            icon: FolderOpen,
+            authorizedRoles: ['admin', 'pro'],
+        },
+    ];
+};
+
+const getWorkItems = () => [
     {
         id: 'jobs',
         title: 'Jobs',
         href: '/admin/jobs',
         icon: Briefcase,
-        authorizedRoles: ['admin', 'moderateur', 'super_admin'],
+        authorizedRoles: ['admin'],
     },
     {
         id: 'organisations',
         title: 'Organisations',
         href: '/admin/organisations',
         icon: UserPlus,
-        authorizedRoles: ['admin', 'moderateur', 'super_admin'],
+        authorizedRoles: ['admin'],
     },
-    { id: 'settings', title: 'Settings', href: '/settings', icon: Settings },
+];
+
+const getSpacesItems = () => [
+    {
+        id: 'spaces',
+        title: 'Spaces',
+        href: '/admin/places',
+        icon: Building2,
+        authorizedRoles: ['admin', 'studio_responsable'],
+    },
+    {
+        id: 'reservations',
+        title: 'Reservations',
+        href: '/admin/reservations',
+        icon: Timer,
+        authorizedRoles: ['admin', 'studio_responsable'],
+    },
+    { id: 'appointments', title: 'Appointments', href: '/admin/appointments', icon: Calendar },
+    {
+        id: 'computers',
+        title: 'Computers',
+        href: '/admin/computers',
+        icon: Monitor,
+        authorizedRoles: ['admin', 'coach', 'moderateur'],
+    },
+    {
+        id: 'equipment',
+        title: 'Equipment',
+        href: '/admin/equipements',
+        icon: Wrench,
+        authorizedRoles: ['admin', 'studio_responsable', 'moderateur'],
+    },
+];
+
+const getCommunicationItems = () => [
+    {
+        id: 'announcements',
+        title: 'App Notification',
+        href: '/admin/announcements',
+        icon: Megaphone,
+        authorizedRoles: ['admin'],
+    },
+    {
+        id: 'newsletter',
+        title: 'Newsletter',
+        href: '/admin/newsletter',
+        icon: Newspaper,
+        authorizedRoles: ['admin', 'coach'],
+    },
+];
+
+const getGeneralItems = () => [
+    {
+        id: 'post_reports',
+        title: 'Post Reports',
+        href: '/admin/post-reports',
+        icon: Flag,
+        authorizedRoles: ['admin'],
+    },
+    {
+        id: 'appversion',
+        title: 'App Version',
+        href: '/admin/appversion',
+        icon: Smartphone,
+        authorizedRoles: ['admin'],
+    },
 ];
 
 function RecruiterSidebarContext() {
@@ -177,23 +269,38 @@ export function AppSidebar() {
     const userRoles = Array.isArray(user?.role) ? user.role : user?.role ? [user.role] : [];
     const isStaff = userRoles.some((r) => ['admin', 'moderateur', 'studio_responsable', 'coach', 'super_admin', 'pro'].includes(r));
     const isRecruiterOnlySidebar = userRoles.includes('recruiter') && !isStaff;
+    const restrictedCodingPro = isRestrictedCodingPro(user, userRoles);
 
     const logoHref = isRecruiterOnlySidebar ? '/recruiter/dashboard' : '/admin/dashboard';
 
-    const mainNavItems = useMemo(() => {
-        if (isRecruiterOnlySidebar) {
-            return null;
-        }
+    const navGroups = useMemo(() => {
+        if (isRecruiterOnlySidebar) return null;
 
-        const allItems = getAllNavItems();
-
-        return allItems.filter((item) => {
-            if (item.id === 'appointments') {
-                return isAppointmentPerson(user);
-            }
+        const spacesItems = getSpacesItems().filter((item) => {
+            if (item.id === 'appointments') return isAppointmentPerson(user);
             return true;
         });
-    }, [user, isRecruiterOnlySidebar]);
+
+        return {
+            dashboard: [getDashboardNavItem()],
+            management: getManagementItems(user, userRoles).filter((item) => {
+                if (item.id === 'projects') {
+                    return canAccessProjects(user, userRoles);
+                }
+
+                if (restrictedCodingPro) {
+                    return item.id === 'members';
+                }
+
+                return true;
+            }),
+            // community: getTraining(),
+            spaces: spacesItems,
+            work: getWorkItems(),
+            communication: getCommunicationItems(),
+            general: getGeneralItems(),
+        };
+    }, [user, userRoles, isRecruiterOnlySidebar, restrictedCodingPro]);
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -213,9 +320,38 @@ export function AppSidebar() {
             <SidebarContent>
                 {isRecruiterOnlySidebar ? (
                     <NavMain label="Hiring" items={getRecruiterHiringNavItems()} />
-                ) : (
-                    <NavMain items={mainNavItems ?? []} />
-                )}
+                ) : navGroups ? (
+                    <>
+                        <Rolegard authorized={STAFF_SIDEBAR_ROLES}>
+                            <NavMain items={navGroups.dashboard} />
+                        </Rolegard>
+                        <NavMain items={navGroups.management} />
+                        {/* <NavMain label="Community" items={navGroups.community} collapsible /> */}
+                        {!restrictedCodingPro && (
+                            <NavMain label="Spaces & Resources" labelIcon={Building2} items={navGroups.spaces} collapsible />
+                        )}
+                        {!restrictedCodingPro && (
+                            <Rolegard authorized={['admin']}>
+                                <NavMain label="Work" labelIcon={Briefcase} items={navGroups.work} collapsible />
+                            </Rolegard>
+                        )}
+                        {!restrictedCodingPro && (
+                            <Rolegard authorized={['admin', 'coach']}>
+                                <NavMain
+                                    label="Communication"
+                                    labelIcon={MessageSquare}
+                                    items={navGroups.communication}
+                                    collapsible
+                                />
+                            </Rolegard>
+                        )}
+                        {!restrictedCodingPro && (
+                            <Rolegard authorized={['admin']}>
+                                <NavMain label="General" labelIcon={Settings} items={navGroups.general} collapsible />
+                            </Rolegard>
+                        )}
+                    </>
+                ) : null}
             </SidebarContent>
 
             <SidebarFooter>{/* <NavUser /> */}</SidebarFooter>

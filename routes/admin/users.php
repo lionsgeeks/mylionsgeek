@@ -8,7 +8,7 @@ use App\Http\Controllers\PostController;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,coach,pro'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,coach,pro,studio_responsable'])->prefix('admin')->group(function () {
 
     Route::get('/users', [UsersController::class, 'index']);
     Route::get('/users/export', [UsersController::class, 'export']);

@@ -10,6 +10,7 @@ const PostCardItem = ({
     takeToUserProfile,
     timeAgo,
     onDeletePost,
+    onDeleteRepost,
     onReportPost,
     addOrRemoveFollow,
     openModalPostId,
@@ -22,7 +23,7 @@ const PostCardItem = ({
         <div className="relative mb-4 overflow-hidden rounded-lg bg-white shadow dark:bg-dark_gray">
             {isDeleting && (
                 <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 text-sm font-semibold text-dark dark:bg-dark/70 dark:text-light">
-                    Deleting...
+                    {post?.type === 'repost' ? 'Removing...' : 'Deleting...'}
                 </div>
             )}
             <PostCardHeader
@@ -31,6 +32,7 @@ const PostCardItem = ({
                 takeUserProfile={takeToUserProfile}
                 timeAgo={timeAgo}
                 onDeletePost={onDeletePost}
+                onDeleteRepost={onDeleteRepost}
                 onReportPost={onReportPost}
                 isDeleting={isDeleting}
             />

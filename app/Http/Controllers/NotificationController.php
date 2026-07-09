@@ -19,6 +19,10 @@ use App\Models\TaskAssignmentNotification;
 use App\Models\ProjectMessageNotification;
 use App\Models\JobApplicationNotification;
 use App\Models\PostReportNotification;
+use App\Models\AnnouncementNotification;
+use App\Models\Announcement;
+use App\Models\EventNotification;
+use App\Models\EventNotificationRead;
 use App\Models\Formation;
 use App\Models\User;
 use Ably\AblyRest;
@@ -41,10 +45,12 @@ class NotificationController extends Controller
         try {
             $roles = is_array($user->role) ? $user->role : [$user->role];
             $isAdmin = in_array('admin', $roles);
+            $isSuperAdmin = in_array('super_admin', $roles);
             $isModerator = in_array('moderateur', $roles);
             $isStudioResponsable = in_array('studio_responsable', $roles);
             $isCoach = in_array('coach', $roles);
             $isRecruiter = in_array('recruiter', $roles);
+            $isStaff = $isAdmin || $isSuperAdmin || $isModerator || $isCoach || $isStudioResponsable;
 
             //  1. DISCIPLINE CHANGE NOTIFICATIONS (Admin, Moderator, Coach)
             // Using new DisciplineNotification model
@@ -393,7 +399,7 @@ class NotificationController extends Controller
             }
 
             // 4.5. POST REPORT NOTIFICATIONS (Staff)
-            if (($isAdmin || $isModerator || $isCoach || $isStudioResponsable) && Schema::hasTable('post_report_notifications')) {
+            if ($isStaff && Schema::hasTable('post_report_notifications')) {
                 try {
                     $reportNotifs = PostReportNotification::query()
                         ->with([
@@ -591,6 +597,73 @@ class NotificationController extends Controller
                 }
             }
 
+            // Announcements (loaded on bell open / poll — no real-time push)
+            if (Schema::hasTable('announcements')) {
+                try {
+                    $announcements = Announcement::with('creator')
+                        ->latest()
+                        ->limit(20)
+                        ->get();
+
+                    $readStates = Schema::hasTable('announcement_notifications')
+                        ? AnnouncementNotification::where('user_id', $user->id)
+                            ->whereIn('announcement_id', $announcements->pluck('id'))
+                            ->pluck('read_at', 'announcement_id')
+                        : collect();
+
+                    foreach ($announcements as $announcement) {
+                        $readAt = $readStates->get($announcement->id);
+
+                        $notifications[] = [
+                            'id' => 'announcement-' . $announcement->id,
+                            'type' => 'announcement',
+                            'sender_name' => $announcement->title,
+                            'sender_image' => $announcement->creator?->image,
+                            'message' => $announcement->message,
+                            'link' => '/dashboard',
+                            'icon_type' => 'megaphone',
+                            'created_at' => $announcement->created_at->format('Y-m-d H:i:s'),
+                            'read_at' => $readAt ? $readAt->format('Y-m-d H:i:s') : null,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching announcement notifications: ' . $e->getMessage());
+                }
+            }
+
+            // Public events from lionsgeek.ma (stored when webhook fires)
+            if (Schema::hasTable('event_notifications')) {
+                try {
+                    $eventNotifications = EventNotification::latest()
+                        ->limit(20)
+                        ->get();
+
+                    $readStates = Schema::hasTable('event_notification_reads')
+                        ? EventNotificationRead::where('user_id', $user->id)
+                            ->whereIn('event_notification_id', $eventNotifications->pluck('id'))
+                            ->pluck('read_at', 'event_notification_id')
+                        : collect();
+
+                    foreach ($eventNotifications as $eventNotification) {
+                        $readAt = $readStates->get($eventNotification->id);
+
+                        $notifications[] = [
+                            'id' => 'event-' . $eventNotification->id,
+                            'type' => 'event',
+                            'event_id' => $eventNotification->lionsgeek_event_id,
+                            'sender_name' => $eventNotification->title,
+                            'message' => $eventNotification->message,
+                            'mobile_link' => '/events/' . $eventNotification->lionsgeek_event_id,
+                            'icon_type' => 'calendar',
+                            'created_at' => $eventNotification->created_at->format('Y-m-d H:i:s'),
+                            'read_at' => $readAt ? $readAt->format('Y-m-d H:i:s') : null,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching event notifications: ' . $e->getMessage());
+                }
+            }
+
             // Sort by created_at (newest first)
             usort($notifications, function ($a, $b) {
                 return strtotime($b['created_at']) - strtotime($a['created_at']);
@@ -762,6 +835,30 @@ class NotificationController extends Controller
                         }
                     }
                     break;
+                case 'announcement':
+                    if (Schema::hasTable('announcement_notifications')) {
+                        $notification = AnnouncementNotification::firstOrCreate(
+                            [
+                                'user_id' => $user->id,
+                                'announcement_id' => $id,
+                            ]
+                        );
+                        $notification->read_at = now();
+                        $notification->save();
+                    }
+                    break;
+                case 'event':
+                    if (Schema::hasTable('event_notification_reads')) {
+                        $notification = EventNotificationRead::firstOrCreate(
+                            [
+                                'user_id' => $user->id,
+                                'event_notification_id' => $id,
+                            ]
+                        );
+                        $notification->read_at = now();
+                        $notification->save();
+                    }
+                    break;
                 default:
                     return response()->json(['error' => 'Invalid notification type'], 400);
             }
@@ -839,6 +936,34 @@ class NotificationController extends Controller
                 JobApplicationNotification::where('notified_user_id', $user->id)
                     ->whereNull('read_at')
                     ->update(['read_at' => now()]);
+            }
+
+            if (Schema::hasTable('announcement_notifications') && Schema::hasTable('announcements')) {
+                $announcementIds = Announcement::latest()->limit(50)->pluck('id');
+
+                foreach ($announcementIds as $announcementId) {
+                    AnnouncementNotification::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'announcement_id' => $announcementId,
+                        ],
+                        ['read_at' => now()]
+                    );
+                }
+            }
+
+            if (Schema::hasTable('event_notification_reads') && Schema::hasTable('event_notifications')) {
+                $eventNotificationIds = EventNotification::latest()->limit(50)->pluck('id');
+
+                foreach ($eventNotificationIds as $eventNotificationId) {
+                    EventNotificationRead::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'event_notification_id' => $eventNotificationId,
+                        ],
+                        ['read_at' => now()]
+                    );
+                }
             }
 
             // Mark all access request response notifications as read (for users)

@@ -101,7 +101,7 @@ class User extends Authenticatable
 
         $basename = basename($name);
 
-        return $basename !== '' ? self::RESUME_DIRECTORY.'/'.$basename : null;
+        return $basename !== '' ? self::RESUME_DIRECTORY . '/' . $basename : null;
     }
 
     public function resumePublicUrl(): ?string
@@ -112,14 +112,14 @@ class User extends Authenticatable
         }
 
         if (Storage::disk(self::RESUME_DISK)->exists($relative)) {
-            return asset('storage/'.ltrim($relative, '/'));
+            return asset('storage/' . ltrim($relative, '/'));
         }
 
         $basename = basename($relative);
         foreach (['storage/resumes', 'storage/resume'] as $legacyDir) {
-            $legacy = public_path($legacyDir.'/'.$basename);
+            $legacy = public_path($legacyDir . '/' . $basename);
             if (is_file($legacy)) {
-                return asset($legacyDir.'/'.$basename);
+                return asset($legacyDir . '/' . $basename);
             }
         }
 
@@ -139,7 +139,7 @@ class User extends Authenticatable
         }
 
         foreach (['storage/resumes', 'storage/resume'] as $legacyDir) {
-            $legacy = public_path($legacyDir.'/'.$basename);
+            $legacy = public_path($legacyDir . '/' . $basename);
             if (is_file($legacy)) {
                 return $legacy;
             }
@@ -171,7 +171,7 @@ class User extends Authenticatable
 
         $basename = basename($relative);
         foreach (['storage/resumes', 'storage/resume'] as $legacyDir) {
-            $legacy = public_path($legacyDir.'/'.$basename);
+            $legacy = public_path($legacyDir . '/' . $basename);
             if (is_file($legacy) && is_readable($legacy)) {
                 $contents = file_get_contents($legacy);
 
@@ -195,7 +195,7 @@ class User extends Authenticatable
         }
 
         foreach (['storage/resumes', 'storage/resume'] as $legacyDir) {
-            $legacy = public_path($legacyDir.'/'.$basename);
+            $legacy = public_path($legacyDir . '/' . $basename);
             if (is_file($legacy)) {
                 @unlink($legacy);
             }
@@ -235,7 +235,7 @@ class User extends Authenticatable
             $pivotIds = DB::table('formation_user')
                 ->where('user_id', $this->id)
                 ->pluck('formation_id')
-                ->map(fn ($id) => (int) $id)
+                ->map(fn($id) => (int) $id)
                 ->all();
             $ids = array_merge($ids, $pivotIds);
         }
@@ -248,12 +248,12 @@ class User extends Authenticatable
                         ->orWhere('promo', (string) $promo);
                 })
                 ->pluck('id')
-                ->map(fn ($id) => (int) $id)
+                ->map(fn($id) => (int) $id)
                 ->all();
             $ids = array_merge($ids, $byPromo);
         }
 
-        return array_values(array_unique(array_filter($ids, fn ($id) => $id > 0)));
+        return array_values(array_unique(array_filter($ids, fn($id) => $id > 0)));
     }
 
     public function primaryFormationId(): ?int
@@ -570,5 +570,9 @@ class User extends Authenticatable
             'can_manage_team' => $this->canManageOrganisationMembers(),
             'can_create_jobs' => $this->canCreateJobsForOrganisation(),
         ];
+    }
+    public function announcements()
+    {
+        return $this->hasMany(Announcement::class, 'created_by');
     }
 }

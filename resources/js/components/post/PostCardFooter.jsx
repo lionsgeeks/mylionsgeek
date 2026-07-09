@@ -7,6 +7,7 @@ import RepostModal from './RepostModal';
 import SendPostModal from './SendPostModal';
 
 const POST_LIKE_TOGGLED_EVENT = 'post-like-toggled';
+const POST_REPOST_TOGGLED_EVENT = 'post-repost-toggled';
 
 const LionsGeekLogoIcon = ({ className, size = 20 }) => {
     return (
@@ -37,18 +38,20 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
     const [likesOpenFor, setLikesOpenFor] = useState(null);
     const [repostOpenFor, setRepostOpenFor] = useState(null);
     const [sendOpenFor, setSendOpenFor] = useState(null);
+    const [isReposted, setIsReposted] = useState(false);
 
     // Initialize counts and liked state on mount
     useEffect(() => {
         setLikesCountMap((prev) => ({ ...prev, [post.id]: post.likes_count }));
         setCommentsCountMap((prev) => ({ ...prev, [post.id]: post.comments_count }));
         setRepostsCountMap((prev) => ({ ...prev, [post.id]: post.reposts_count }));
+        setIsReposted(Boolean(post.is_reposted_by_current_user));
 
         if (post.is_liked_by_current_user) {
             const interactionPostId = post?.interaction_post_id ?? post?.id;
             setLikedInteractionPostIds((prev) => [...new Set([...prev, interactionPostId])]);
         }
-    }, [post.id, post.likes_count, post.comments_count, post.reposts_count, post.is_liked_by_current_user]);
+    }, [post.id, post.likes_count, post.comments_count, post.reposts_count, post.is_liked_by_current_user, post.is_reposted_by_current_user]);
 
     // Keep liked state in sync across multiple cards that reference the same interaction post
     // (e.g. a repost card + the original card).
@@ -66,6 +69,22 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
 
         window.addEventListener(POST_LIKE_TOGGLED_EVENT, handler);
         return () => window.removeEventListener(POST_LIKE_TOGGLED_EVENT, handler);
+    }, [post?.interaction_post_id, post?.id]);
+
+    useEffect(() => {
+        const handler = (event) => {
+            const detail = event?.detail || {};
+            const interactionId = Number(detail?.interaction_post_id);
+            const reposted = Boolean(detail?.reposted);
+            const myInteractionId = Number(post?.interaction_post_id ?? post?.id);
+
+            if (!interactionId || interactionId !== myInteractionId) return;
+
+            setIsReposted(reposted);
+        };
+
+        window.addEventListener(POST_REPOST_TOGGLED_EVENT, handler);
+        return () => window.removeEventListener(POST_REPOST_TOGGLED_EVENT, handler);
     }, [post?.interaction_post_id, post?.id]);
 
     useEffect(() => {
@@ -140,6 +159,16 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
     const likeCount = likesCountMap[post?.id] ?? 0;
     const commentCount = commentsCountMap[post?.id] ?? 0;
     const repostCount = repostsCountMap[post?.id] ?? 0;
+    const canRepost = post?.can_repost !== false && post?.type !== 'repost';
+
+    const handleRepostStateChange = (reposted) => {
+        setIsReposted(reposted);
+        window.dispatchEvent(
+            new CustomEvent(POST_REPOST_TOGGLED_EVENT, {
+                detail: { interaction_post_id: interactionPostId, reposted },
+            }),
+        );
+    };
 
     return (
         <>
@@ -229,15 +258,17 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                         <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>Comment</span>
                     </button>
 
-                    {/* Repost Button */}
+                    {/* Repost Button — only on original posts, not repost feed items */}
+                    {canRepost && (
                     <button
                         type="button"
                         className={
                             isFacebook
-                                ? 'flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[15px] font-semibold text-beta transition-colors hover:bg-muted/50 dark:text-light dark:hover:bg-white/5'
-                                : 'flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-beta transition-colors duration-200 hover:bg-dark_gray/10 hover:text-beta dark:text-light dark:hover:bg-light/10'
+                                ? `flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[15px] font-semibold transition-colors hover:bg-muted/50 dark:hover:bg-white/5 ${isReposted ? 'text-alpha' : 'text-beta dark:text-light'}`
+                                : `flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 transition-colors duration-200 ${isReposted ? 'text-alpha' : 'text-beta hover:text-alpha dark:text-light'}`
                         }
                         onClick={() => setRepostOpenFor(post?.id)}
+                        aria-pressed={isReposted}
                     >
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
@@ -247,8 +278,11 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                                 d="M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4m14-2v2a4 4 0 01-4 4H3"
                             />
                         </svg>
-                        <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>Repost</span>
+                        <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>
+                            {isReposted ? 'Reposted' : 'Repost'}
+                        </span>
                     </button>
+                    )}
 
                     {/* Send Button */}
                     <button
@@ -272,7 +306,14 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
             {/* Likes modal */}
             <LikesModal postId={likesOpenFor} open={!!likesOpenFor} onClose={() => setLikesOpenFor(null)} takeToUserProfile={takeToUserProfile} />
 
-            <RepostModal open={!!repostOpenFor} onOpenChange={(open) => setRepostOpenFor(open ? post?.id : null)} user={user} post={post} />
+            <RepostModal
+                open={!!repostOpenFor}
+                onOpenChange={(open) => setRepostOpenFor(open ? post?.id : null)}
+                user={user}
+                post={post}
+                isReposted={isReposted}
+                onRepostStateChange={handleRepostStateChange}
+            />
 
             <SendPostModal open={!!sendOpenFor} onOpenChange={(open) => setSendOpenFor(open ? post?.id : null)} post={post} />
         </>

@@ -91,7 +91,7 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                         <TableHead>Email</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Role</TableHead>
-                        <Rolegard authorized={['admin', 'super_admin', 'moderateur', 'coach']}>
+                        <Rolegard authorized={['admin', 'super_admin']}>
                             <TableHead>Menu</TableHead>
                         </Rolegard>
                     </TableRow>
@@ -112,11 +112,7 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                                     <h1 className="capitalize">{user.name}</h1>
                                     {(() => {
                                         const userRoles = Array.isArray(auth.user.role) ? auth.user.role : [auth.user.role];
-                                        if (
-                                            userRoles.includes('admin') ||
-                                            userRoles.includes('moderateur') ||
-                                            userRoles.includes('studio_responsable')
-                                        ) {
+                                        if (userRoles.includes('admin')) {
                                             return <span className="text-[0.8rem] font-medium text-dark/80 dark:text-light/80">{user.cin}</span>;
                                         }
                                         return null;
@@ -148,7 +144,7 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                                 </div>
                             </TableCell>
 
-                            <Rolegard authorized={['admin', 'super_admin', 'moderateur', 'coach']}>
+                            <Rolegard authorized={['admin', 'super_admin']}>
                                 <TableCell className="flex items-center gap-2 font-medium">
                                     <Button
                                         className="bg-transparent p-2 duration-200 hover:bg-transparent"

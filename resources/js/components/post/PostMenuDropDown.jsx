@@ -26,6 +26,7 @@ const PostMenuDropDown = ({
     isDeleting,
     onReportPost,
 }) => {
+    const isRepostCard = post?.type === 'repost';
     const isOwner = user?.id === post?.user_id;
 
     return (
@@ -39,7 +40,18 @@ const PostMenuDropDown = ({
                 <DropdownMenuContent className="w-56" align="start">
                     <DropdownMenuLabel>Post</DropdownMenuLabel>
                     <DropdownMenuGroup>
-                        {isOwner ? (
+                        {isOwner && isRepostCard ? (
+                            <DropdownMenuItem
+                                onClick={() => {
+                                    if (!isDeleting) {
+                                        openChangeDelete(true);
+                                    }
+                                }}
+                            >
+                                <Trash2 size={16} className="text-red-600" />
+                                <span className="font-semibold text-red-600">{isDeleting ? 'Removing...' : 'Remove repost'}</span>
+                            </DropdownMenuItem>
+                        ) : isOwner ? (
                             <>
                                 <DropdownMenuItem onClick={() => openChangeEdit(true)}>
                                     <Edit size={16} />
@@ -65,42 +77,28 @@ const PostMenuDropDown = ({
                                 }}
                             >
                                 <Flag size={16} className="text-red-600" />
-                                <span className="text-red-600 font-semibold">Report</span>
+                                <span className="font-semibold text-red-600">Report</span>
                             </DropdownMenuItem>
                         )}
                     </DropdownMenuGroup>
                 </DropdownMenuContent>
             </DropdownMenu>
             {openDelete && (
-                <DeleteModal open={openDelete} onOpenChange={openChangeDelete} title="Delete Post" onConfirm={handleDelete} loading={isDeleting} />
+                <DeleteModal
+                    open={openDelete}
+                    onOpenChange={openChangeDelete}
+                    title={isRepostCard ? 'Remove repost' : 'Delete Post'}
+                    description={
+                        isRepostCard
+                            ? 'This removes your repost from the feed. The original post will not be deleted.'
+                            : undefined
+                    }
+                    onConfirm={handleDelete}
+                    loading={isDeleting}
+                />
             )}
             {openEditPost && <EditPost user={user} onOpenChange={openChangeEdit} post={post} />}
         </>
-        // <>
-        //     {/* Dropdown */}
-        //     <div className="absolute top-8 right-2 w-70 py-5 bg-white dark:bg-dark_gray border border-light/20 rounded-lg shadow-lg overflow-hidden z-50">
-        //         <ul className="flex flex-col">
-        //             <>
-        //                 <li onClick={() => openChangeEdit(true)} className="flex items-center gap-2 px-4 py-2 cursor-pointer text-sm text-beta dark:text-light hover:text-beta/70 dark:hover:text-alpha">
-        //                     <Edit size={16} />
-        //                     Update
-        //                 </li>
-        //                 <li
-        //                     onClick={() => {
-        //                         if (!isDeleting) {
-        //                             openChangeDelete(true)
-        //                         }
-        //                     }}
-        //                     className={`flex items-center gap-2 px-4 py-2 cursor-pointer text-sm ${isDeleting ? 'text-error/60 cursor-not-allowed' : 'text-error'}`}
-        //                 >
-        //                     <Trash2 size={16} />
-        //                     {isDeleting ? 'Deleting...' : 'Delete'}
-        //                 </li>
-        //             </>
-        //         </ul>
-        //     </div>
-        //
-        // </>
     );
 };
 

@@ -1,17 +1,21 @@
 import { Button } from '@/components/ui/button';
-import { Camera, Clipboard, Code, Copy, Mail, Plus, Users2 } from 'lucide-react';
+import { Camera, Clipboard, Code, Copy, Plus, Users2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import StatsCard from '../../../../components/StatCard';
 import Rolegard from '@/components/rolegard';
+import { usePage } from '@inertiajs/react';
 import AddUserDialog from './components/AddUserDialog';
 import ExportStudentsDialog from './components/ExportStudentsDialog';
-import SendEmailDialog from './components/SendEmailDialog';
 
-const Header = ({ message, roles, trainings, filteredUsers }) => {
+const Header = ({ trainings, filteredUsers }) => {
+    const { auth } = usePage().props;
     const [isAddUserOpen, setIsAddUserOpen] = useState(false);
     const [isExportOpen, setIsExportOpen] = useState(false);
-    const [isEmailOpen, setIsEmailOpen] = useState(false);
     const [copy, setCopy] = useState(true);
+
+    const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role].filter(Boolean);
+    const canExportSensitiveFields = userRoles.includes('admin') || userRoles.includes('super_admin');
+    const hiddenExportFields = canExportSensitiveFields ? [] : ['cin', 'phone', 'role'];
 
     const emailsToCopy = useMemo(() => {
         return filteredUsers
@@ -57,7 +61,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                 <div></div>
 
                 <div className="flex items-center gap-3">
-                    <Rolegard authorized={['admin', 'super_admin', 'moderateur', 'coach']}>
+                    <Rolegard authorized={['admin', 'super_admin', 'coach']}>
                         {/* Copy Emails */}
                         <Button
                             onClick={handleCopyEmails}
@@ -68,7 +72,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                         </Button>
 
                         {/* Export Dialog */}
-                        <ExportStudentsDialog open={isExportOpen} setOpen={setIsExportOpen} />
+                        <ExportStudentsDialog open={isExportOpen} setOpen={setIsExportOpen} hiddenFields={hiddenExportFields} />
 
                         <Button
                             className="cursor-pointer border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-7 py-4 text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
@@ -76,7 +80,9 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                         >
                             Export Students
                         </Button>
+                    </Rolegard>
 
+                    <Rolegard authorized={['admin', 'super_admin']}>
                         {/* Add User Dialog */}
                         <AddUserDialog open={isAddUserOpen} setOpen={setIsAddUserOpen} trainings={trainings} />
 
@@ -85,16 +91,6 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                             onClick={() => setIsAddUserOpen(true)}
                         >
                             <Plus /> Add User
-                        </Button>
-
-                        {/* Send Email Dialog */}
-                        <SendEmailDialog open={isEmailOpen} setOpen={setIsEmailOpen} trainings={trainings} roles={roles} filteredUsers={filteredUsers} />
-
-                        <Button
-                            onClick={() => setIsEmailOpen(true)}
-                            className="flex cursor-pointer gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-7 py-4 text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
-                        >
-                            <Mail /> Send Email
                         </Button>
                     </Rolegard>
                 </div>
