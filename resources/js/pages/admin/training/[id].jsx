@@ -21,6 +21,7 @@ import {
     RefreshCw,
     Settings,
     User,
+    UserCheck,
     UserPlus,
     Users,
 } from 'lucide-react';
@@ -204,43 +205,19 @@ export default function Show({ training, usersNull, courses = [] }) {
                 const key = `${dateStr}-${s.id}`;
                 const saved = byUserId.get(s.id);
                 const base = getDefaultSlots(s);
+                const studentMarkedSlots = Array.isArray(saved?.student_marked_slots) ? saved.student_marked_slots : [];
 
                 initialized[key] = {
-                    morning: saved?.morning ?? base.morning,
-                    lunch: saved?.lunch ?? base.lunch,
-                    evening: saved?.evening ?? base.evening,
+                    morning: resolveSlotDisplayValue('morning', saved, base, studentMarkedSlots),
+                    lunch: resolveSlotDisplayValue('lunch', saved, base, studentMarkedSlots),
+                    evening: resolveSlotDisplayValue('evening', saved, base, studentMarkedSlots),
                     notes: saved?.note ? String(saved.note).split(' | ').filter(Boolean) : base.notes,
                     user_id: s.id,
+                    studentMarkedSlots,
                 };
             });
 
             setAttendanceData((prev) => ({ ...prev, ...initialized }));
-
-            if (existing.length === 0) {
-                const dataToSave = students.map((s) => {
-                    const base = getDefaultSlots(s);
-                    return {
-                        user_id: s.id,
-                        attendance_day: dateStr,
-                        attendance_id: Number(data.attendance_id),
-                        morning: base.morning,
-                        lunch: base.lunch,
-                        evening: base.evening,
-                        note: null,
-                    };
-                });
-
-                fetch('/admin/attendance/save', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrf,
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({ attendance: dataToSave }),
-                }).catch(() => {});
-            }
 
             setShowAttendanceList(true);
         } catch (err) {}
@@ -258,7 +235,7 @@ export default function Show({ training, usersNull, courses = [] }) {
             return {
                 user_id: studentId,
                 attendance_day: selectedDate,
-                attendance_id: Number(currentAttendanceId),
+                attendance_id: currentAttendanceId ? Number(currentAttendanceId) : null,
                 morning: value.morning,
                 lunch: value.lunch,
                 evening: value.evening,
@@ -267,7 +244,7 @@ export default function Show({ training, usersNull, courses = [] }) {
         });
 
         try {
-            if (!currentAttendanceId || !selectedDate) return;
+            if (!selectedDate) return;
             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
             const res = await fetch('/admin/attendance/save', {
                 method: 'POST',
@@ -277,9 +254,16 @@ export default function Show({ training, usersNull, courses = [] }) {
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 credentials: 'same-origin',
-                body: JSON.stringify({ attendance: dataToSave }),
+                body: JSON.stringify({
+                    formation_id: training.id,
+                    attendance: dataToSave,
+                }),
             });
             if (!res.ok) return;
+            const saveResult = await res.json().catch(() => ({}));
+            if (saveResult?.attendance_id) {
+                setCurrentAttendanceId(saveResult.attendance_id);
+            }
             setShowAttendanceList(false);
             try {
                 const evRes = await fetch(`/training/${training.id}/attendance-events`);
@@ -350,6 +334,60 @@ export default function Show({ training, usersNull, courses = [] }) {
         }
         return { morning: 'present', lunch: 'present', evening: 'present', notes: [] };
     };
+
+    const isStudentCheckInNote = (note) => /^Check-in at \d{2}:\d{2}$/.test(String(note ?? '').trim());
+
+    const resolveSlotDisplayValue = (slot, saved, base, studentMarkedSlots) => {
+        if (studentMarkedSlots.includes(slot)) {
+            return saved?.[slot] ?? base[slot];
+        }
+        if (saved?.[slot]) {
+            return saved[slot];
+        }
+        return base[slot];
+    };
+
+    const isStudentMarkedSlot = (currentData, slot) => Array.isArray(currentData?.studentMarkedSlots) && currentData.studentMarkedSlots.includes(slot);
+
+    const renderSlotSelect = (studentKey, currentData, slot, placeholder) => {
+        const value = currentData[slot] ?? 'present';
+        const studentMarked = isStudentMarkedSlot(currentData, slot);
+
+        return (
+            <div className="relative">
+                {studentMarked && (
+                    <span
+                        className="mb-1 inline-flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300"
+                        title="Student self check-in — preserved on save"
+                    >
+                        <UserCheck className="h-3 w-3" />
+                        Student
+                    </span>
+                )}
+                <Select
+                    value={value}
+                    disabled={studentMarked}
+                    onValueChange={(val) => {
+                        if (studentMarked) return;
+                        const newData = { ...currentData, [slot]: val };
+                        setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
+                    }}
+                >
+                    <SelectTrigger
+                        className={`h-10 rounded-xl border text-sm ${studentMarked ? 'cursor-not-allowed opacity-90' : ''} ${statusClass(value) || 'border-alpha/30'}`}
+                    >
+                        <SelectValue placeholder={placeholder} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="present">Present</SelectItem>
+                        <SelectItem value="absent">Absent</SelectItem>
+                        <SelectItem value="late">Late</SelectItem>
+                        <SelectItem value="excused">Excused</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+        );
+    };
     // Notes helpers: add/remove chip-style notes per student
     const addNote = (studentKey, noteText) => {
         const text = (noteText || '').trim();
@@ -383,6 +421,10 @@ export default function Show({ training, usersNull, courses = [] }) {
                 : prevForStudent.notes
                   ? [prevForStudent.notes]
                   : [];
+
+            if (isStudentCheckInNote(existingNotes[index])) {
+                return prev;
+            }
 
             existingNotes.splice(index, 1);
 
@@ -1002,65 +1044,9 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                     </div>
                                                 </div>
                                                 <div className="grid grid-cols-1 gap-2">
-                                                    <Select
-                                                        value={currentData.morning ?? 'present'}
-                                                        onValueChange={(val) => {
-                                                            const newData = { ...currentData, morning: val };
-                                                            setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
-                                                        }}
-                                                    >
-                                                        <SelectTrigger
-                                                            className={`h-10 rounded-xl border text-sm ${statusClass(currentData.morning ?? 'present') || 'border-alpha/30'}`}
-                                                        >
-                                                            <SelectValue placeholder="9:30 - 11:00" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="present">Present</SelectItem>
-                                                            <SelectItem value="absent">Absent</SelectItem>
-                                                            <SelectItem value="late">Late</SelectItem>
-                                                            <SelectItem value="excused">Excused</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-
-                                                    <Select
-                                                        value={currentData.lunch ?? 'present'}
-                                                        onValueChange={(val) => {
-                                                            const newData = { ...currentData, lunch: val };
-                                                            setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
-                                                        }}
-                                                    >
-                                                        <SelectTrigger
-                                                            className={`h-10 rounded-xl border text-sm ${statusClass(currentData.lunch ?? 'present') || 'border-alpha/30'}`}
-                                                        >
-                                                            <SelectValue placeholder="11:30 - 13:00" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="present">Present</SelectItem>
-                                                            <SelectItem value="absent">Absent</SelectItem>
-                                                            <SelectItem value="late">Late</SelectItem>
-                                                            <SelectItem value="excused">Excused</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-
-                                                    <Select
-                                                        value={currentData.evening ?? 'present'}
-                                                        onValueChange={(val) => {
-                                                            const newData = { ...currentData, evening: val };
-                                                            setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
-                                                        }}
-                                                    >
-                                                        <SelectTrigger
-                                                            className={`h-10 rounded-xl border text-sm ${statusClass(currentData.evening ?? 'present') || 'border-alpha/30'}`}
-                                                        >
-                                                            <SelectValue placeholder="14:00 - 17:00" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="present">Present</SelectItem>
-                                                            <SelectItem value="absent">Absent</SelectItem>
-                                                            <SelectItem value="late">Late</SelectItem>
-                                                            <SelectItem value="excused">Excused</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
+                                                    {renderSlotSelect(studentKey, currentData, 'morning', '9:30 - 11:00')}
+                                                    {renderSlotSelect(studentKey, currentData, 'lunch', '11:30 - 13:00')}
+                                                    {renderSlotSelect(studentKey, currentData, 'evening', '14:00 - 17:00')}
 
                                                     <div className="flex flex-wrap items-center gap-2 rounded-xl border border-alpha/30 bg-light p-2 dark:bg-dark">
                                                         {Array.isArray(currentData.notes) &&
@@ -1070,13 +1056,15 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                                     className="inline-flex items-center gap-2 rounded-full bg-secondary/50 px-3 py-1 text-xs"
                                                                 >
                                                                     {n}
-                                                                    <button
-                                                                        type="button"
-                                                                        className="text-red-500 hover:text-red-600"
-                                                                        onClick={() => removeNote(studentKey, idx)}
-                                                                    >
-                                                                        ×
-                                                                    </button>
+                                                                    {!isStudentCheckInNote(n) && (
+                                                                        <button
+                                                                            type="button"
+                                                                            className="text-red-500 hover:text-red-600"
+                                                                            onClick={() => removeNote(studentKey, idx)}
+                                                                        >
+                                                                            ×
+                                                                        </button>
+                                                                    )}
                                                                 </span>
                                                             ))}
                                                         <div className="flex w-full items-center gap-2 sm:w-auto">
@@ -1153,71 +1141,17 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                             </td>
                                                             <td className="px-4 py-3 text-center">
                                                                 <div className="inline-block min-w-[150px]">
-                                                                    <Select
-                                                                        value={currentData.morning ?? 'present'}
-                                                                        onValueChange={(val) => {
-                                                                            const newData = { ...currentData, morning: val };
-                                                                            setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
-                                                                        }}
-                                                                    >
-                                                                        <SelectTrigger
-                                                                            className={`h-10 rounded-xl border text-sm focus:ring-[var(--color-alpha)]/40 ${statusClass(currentData.morning ?? 'present') || 'border-alpha/30'}`}
-                                                                        >
-                                                                            <SelectValue placeholder="Morning" />
-                                                                        </SelectTrigger>
-                                                                        <SelectContent>
-                                                                            <SelectItem value="present">Present</SelectItem>
-                                                                            <SelectItem value="absent">Absent</SelectItem>
-                                                                            <SelectItem value="late">Late</SelectItem>
-                                                                            <SelectItem value="excused">Excused</SelectItem>
-                                                                        </SelectContent>
-                                                                    </Select>
+                                                                    {renderSlotSelect(studentKey, currentData, 'morning', 'Morning')}
                                                                 </div>
                                                             </td>
                                                             <td className="px-4 py-3 text-center">
                                                                 <div className="inline-block min-w-[150px]">
-                                                                    <Select
-                                                                        value={currentData.lunch ?? 'present'}
-                                                                        onValueChange={(val) => {
-                                                                            const newData = { ...currentData, lunch: val };
-                                                                            setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
-                                                                        }}
-                                                                    >
-                                                                        <SelectTrigger
-                                                                            className={`h-10 rounded-xl border text-sm focus:ring-[var(--color-alpha)]/40 ${statusClass(currentData.lunch ?? 'present') || 'border-alpha/30'}`}
-                                                                        >
-                                                                            <SelectValue placeholder="11:30 - 13:00" />
-                                                                        </SelectTrigger>
-                                                                        <SelectContent>
-                                                                            <SelectItem value="present">Present</SelectItem>
-                                                                            <SelectItem value="absent">Absent</SelectItem>
-                                                                            <SelectItem value="late">Late</SelectItem>
-                                                                            <SelectItem value="excused">Excused</SelectItem>
-                                                                        </SelectContent>
-                                                                    </Select>
+                                                                    {renderSlotSelect(studentKey, currentData, 'lunch', '11:30 - 13:00')}
                                                                 </div>
                                                             </td>
                                                             <td className="px-4 py-3 text-center">
                                                                 <div className="inline-block min-w-[150px]">
-                                                                    <Select
-                                                                        value={currentData.evening ?? 'present'}
-                                                                        onValueChange={(val) => {
-                                                                            const newData = { ...currentData, evening: val };
-                                                                            setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
-                                                                        }}
-                                                                    >
-                                                                        <SelectTrigger
-                                                                            className={`h-10 rounded-xl border text-sm focus:ring-[var(--color-alpha)]/40 ${statusClass(currentData.evening ?? 'present') || 'border-alpha/30'}`}
-                                                                        >
-                                                                            <SelectValue placeholder="14:00 - 17:00" />
-                                                                        </SelectTrigger>
-                                                                        <SelectContent>
-                                                                            <SelectItem value="present">Present</SelectItem>
-                                                                            <SelectItem value="absent">Absent</SelectItem>
-                                                                            <SelectItem value="late">Late</SelectItem>
-                                                                            <SelectItem value="excused">Excused</SelectItem>
-                                                                        </SelectContent>
-                                                                    </Select>
+                                                                    {renderSlotSelect(studentKey, currentData, 'evening', '14:00 - 17:00')}
                                                                 </div>
                                                             </td>
 

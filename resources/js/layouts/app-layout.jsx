@@ -25,6 +25,7 @@ function isStudentPublicShellPath(pathname) {
         '/students/leaderboard',
         '/students/spaces',
         '/students/reservations',
+        '/students/attendance',
         '/students/projects',
         '/students/project',
     ];

@@ -313,6 +313,7 @@ require __DIR__.'/admin/projects.php';
 require __DIR__.'/admin/recruitment.php';
 require __DIR__.'/admin/games.php';
 require __DIR__.'/students/exercises.php';
+require __DIR__.'/students/attendance.php';
 require __DIR__.'/students/students.php';
 require __DIR__.'/organisation.php';
 require __DIR__.'/recruiter.php';

@@ -21,6 +21,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/attendances', [TrainingController::class, 'attendance']);
     Route::post('/attendance/save', [TrainingController::class, 'save'])
         ->middleware('school.network');
+    Route::post('/attendance/check-in', [TrainingController::class, 'checkIn'])
+        ->middleware('school.network');
+    Route::get('/attendance/slot-status', [TrainingController::class, 'slotStatus'])
+        ->middleware('school.network');
     Route::get('/attendance/network-check', function () {
         return response()->json(['ok' => true]);
     })->middleware('school.network');
