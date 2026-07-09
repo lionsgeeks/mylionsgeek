@@ -51,6 +51,7 @@ require __DIR__ . '/students/exercises.php';
 require __DIR__ . '/students/students.php';
 require __DIR__ . '/students/posts.php';
 require __DIR__ . '/studentProjects.php';
+require __DIR__.'/students/attendance.php';
 
 // Organisation & recruiter
 require __DIR__ . '/organisation.php';

@@ -7,10 +7,13 @@ use App\Models\AttendanceListe;
 use App\Models\Formation;
 use App\Models\Note;
 use App\Models\User;
+use App\Services\AttendanceLegacyIdService;
 use App\Services\AttendanceNoteService;
 use App\Services\CertificatePdfGenerator;
 use App\Services\CertificateTrackResolver;
+use App\Services\CoachAttendanceSaveService;
 use App\Services\DisciplineService;
+use App\Services\StudentCheckInSlotService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -167,44 +170,29 @@ class FormationController extends Controller
         return back()->with('success', 'Student removed');
     }
 
-    // attendance
-    public function attendance(Request $request)
+    // attendance — read-only load for calendar open (no rows created until explicit Save)
+    public function attendance(Request $request, StudentCheckInSlotService $studentCheckInSlotService, AttendanceLegacyIdService $legacyIdService)
     {
         $request->validate([
             'formation_id' => 'required|integer|exists:formations,id',
             'attendance_day' => 'required|date',
         ]);
-        // Find existing attendance for formation + day or create one
+
         $attendance = Attendance::where('formation_id', $request->formation_id)
             ->whereDate('attendance_day', $request->attendance_day)
             ->first();
 
         if (! $attendance) {
-            $attendance = Attendance::create([
-                'formation_id' => $request->formation_id,
-                'attendance_day' => $request->attendance_day,
-                'staff_name' => Auth::user()->name,
+            return response()->json([
+                'attendance_id' => null,
+                'lists' => [],
+                'staff_name' => null,
             ]);
         }
 
-        // If a legacy record was created earlier with a UUID string as id, replace it with a fresh integer id record
         // Normalize legacy IDs: if non-numeric, migrate to fresh numeric id
-        if ($attendance && ! is_numeric($attendance->id)) {
-            $new = Attendance::create([
-                'formation_id' => $request->formation_id,
-                'attendance_day' => $request->attendance_day,
-                'staff_name' => Auth::user()->name,
-            ]);
-            // migrate any list rows
-            AttendanceListe::where('attendance_id', $attendance->id)
-                ->update(['attendance_id' => $new->id]);
-            // optional: migrate notes
-            Note::where('attendance_id', $attendance->id)
-                ->update(['attendance_id' => $new->id]);
-            $attendance = $new;
-        }
+        $attendance = $legacyIdService->ensureNumericId($attendance, Auth::user()->name ?? 'Staff');
 
-        // Load existing list entries and attach notes per user (joined as one string)
         $lists = AttendanceListe::where('attendance_id', $attendance->id)
             ->get(['user_id', 'attendance_day', 'morning', 'lunch', 'evening']);
 
@@ -217,8 +205,20 @@ class FormationController extends Controller
                 return $group->pluck('note')->implode(' | ');
             });
 
-        $lists = $lists->map(function ($row) use ($notesByUser) {
-            $row->note = $notesByUser[$row->user_id] ?? null;
+        $attendanceDay = $request->attendance_day;
+
+        $lists = $lists->map(function ($row) use ($notesByUser, $studentCheckInSlotService, $attendanceDay) {
+            $note = $notesByUser[$row->user_id] ?? null;
+            $row->note = $note;
+            $row->student_marked_slots = $studentCheckInSlotService->studentMarkedSlots(
+                $attendanceDay,
+                $note,
+                [
+                    'morning' => $row->morning,
+                    'lunch' => $row->lunch,
+                    'evening' => $row->evening,
+                ],
+            );
 
             return $row;
         });
@@ -248,11 +248,12 @@ class FormationController extends Controller
     }
 
     // attendance list
-    public function save(Request $request)
+    public function save(Request $request, CoachAttendanceSaveService $coachAttendanceSaveService, AttendanceLegacyIdService $legacyIdService)
     {
         $request->validate([
             'attendance' => 'required|array|min:1',
-            'attendance.*.attendance_id' => 'required|integer|exists:attendances,id',
+            'formation_id' => 'nullable|integer|exists:formations,id',
+            'attendance.*.attendance_id' => 'nullable|integer|exists:attendances,id',
             'attendance.*.user_id' => 'required|exists:users,id',
             'attendance.*.attendance_day' => 'required|date',
             'attendance.*.morning' => 'nullable|string|in:present,absent,late,excused',
@@ -264,32 +265,108 @@ class FormationController extends Controller
         $lastAttendanceId = null;
         $disciplineService = new DisciplineService;
         $attendanceNoteService = new AttendanceNoteService;
+        $staffName = Auth::user()->name ?? 'Staff';
+
+        $userIds = collect($request->attendance)
+            ->pluck('user_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $sharedAttendanceId = null;
+        foreach ($request->attendance as $row) {
+            if (isset($row['attendance_id']) && is_numeric($row['attendance_id'])) {
+                $sharedAttendanceId = (int) $row['attendance_id'];
+                break;
+            }
+        }
+
+        if ($sharedAttendanceId !== null) {
+            $attendance = Attendance::find($sharedAttendanceId);
+            if ($attendance) {
+                $sharedAttendanceId = (int) $legacyIdService->ensureNumericId($attendance, $staffName)->id;
+            }
+        } else {
+            $formationId = $request->input('formation_id');
+            $batchDay = $request->attendance[0]['attendance_day'] ?? null;
+            if ($formationId && $batchDay) {
+                $attendance = Attendance::firstOrCreate(
+                    [
+                        'formation_id' => (int) $formationId,
+                        'attendance_day' => $batchDay,
+                    ],
+                    ['staff_name' => $staffName],
+                );
+                $sharedAttendanceId = (int) $legacyIdService->ensureNumericId($attendance, $staffName)->id;
+            }
+        }
+
+        $saveContextsByAttendanceId = [];
+        if ($sharedAttendanceId !== null) {
+            $saveContextsByAttendanceId[$sharedAttendanceId] = $coachAttendanceSaveService->preloadSaveContext(
+                $sharedAttendanceId,
+                $userIds,
+            );
+        }
 
         foreach ($request->attendance as $data) {
             $attendanceId = isset($data['attendance_id']) && is_numeric($data['attendance_id'])
                 ? (int) $data['attendance_id']
-                : null;
+                : $sharedAttendanceId;
 
             if ($attendanceId === null) {
-                continue;
+                $formationId = $request->input('formation_id');
+                if (! $formationId) {
+                    continue;
+                }
+
+                $attendance = Attendance::firstOrCreate(
+                    [
+                        'formation_id' => (int) $formationId,
+                        'attendance_day' => $data['attendance_day'],
+                    ],
+                    ['staff_name' => $staffName],
+                );
+                $attendanceId = (int) $legacyIdService->ensureNumericId($attendance, $staffName)->id;
+            } elseif ($attendanceId !== $sharedAttendanceId) {
+                $attendance = Attendance::find($attendanceId);
+                if ($attendance) {
+                    $attendanceId = (int) $legacyIdService->ensureNumericId($attendance, $staffName)->id;
+                }
+            }
+
+            if (! isset($saveContextsByAttendanceId[$attendanceId])) {
+                $saveContextsByAttendanceId[$attendanceId] = $coachAttendanceSaveService->preloadSaveContext(
+                    $attendanceId,
+                    $userIds,
+                );
             }
 
             $lastAttendanceId = $attendanceId;
 
-            //  GET OLD DISCIPLINE BEFORE UPDATE
             $user = User::find($data['user_id']);
             if (! $user) {
                 continue;
             }
 
-            // Calculate discipline BEFORE updating attendance
             $oldDiscipline = $disciplineService->calculateDisciplineScore($user);
+
+            $coachSlots = [
+                'morning' => $data['morning'] ?? 'absent',
+                'lunch' => $data['lunch'] ?? 'absent',
+                'evening' => $data['evening'] ?? 'absent',
+            ];
 
             $payload = [
                 'attendance_day' => $data['attendance_day'],
-                'morning' => $data['morning'] ?? 'present',
-                'lunch' => $data['lunch'] ?? 'present',
-                'evening' => $data['evening'] ?? 'present',
+                ...$coachAttendanceSaveService->resolveSlotsForSave(
+                    $attendanceId,
+                    (int) $data['user_id'],
+                    $data['attendance_day'],
+                    $coachSlots,
+                    $saveContextsByAttendanceId[$attendanceId],
+                ),
             ];
 
             AttendanceListe::updateOrCreate(
@@ -300,8 +377,6 @@ class FormationController extends Controller
                 $payload
             );
 
-            //  Process discipline change and create notification if threshold crossed
-            // Only notifies on 5% threshold changes (100, 95, 90, 85, ...)
             $disciplineService->processDisciplineChange($user, $oldDiscipline);
 
             $attendanceNoteService->syncNotes(
@@ -312,12 +387,11 @@ class FormationController extends Controller
             );
         }
 
-        // Tag latest editor name on attendance row
         if (! empty($lastAttendanceId)) {
             Attendance::where('id', $lastAttendanceId)->update(['staff_name' => Auth::user()->name]);
         }
 
-        return response()->json(['status' => 'ok']);
+        return response()->json(['status' => 'ok', 'attendance_id' => $lastAttendanceId]);
     }
 
     // Update formation

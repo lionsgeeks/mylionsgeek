@@ -8,8 +8,10 @@ use App\Models\AttendanceListe;
 use App\Models\Note;
 use App\Models\Formation;
 use App\Models\User;
-use App\Services\AttendanceNoteService;
-use App\Services\DisciplineService;
+use App\Services\AttendanceCheckInService;
+use App\Services\AttendanceLegacyIdService;
+use App\Services\AttendancePersistenceService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -437,7 +439,7 @@ class TrainingController extends Controller
         ]);
     }
 
-    public function attendance(Request $request)
+    public function attendance(Request $request, AttendanceLegacyIdService $legacyIdService)
     {
         $checkResult = $this->checkRequestedUser();
         if ($checkResult) {
@@ -449,6 +451,8 @@ class TrainingController extends Controller
             'attendance_day' => 'required|date',
         ]);
 
+        $staffName = Auth::guard('sanctum')->user()->name ?? 'Staff';
+
         // Find existing attendance for formation + day or create one
         $attendance = Attendance::where('formation_id', $request->formation_id)
             ->whereDate('attendance_day', $request->attendance_day)
@@ -458,25 +462,11 @@ class TrainingController extends Controller
             $attendance = Attendance::create([
                 'formation_id' => $request->formation_id,
                 'attendance_day' => $request->attendance_day,
-                'staff_name' => Auth::guard('sanctum')->user()->name ?? 'Staff',
+                'staff_name' => $staffName,
             ]);
         }
 
-        // If a legacy record was created earlier with a UUID string as id, replace it with a fresh integer id record
-        if ($attendance && !is_numeric($attendance->id)) {
-            $new = Attendance::create([
-                'formation_id' => $request->formation_id,
-                'attendance_day' => $request->attendance_day,
-                'staff_name' => Auth::guard('sanctum')->user()->name ?? 'Staff',
-            ]);
-            // migrate any list rows
-            AttendanceListe::where('attendance_id', $attendance->id)
-                ->update(['attendance_id' => $new->id]);
-            // optional: migrate notes
-            Note::where('attendance_id', $attendance->id)
-                ->update(['attendance_id' => $new->id]);
-            $attendance = $new;
-        }
+        $attendance = $legacyIdService->ensureNumericId($attendance, $staffName);
 
         // Load existing list entries and attach notes per user (joined as one string)
         $lists = AttendanceListe::where('attendance_id', $attendance->id)
@@ -652,7 +642,7 @@ class TrainingController extends Controller
         return 'present';
     }
 
-    public function save(Request $request)
+    public function save(Request $request, AttendancePersistenceService $persistence)
     {
         $checkResult = $this->checkRequestedUser();
         if ($checkResult) {
@@ -670,9 +660,6 @@ class TrainingController extends Controller
             'attendance.*.note' => 'nullable|string',
         ]);
 
-        $lastAttendanceId = null;
-        $disciplineService = new DisciplineService();
-        $attendanceNoteService = new AttendanceNoteService();
         $user = Auth::guard('sanctum')->user();
 
         foreach ($request->attendance as $data) {
@@ -684,50 +671,78 @@ class TrainingController extends Controller
                 continue;
             }
 
-            $lastAttendanceId = $attendanceId;
-
-            // GET OLD DISCIPLINE BEFORE UPDATE
             $attendanceUser = User::find($data['user_id']);
             if (!$attendanceUser) {
                 continue;
             }
 
-            // Calculate discipline BEFORE updating attendance
-            $oldDiscipline = $disciplineService->calculateDisciplineScore($attendanceUser);
-
-            $payload = [
-                'attendance_day' => $data['attendance_day'],
-                'morning' => $data['morning'] ?? 'present',
-                'lunch' => $data['lunch'] ?? 'present',
-                'evening' => $data['evening'] ?? 'present',
-            ];
-
-            AttendanceListe::updateOrCreate(
-                [
-                    'attendance_id' => $attendanceId,
-                    'user_id' => $data['user_id'],
-                ],
-                $payload
-            );
-
-            // Process discipline change and create notification if threshold crossed
-            $disciplineService->processDisciplineChange($attendanceUser, $oldDiscipline);
-
-            // notes were duplicated each time admin hit saved or student scan qr code 
-            $attendanceNoteService->syncNotes(
-                (int) $data['user_id'],
+            $persistence->persistStudentRow(
                 $attendanceId,
+                (int) $data['user_id'],
+                $data['attendance_day'],
+                [
+                    'morning' => $data['morning'] ?? 'absent',
+                    'lunch' => $data['lunch'] ?? 'absent',
+                    'evening' => $data['evening'] ?? 'absent',
+                ],
                 $data['note'] ?? null,
                 $user->name ?? 'Staff',
             );
         }
 
-        // Tag latest editor name on attendance row
-        if (!empty($lastAttendanceId)) {
-            Attendance::where('id', $lastAttendanceId)->update(['staff_name' => $user->name ?? 'Staff']);
+        return response()->json(['status' => 'ok']);
+    }
+
+    /**
+     * Server-authoritative student check-in (slot + status from server clock).
+     */
+    public function checkIn(
+        Request $request,
+        AttendanceCheckInService $checkInService,
+    ) {
+        $checkResult = $this->checkRequestedUser();
+        if ($checkResult) {
+            return $checkResult;
         }
 
-        return response()->json(['status' => 'ok']);
+        $validated = $request->validate([
+            'formation_id' => 'required|integer|exists:formations,id',
+            'attendance_day' => 'nullable|date',
+        ]);
+
+        $authUser = Auth::guard('sanctum')->user();
+        $attendanceDay = $checkInService->resolveAttendanceDay($validated['attendance_day'] ?? null);
+
+        return response()->json($checkInService->checkIn(
+            $authUser,
+            (int) $validated['formation_id'],
+            $attendanceDay,
+        ));
+    }
+
+    /**
+     * Read-only slot state for check-in UI (server clock).
+     */
+    public function slotStatus(Request $request, AttendanceCheckInService $checkInService)
+    {
+        $checkResult = $this->checkRequestedUser();
+        if ($checkResult) {
+            return $checkResult;
+        }
+
+        $validated = $request->validate([
+            'formation_id' => 'required|integer|exists:formations,id',
+            'attendance_day' => 'nullable|date',
+        ]);
+
+        $authUser = Auth::guard('sanctum')->user();
+        $attendanceDay = $checkInService->resolveAttendanceDay($validated['attendance_day'] ?? null);
+
+        return response()->json($checkInService->slotStatus(
+            $authUser,
+            (int) $validated['formation_id'],
+            $attendanceDay,
+        ));
     }
 
 }

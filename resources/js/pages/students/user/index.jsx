@@ -1,4 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
+import StudentAttendanceReminderBanner from '@/components/student-attendance-reminder-banner';
 import CenterFeed from './partials/feed/CenterFeed';
 import LeftSideBar from './partials/feed/LeftSideBar';
 // import RightSideBar from './partials/RightSideBar';
@@ -9,7 +10,8 @@ export default function StudentFeed({ user, feedPosts, feedNextCursor, feedHasMo
     return (
         <>
             <AppLayout>
-                <div className="z-30 dark:bg-dark">
+                <StudentAttendanceReminderBanner />
+                <div className="dark:bg-dark">
                     <div className="min-h-screen bg-transparent">
                         {/* Main Container */}
                         <div className="mx-auto max-w-7xl px-4 bg-blend-darken">
