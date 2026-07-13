@@ -80,7 +80,7 @@ class CompleteProfileController extends Controller
             'cin' => 'nullable|string|max:10|unique:users,cin,' . $user->id,
             'entreprise' => 'nullable|string|max:255',
             'status' => 'nullable|string|max:255',
-            'image' => 'nullable|image|max:2048', // max 2MB
+            'image' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif|max:2048', // max 2MB
         ]);
 
         // ✅ Handle image upload (optional)

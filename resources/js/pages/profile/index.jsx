@@ -2,10 +2,12 @@
 
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
-// import { input } from "@/components/ui/input";
+import imageCompression from 'browser-image-compression';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Camera, Eye, EyeOff } from 'lucide-react';
+
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2MB — matches backend validation
 
 const CompleteProfile = ({ user }) => {
     const { data, setData, post, processing, errors, setError } = useForm({
@@ -22,17 +24,59 @@ const CompleteProfile = ({ user }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [validationErrors, setValidationErrors] = useState({});
+    const [compressingImage, setCompressingImage] = useState(false);
 
-    const handleImageChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setData('image', file);
-            setValidationErrors({ ...validationErrors, image: '' });
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImagePreview(reader.result);
-            };
-            reader.readAsDataURL(file);
+    const handleImageChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) {
+            return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+            setData('image', null);
+            setImagePreview(null);
+            setValidationErrors((prev) => ({ ...prev, image: 'Please select a valid image file (JPG, PNG, etc.).' }));
+            e.target.value = '';
+            return;
+        }
+
+        setCompressingImage(true);
+        setValidationErrors((prev) => ({ ...prev, image: '' }));
+
+        try {
+            const compressed = await imageCompression(file, {
+                maxSizeMB: 1,
+                maxWidthOrHeight: 1500,
+                useWebWorker: true,
+            });
+
+            if (compressed.size > MAX_IMAGE_BYTES) {
+                setData('image', null);
+                setImagePreview(null);
+                setValidationErrors((prev) => ({
+                    ...prev,
+                    image: 'Image is still too large after compression. Please choose a smaller photo (max 2MB).',
+                }));
+                return;
+            }
+
+            setData('image', compressed);
+            setImagePreview(URL.createObjectURL(compressed));
+        } catch {
+            if (file.size > MAX_IMAGE_BYTES) {
+                setData('image', null);
+                setImagePreview(null);
+                setValidationErrors((prev) => ({
+                    ...prev,
+                    image: 'Image is too large (max 2MB). Please choose a smaller photo.',
+                }));
+            } else {
+                setData('image', file);
+                setImagePreview(URL.createObjectURL(file));
+            }
+        } finally {
+            setCompressingImage(false);
+            e.target.value = '';
         }
     };
 
@@ -109,12 +153,20 @@ const CompleteProfile = ({ user }) => {
                                     )}
                                 </div>
                             </div>
-                            <label htmlFor="image-upload" className="mt-3 cursor-pointer">
+                            <label htmlFor="image-upload" className={`mt-3 cursor-pointer ${compressingImage ? 'pointer-events-none opacity-60' : ''}`}>
                                 <div className="rounded-lg bg-gray-800 px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-gray-700">
-                                    Upload Image
+                                    {compressingImage ? 'Compressing…' : 'Upload Image'}
                                 </div>
-                                <input id="image-upload" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                                <input
+                                    id="image-upload"
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/jpg,image/webp,image/gif"
+                                    onChange={handleImageChange}
+                                    className="hidden"
+                                    disabled={compressingImage}
+                                />
                             </label>
+                            <p className="mt-2 text-xs text-gray-500">JPG, PNG or WEBP — large photos are compressed automatically (max 2MB).</p>
                             {(validationErrors.image || errors.image) && (
                                 <span className="mt-2 text-sm text-red-500">{validationErrors.image || errors.image}</span>
                             )}
@@ -240,10 +292,10 @@ const CompleteProfile = ({ user }) => {
                             <Button
                                 type="button"
                                 onClick={() => handleSubmit(user.activation_token)}
-                                disabled={processing}
+                                disabled={processing || compressingImage}
                                 className="w-full rounded-lg bg-alpha px-6 py-2.5 font-semibold text-black hover:bg-alpha hover:text-black"
                             >
-                                {processing ? 'Submitting...' : 'Next'}
+                                {processing ? 'Submitting...' : compressingImage ? 'Compressing image…' : 'Next'}
                             </Button>
                         </div>
                     </form>
