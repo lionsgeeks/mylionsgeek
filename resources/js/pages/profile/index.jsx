@@ -43,14 +43,6 @@ const CompleteProfile = ({ user }) => {
             newErrors.phone = 'Phone number is required';
         }
 
-        if (!data.cin || data.cin.trim() === '') {
-            newErrors.cin = 'CIN is required';
-        }
-
-        if (!data.entreprise || data.entreprise.trim() === '') {
-            newErrors.entreprise = 'Entreprise is required';
-        }
-
         if (!data.password || data.password.trim() === '') {
             newErrors.password = 'Password is required';
         } else {
