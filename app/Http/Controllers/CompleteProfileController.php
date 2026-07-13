@@ -68,17 +68,20 @@ class CompleteProfileController extends Controller
             return Inertia::render('profile/ExpiredLink');
         }
 
-        // dd($request->all());
-        // ✅ Validate incoming request
+        // Empty strings → null so nullable + unique rules work correctly
+        $request->merge([
+            'cin' => $request->filled('cin') ? $request->input('cin') : null,
+            'entreprise' => $request->filled('entreprise') ? $request->input('entreprise') : null,
+        ]);
+
         $validated = $request->validate([
             'password' => 'required|string|min:8|confirmed',
             'phone' => 'required|string|max:15',
-            'cin' => 'required|string|max:10|unique:users,cin,' . $user->id,
-            'entreprise' => 'required|string|max:255',
+            'cin' => 'nullable|string|max:10|unique:users,cin,' . $user->id,
+            'entreprise' => 'nullable|string|max:255',
             'status' => 'nullable|string|max:255',
-            'image' => 'nullable|image|max:2048', // max 2MB
+            'image' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif|max:2048', // max 2MB
         ]);
-        // dd($validated);
 
         // ✅ Handle image upload (optional)
         if ($request->hasFile('image')) {
@@ -97,11 +100,11 @@ class CompleteProfileController extends Controller
         // ✅ Update user fields
         $user->password = Hash::make($validated['password']);
         $user->phone = $validated['phone'];
-        $user->cin = $validated['cin'];
-        $user->entreprise = $validated['entreprise'];
+        $user->cin = $validated['cin'] ?? null;
+        $user->entreprise = $validated['entreprise'] ?? null;
         $user->activation_token = null; // Invalidate the token
         $user->account_state = 0; // Optional: mark user as active
-        $user->image = $validated['image'];; // Optional: mark user as active
+        $user->image = $validated['image'] ?? null;
         $user->save();
 
         Mail::to($user->email)->send(new WelcomeUserAfterProfileComplete($user));
