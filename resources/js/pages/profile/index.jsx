@@ -1,4 +1,4 @@
-// resources/js/Pages/Profile/Complete.jsx
+// resources/js/pages/profile/index.jsx
 
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
@@ -9,11 +9,16 @@ import { Camera, Eye, EyeOff } from 'lucide-react';
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2MB — matches backend validation
 
-const CompleteProfile = ({ user }) => {
-    const { data, setData, post, processing, errors, setError } = useForm({
+const CompleteProfile = ({ user, profileMeta = {} }) => {
+    const fromLionsgeek = !!profileMeta.from_lionsgeek;
+    const isChildren = !!profileMeta.is_children;
+    const requirePhone = profileMeta.require_phone !== false && !fromLionsgeek;
+    const showCin = profileMeta.show_cin !== false && !isChildren;
+
+    const { data, setData, processing, errors, setError } = useForm({
         password: '',
         password_confirmation: '',
-        phone: '',
+        phone: fromLionsgeek ? (user?.phone || '') : '',
         cin: '',
         entreprise: '',
         status: '',
@@ -83,7 +88,7 @@ const CompleteProfile = ({ user }) => {
     const validateForm = () => {
         const newErrors = {};
 
-        if (!data.phone || data.phone.trim() === '') {
+        if (requirePhone && (!data.phone || data.phone.trim() === '')) {
             newErrors.phone = 'Phone number is required';
         }
 
@@ -111,25 +116,28 @@ const CompleteProfile = ({ user }) => {
     };
 
     const handleSubmit = (userToken) => {
-        // Clear previous manual errors
         setError('password', null);
         setError('password_confirmation', null);
 
-        // Validate form
         if (!validateForm()) {
             return;
         }
 
-        // Continue with form submission if valid
-        router.post(`/complete-profile/update/${userToken}`, data, {
+        const payload = { ...data };
+        if (fromLionsgeek) {
+            // Phone/name already stored from lionsgeek-app — do not overwrite from empty form.
+            delete payload.phone;
+        }
+        if (!showCin) {
+            delete payload.cin;
+        }
+
+        router.post(`/complete-profile/update/${userToken}`, payload, {
             onSuccess: () => {
                 window.location.href = '/login';
             },
-            onError: (errors) => {
-                console.error('Validation Errors:', errors);
-            },
-            onFinish: () => {
-                //('Request finished');
+            onError: (formErrors) => {
+                console.error('Validation Errors:', formErrors);
             },
         });
     };
@@ -137,12 +145,24 @@ const CompleteProfile = ({ user }) => {
     return (
         <div className="flex min-h-screen w-full items-center justify-center bg-white p-4">
             <div className="w-full max-w-3xl">
-                {/* Main Card */}
                 <div className="rounded-3xl bg-white p-8 shadow-2xl">
                     <h2 className="mb-6 text-center text-2xl font-bold text-gray-800">Complete Your Profile</h2>
 
                     <form onSubmit={(e) => e.preventDefault()}>
-                        {/* Profile Image Upload */}
+                        {fromLionsgeek && (
+                            <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                <p className="text-sm text-gray-600">
+                                    <span className="font-medium text-gray-800">Name:</span> {user?.name}
+                                </p>
+                                {user?.phone && (
+                                    <p className="mt-1 text-sm text-gray-600">
+                                        <span className="font-medium text-gray-800">Phone:</span> {user.phone}
+                                    </p>
+                                )}
+                                <p className="mt-1 text-xs text-gray-500">These details come from your LionsGeek registration.</p>
+                            </div>
+                        )}
+
                         <div className="mb-6 flex flex-col items-center">
                             <div className="relative">
                                 <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-gray-100 shadow-lg">
@@ -172,64 +192,68 @@ const CompleteProfile = ({ user }) => {
                             )}
                         </div>
 
-                        {/* Form Fields */}
                         <div className="space-y-4">
-                            {/* Row 1: Phone & CIN */}
-                            <div className="flex gap-4">
-                                <div className="flex-1">
-                                    <Label htmlFor="phone" className="mb-2 block text-sm font-medium text-gray-600">
-                                        Phone Number
-                                    </Label>
-                                    <input
-                                        id="phone"
-                                        type="text"
-                                        value={data.phone}
-                                        onChange={(e) => setData('phone', e.target.value)}
-                                        placeholder="+212 600 000 000"
-                                        className="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-black focus:border-green-500 focus:outline-none"
-                                    />
-                                    {(validationErrors.phone || errors.phone) && (
-                                        <span className="mt-1 block text-sm text-red-500">{validationErrors.phone || errors.phone}</span>
+                            {(requirePhone || showCin) && (
+                                <div className="flex gap-4">
+                                    {requirePhone && (
+                                        <div className="flex-1">
+                                            <Label htmlFor="phone" className="mb-2 block text-sm font-medium text-gray-600">
+                                                Phone Number
+                                            </Label>
+                                            <input
+                                                id="phone"
+                                                type="text"
+                                                value={data.phone}
+                                                onChange={(e) => setData('phone', e.target.value)}
+                                                placeholder="+212 600 000 000"
+                                                className="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-black focus:border-green-500 focus:outline-none"
+                                            />
+                                            {(validationErrors.phone || errors.phone) && (
+                                                <span className="mt-1 block text-sm text-red-500">{validationErrors.phone || errors.phone}</span>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {showCin && (
+                                        <div className="flex-1">
+                                            <Label htmlFor="cin" className="mb-2 block text-sm font-medium text-gray-600">
+                                                CIN
+                                            </Label>
+                                            <input
+                                                id="cin"
+                                                type="text"
+                                                value={data.cin}
+                                                onChange={(e) => setData('cin', e.target.value)}
+                                                placeholder="Enter your CIN"
+                                                className="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-black focus:border-green-500 focus:outline-none"
+                                            />
+                                            {(validationErrors.cin || errors.cin) && (
+                                                <span className="mt-1 block text-sm text-red-500">{validationErrors.cin || errors.cin}</span>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
+                            )}
 
-                                <div className="flex-1">
-                                    <Label htmlFor="cin" className="mb-2 block text-sm font-medium text-gray-600">
-                                        CIN
+                            {!isChildren && (
+                                <div>
+                                    <Label htmlFor="entreprise" className="mb-2 block text-sm font-medium text-gray-600">
+                                        Entreprise
                                     </Label>
                                     <input
-                                        id="cin"
+                                        id="entreprise"
                                         type="text"
-                                        value={data.cin}
-                                        onChange={(e) => setData('cin', e.target.value)}
-                                        placeholder="Enter your CIN"
+                                        value={data.entreprise}
+                                        onChange={(e) => setData('entreprise', e.target.value)}
+                                        placeholder="Enter your company name"
                                         className="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-black focus:border-green-500 focus:outline-none"
                                     />
-                                    {(validationErrors.cin || errors.cin) && (
-                                        <span className="mt-1 block text-sm text-red-500">{validationErrors.cin || errors.cin}</span>
+                                    {(validationErrors.entreprise || errors.entreprise) && (
+                                        <span className="mt-1 block text-sm text-red-500">{validationErrors.entreprise || errors.entreprise}</span>
                                     )}
                                 </div>
-                            </div>
+                            )}
 
-                            {/* Row 2: Entreprise */}
-                            <div>
-                                <Label htmlFor="entreprise" className="mb-2 block text-sm font-medium text-gray-600">
-                                    Entreprise
-                                </Label>
-                                <input
-                                    id="entreprise"
-                                    type="text"
-                                    value={data.entreprise}
-                                    onChange={(e) => setData('entreprise', e.target.value)}
-                                    placeholder="Enter your company name"
-                                    className="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-black focus:border-green-500 focus:outline-none"
-                                />
-                                {(validationErrors.entreprise || errors.entreprise) && (
-                                    <span className="mt-1 block text-sm text-red-500">{validationErrors.entreprise || errors.entreprise}</span>
-                                )}
-                            </div>
-
-                            {/* Row 3: Password & Confirm Password */}
                             <div className="flex gap-4">
                                 <div className="flex-1">
                                     <Label htmlFor="password" className="mb-2 block text-sm font-medium text-gray-600">
@@ -287,7 +311,6 @@ const CompleteProfile = ({ user }) => {
                             </div>
                         </div>
 
-                        {/* Submit Button */}
                         <div className="mt-6">
                             <Button
                                 type="button"

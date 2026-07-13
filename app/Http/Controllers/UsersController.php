@@ -1188,6 +1188,7 @@ class UsersController extends Controller
             'access_cowork' => $validated['access_cowork'],
             'role' => $validated['roles'],
             'entreprise' => $validated['entreprise'] ?? null,
+            'invite_source' => 'admin',
             'remember_token' => null,
             'email_verified_at' => null,
         ]);
