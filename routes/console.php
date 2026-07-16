@@ -14,3 +14,21 @@ Schedule::command('reservations:check-end-times')
     ->runInBackground();
 
 Schedule::command('jobs:close-expired')->daily();
+
+$scheduleTimezone = config('app.timezone', 'Africa/Casablanca');
+
+// Same command at each slot open — job resolves morning|lunch|evening via currentSlot()
+Schedule::command('attendance:send-slot-reminder')
+    ->weekdays()
+    ->dailyAt('09:30')
+    ->timezone($scheduleTimezone);
+
+Schedule::command('attendance:send-slot-reminder')
+    ->weekdays()
+    ->dailyAt('11:30')
+    ->timezone($scheduleTimezone);
+
+Schedule::command('attendance:send-slot-reminder')
+    ->weekdays()
+    ->dailyAt('14:00')
+    ->timezone($scheduleTimezone);

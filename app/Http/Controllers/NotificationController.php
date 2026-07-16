@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Models\AttendanceReminderNotification;
 use App\Models\DisciplineNotification;
 use App\Models\ExerciseReviewNotification;
 use App\Models\PostNotification;
@@ -664,6 +665,45 @@ class NotificationController extends Controller
                 }
             }
 
+            // Attendance slot reminders — student-owned only (NOT staff-scoped like discipline)
+            if (Schema::hasTable('attendance_reminder_notifications')) {
+                try {
+                    $attendanceReminders = AttendanceReminderNotification::query()
+                        ->where('user_id', $user->id)
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    $slotLabels = [
+                        'morning' => 'Morning',
+                        'lunch' => 'Coffee break',
+                        'evening' => 'Lunch',
+                    ];
+
+                    foreach ($attendanceReminders as $notif) {
+                        $slotLabel = $slotLabels[$notif->slot] ?? $notif->slot;
+                        $message = $notif->message_notification
+                            ?: "Check in for {$slotLabel}";
+
+                        $notifications[] = [
+                            'id' => 'attendance_reminder-' . $notif->id,
+                            'type' => 'attendance_reminder',
+                            'sender_name' => 'Attendance',
+                            'sender_image' => null,
+                            'message' => $message,
+                            'link' => $notif->path ?? '/students/attendance',
+                            'icon_type' => 'clock',
+                            'slot' => $notif->slot,
+                            'date' => $notif->date?->format('Y-m-d'),
+                            'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
+                            'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching attendance reminder notifications: ' . $e->getMessage());
+                }
+            }
+
             // Sort by created_at (newest first)
             usort($notifications, function ($a, $b) {
                 return strtotime($b['created_at']) - strtotime($a['created_at']);
@@ -859,6 +899,18 @@ class NotificationController extends Controller
                         $notification->save();
                     }
                     break;
+                case 'attendance_reminder':
+                case 'attendance-reminder':
+                    if (Schema::hasTable('attendance_reminder_notifications')) {
+                        $notification = AttendanceReminderNotification::where('id', $id)
+                            ->where('user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
                 default:
                     return response()->json(['error' => 'Invalid notification type'], 400);
             }
@@ -996,6 +1048,13 @@ class NotificationController extends Controller
             } else {
                 // Regular users mark their own discipline notifications as read
                 DisciplineNotification::where('user_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            // Mark all attendance reminder notifications as read (owning student only)
+            if (Schema::hasTable('attendance_reminder_notifications')) {
+                AttendanceReminderNotification::where('user_id', $user->id)
                     ->whereNull('read_at')
                     ->update(['read_at' => now()]);
             }

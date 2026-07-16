@@ -279,8 +279,12 @@ export default function NotificationIcon() {
                 // Handle "job-application-123"
                 type = `${parts[0]}-${parts[1]}`;
                 id = parts[2];
+            } else if (parts.length === 3 && parts[0] === 'attendance' && parts[1] === 'reminder') {
+                // Handle "attendance-reminder-123" (Ably may use hyphen like task-assignment)
+                type = 'attendance_reminder';
+                id = parts[2];
             } else {
-                // Handle simple types like "follow-123"
+                // Handle simple types like "follow-123" or "attendance_reminder-123"
                 type = parts[0];
                 id = parts.slice(1).join('-');
             }
