@@ -166,7 +166,8 @@ export default function CertificateModal({ open, onOpenChange, training }) {
     }, []);
 
     const handleConfirm = async () => {
-        if (selectedIds.length === 0 || !issuedDate || isGenerating) return;
+        if (selectedIds.length === 0 || isGenerating) return;
+        if (!isGeekLab && !issuedDate) return;
 
         setIsGenerating(true);
         setError('');
@@ -187,7 +188,10 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
                     'X-Requested-With': 'XMLHttpRequest',
                 },
-                body: JSON.stringify({ user_ids: selectedIds, issued_date: issuedDate }),
+                body: JSON.stringify({
+                    user_ids: selectedIds,
+                    issued_date: isGeekLab ? todayIso() : issuedDate,
+                }),
             });
 
             let parsedWarnings = [];
@@ -328,29 +332,29 @@ export default function CertificateModal({ open, onOpenChange, training }) {
 
                         {/* Date + Select-all row */}
                         <div className="mt-5 flex flex-wrap items-end gap-4">
-                            <div className="min-w-[180px]">
-                                <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-dark/60 uppercase tracking-wider dark:text-light/60">
-                                    <Calendar className="h-3.5 w-3.5" />
-                                    Issue Date
-                                </label>
-                                <div className="relative">
-                                    <Input
-                                        type="date"
-                                        value={issuedDate}
-                                        onChange={(e) => setIssuedDate(e.target.value)}
-                                        disabled={isGenerating}
-                                        className="h-9 border-alpha/20 bg-light pr-3 text-sm focus-visible:ring-alpha dark:bg-dark"
-                                    />
+                            {!isGeekLab && (
+                                <div className="min-w-[180px]">
+                                    <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-dark/60 uppercase tracking-wider dark:text-light/60">
+                                        <Calendar className="h-3.5 w-3.5" />
+                                        Issue Date
+                                    </label>
+                                    <div className="relative">
+                                        <Input
+                                            type="date"
+                                            value={issuedDate}
+                                            onChange={(e) => setIssuedDate(e.target.value)}
+                                            disabled={isGenerating}
+                                            className="h-9 border-alpha/20 bg-light pr-3 text-sm focus-visible:ring-alpha dark:bg-dark"
+                                        />
+                                    </div>
+                                    {datePreview && (
+                                        <p className="mt-1.5 flex items-center gap-1 text-[11px] text-dark/45 dark:text-light/45">
+                                            <span className="font-medium text-alpha">On certificate:</span>
+                                            {datePreview}
+                                        </p>
+                                    )}
                                 </div>
-                                {datePreview && (
-                                    <p className="mt-1.5 flex items-center gap-1 text-[11px] text-dark/45 dark:text-light/45">
-                                        <span className="font-medium text-alpha">
-                                            {isGeekLab ? 'Certified at:' : 'On certificate:'}
-                                        </span>
-                                        {datePreview}
-                                    </p>
-                                )}
-                            </div>
+                            )}
 
                             <div className="flex flex-1 justify-end">
                                 <button
@@ -446,7 +450,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                         <Button
                             type="button"
                             onClick={handleConfirm}
-                            disabled={selectedIds.length === 0 || !issuedDate || isGenerating || success}
+                            disabled={selectedIds.length === 0 || (!isGeekLab && !issuedDate) || isGenerating || success}
                             className="min-w-[140px] gap-2 border border-alpha bg-alpha font-semibold text-beta transition hover:bg-transparent hover:text-alpha disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {isGenerating ? (
