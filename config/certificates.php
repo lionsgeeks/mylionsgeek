@@ -5,6 +5,8 @@ return [
     'templates' => [
         'coding' => 'assets/images/certif/codeCertfifcation.pdf',
         'media' => 'assets/images/certif/mediaCertification.pdf',
+        'geeklab_coding' => 'assets/images/certif/geeklabcodingcertification.pdf',
+        'geeklab_media' => 'assets/images/certif/geeklabmediacertification.pdf',
     ],
 
     /*
@@ -16,6 +18,9 @@ return [
     |
     | name   — Great Vibes 65pt, pure black, Cell-centered across full width.
     | date   — Helvetica 12pt, grey, Cell-centered across full width.
+    |
+    | GeekLab: Montserrat, first name then last name on two lines, left-aligned
+    | under "Lionsgeek atteste officiellement que :". No date overlay (printed on template).
     */
     'positions' => [
         'coding' => [
@@ -28,7 +33,24 @@ return [
             'name' => ['y_pct' => 50, 'size_two_words' => 75, 'size_more_words' => 75, 'style' => ''],
             'date' => ['y_pct' => 79, 'size' => 10, 'style' => 'B'],
         ],
-
+        'geeklab_coding' => [
+            'name' => [
+                'y_pct' => 36,
+                'x_mm' => 28,
+                'size' => 42,
+                'line_gap_mm' => 2,
+                'align' => 'L',
+            ],
+        ],
+        'geeklab_media' => [
+            'name' => [
+                'y_pct' => 36,
+                'x_mm' => 28,
+                'size' => 42,
+                'line_gap_mm' => 2,
+                'align' => 'L',
+            ],
+        ],
     ],
 
 ];

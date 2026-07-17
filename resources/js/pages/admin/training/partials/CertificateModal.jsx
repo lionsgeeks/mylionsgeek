@@ -12,6 +12,7 @@ import {
     ChevronRight,
     Download,
     Loader2,
+    Mail,
     Users,
     XCircle,
 } from 'lucide-react';
@@ -27,6 +28,11 @@ const resolveTrack = (field) => {
     if (n === 'media' || n.includes('media') || n.includes('content') || n.includes('studio')) return 'media';
     return null;
 };
+
+const isGeekLabTraining = (training) =>
+    String(training?.name || '')
+        .toLowerCase()
+        .includes('geeklab');
 
 const trackMeta = (field) => {
     const t = resolveTrack(field);
@@ -129,6 +135,7 @@ const StudentCard = ({ student, checked, onToggle }) => {
 export default function CertificateModal({ open, onOpenChange, training }) {
     const students = training?.users ?? training?.students ?? [];
     const eligibleStudents = students.filter((s) => resolveTrack(s.field));
+    const isGeekLab = isGeekLabTraining(training);
 
     const [selectedIds, setSelectedIds] = useState([]);
     const [issuedDate, setIssuedDate] = useState(todayIso);
@@ -136,6 +143,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
     const [warnings, setWarnings] = useState([]);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
 
     const allEligibleSelected =
         eligibleStudents.length > 0 && eligibleStudents.every((s) => selectedIds.includes(s.id));
@@ -154,6 +162,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
         setWarnings([]);
         setError('');
         setSuccess(false);
+        setSuccessMessage('');
     }, []);
 
     const handleConfirm = async () => {
@@ -163,13 +172,18 @@ export default function CertificateModal({ open, onOpenChange, training }) {
         setError('');
         setWarnings([]);
         setSuccess(false);
+        setSuccessMessage('');
+
+        const endpoint = isGeekLab
+            ? `/trainings/${training.id}/certificates/email`
+            : `/trainings/${training.id}/certificates/zip`;
 
         try {
-            const response = await fetch(`/trainings/${training.id}/certificates/zip`, {
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Accept: 'application/json, application/zip',
+                    Accept: isGeekLab ? 'application/json' : 'application/json, application/zip',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
                     'X-Requested-With': 'XMLHttpRequest',
                 },
@@ -177,6 +191,37 @@ export default function CertificateModal({ open, onOpenChange, training }) {
             });
 
             let parsedWarnings = [];
+
+            if (isGeekLab) {
+                const data = await response.json().catch(() => ({}));
+
+                if (Array.isArray(data?.skipped) && data.skipped.length > 0) {
+                    parsedWarnings = data.skipped;
+                    setWarnings(data.skipped);
+                }
+
+                if (!response.ok) {
+                    throw new Error(data?.error || `Request failed (${response.status})`);
+                }
+
+                setSuccessMessage(
+                    data?.message ||
+                        `${data?.queued ?? selectedIds.length} certificat(s) généré(s) et e-mail(s) mis en file d’attente.`,
+                );
+
+                if (parsedWarnings.length === 0) {
+                    setSuccess(true);
+                    setTimeout(() => {
+                        resetForm();
+                        onOpenChange(false);
+                    }, 1600);
+                } else {
+                    setSuccess(true);
+                }
+
+                return;
+            }
+
             const warningsHeader = response.headers.get('X-Certificate-Warnings');
             if (warningsHeader) {
                 try {
@@ -206,6 +251,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
 
             const zipBlob = await response.blob();
             saveAs(zipBlob, `certificates-${training.id}.zip`);
+            setSuccessMessage('Certificates generated! Your download is starting…');
 
             if (parsedWarnings.length === 0) {
                 setSuccess(true);
@@ -213,6 +259,8 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                     resetForm();
                     onOpenChange(false);
                 }, 1400);
+            } else {
+                setSuccess(true);
             }
         } catch (err) {
             console.error('Certificate generation failed:', err);
@@ -249,7 +297,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                                 </div>
                                 <div>
                                     <h2 className="text-lg font-bold leading-tight text-dark dark:text-light">
-                                        Print Certificates
+                                        {isGeekLab ? 'Send GeekLab Certificates' : 'Print Certificates'}
                                     </h2>
                                     {training?.name && (
                                         <p className="mt-0.5 flex items-center gap-1.5 text-xs text-dark/50 dark:text-light/50">
@@ -296,7 +344,9 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                                 </div>
                                 {datePreview && (
                                     <p className="mt-1.5 flex items-center gap-1 text-[11px] text-dark/45 dark:text-light/45">
-                                        <span className="font-medium text-alpha">On certificate:</span>
+                                        <span className="font-medium text-alpha">
+                                            {isGeekLab ? 'Certified at:' : 'On certificate:'}
+                                        </span>
                                         {datePreview}
                                     </p>
                                 )}
@@ -320,7 +370,10 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                 {success && (
                     <div className="flex items-center gap-2 border-b border-green-500/20 bg-green-500/10 px-6 py-3 text-sm font-medium text-green-700 dark:text-green-300">
                         <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-                        Certificates generated! Your download is starting…
+                        {successMessage ||
+                            (isGeekLab
+                                ? 'Certificates queued for email…'
+                                : 'Certificates generated! Your download is starting…')}
                     </div>
                 )}
 
@@ -376,7 +429,9 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                 {/* ── Footer ── */}
                 <div className="flex items-center justify-between gap-3 border-t border-alpha/10 bg-light/60 px-6 py-4 backdrop-blur dark:bg-dark/60">
                     <p className="hidden text-xs text-dark/40 sm:block dark:text-light/40">
-                        Each selected student gets an individual PDF · packaged as a ZIP
+                        {isGeekLab
+                            ? 'Selected students are certified immediately · PDF emailed via queue'
+                            : 'Each selected student gets an individual PDF · packaged as a ZIP'}
                     </p>
                     <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
                         <Button
@@ -397,12 +452,17 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                             {isGenerating ? (
                                 <>
                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                    Generating…
+                                    {isGeekLab ? 'Sending…' : 'Generating…'}
                                 </>
                             ) : success ? (
                                 <>
                                     <CheckCircle2 className="h-4 w-4" />
                                     Done!
+                                </>
+                            ) : isGeekLab ? (
+                                <>
+                                    <Mail className="h-4 w-4" />
+                                    Send ({selectedIds.length})
                                 </>
                             ) : (
                                 <>
