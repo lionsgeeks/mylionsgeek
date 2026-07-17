@@ -17,7 +17,7 @@
 
         <p style="font-size: 15px; color: #555;">
             Vous pouvez également le retrouver depuis votre profil sur
-            <a href="https://www.lionsgeek.ma" style="color: #2c3e50;">www.lionsgeek.ma</a>.
+            <a href="https://www.mylionsgeek.ma" style="color: #2c3e50;">www.mylionsgeek.ma</a>.
         </p>
 
         <p style="margin-top: 40px; font-size: 15px;">
