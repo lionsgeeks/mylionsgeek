@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\UserWelcomeMail;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -19,11 +19,11 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
-            'image' => ['nullable'],
-            'is_children' => ['nullable', 'boolean'],
+            'image' => ['nullable', 'string', 'max:2048'],
+            'is_children' => ['nullable'],
         ]);
 
-        $inviteSource = $request->boolean('is_children')
+        $inviteSource = filter_var($data['is_children'] ?? false, FILTER_VALIDATE_BOOLEAN)
             ? 'lionsgeek_children'
             : 'lionsgeek_adult';
 
@@ -38,27 +38,24 @@ class UserController extends Controller
             ]);
             $existing->save();
 
-            $link = URL::temporarySignedRoute(
-                'user.complete-profile',
-                now()->addHours(24),
-                ['token' => $existing->activation_token]
-            );
-            Mail::to($existing->email)->send(new UserWelcomeMail($existing, $link));
+            $mailSent = $this->sendCompleteProfileEmail($existing);
 
             return response()->json([
                 'status' => 'exists',
+                'mail_sent' => $mailSent,
+                'mail_mailer' => config('mail.default'),
                 'data' => $existing,
             ]);
         }
 
-        $plainPassword = Str::random(12);
         $token = (string) Str::uuid();
 
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'activation_token' => $token,
-            'password' => Hash::make($plainPassword),
+            // Let the 'hashed' cast hash once (do not Hash::make here).
+            'password' => Str::random(32),
             'phone' => $data['phone'] ?: null,
             'image' => $data['image'] ?: 'pdp.png',
             'status' => 'Studying',
@@ -73,17 +70,51 @@ class UserController extends Controller
             'email_verified_at' => null,
         ]);
 
-        $link = URL::temporarySignedRoute(
-            'user.complete-profile',
-            now()->addHours(24),
-            ['token' => $token]
-        );
-
-        Mail::to($user->email)->send(new UserWelcomeMail($user, $link));
+        $mailSent = $this->sendCompleteProfileEmail($user);
 
         return response()->json([
             'status' => 'created',
+            'mail_sent' => $mailSent,
+            'mail_mailer' => config('mail.default'),
             'data' => $user,
         ]);
+    }
+
+    /**
+     * Send the signed complete-profile email. Returns false on failure (user is still created/updated).
+     */
+    private function sendCompleteProfileEmail(User $user): bool
+    {
+        try {
+            if (! $user->activation_token) {
+                $user->activation_token = (string) Str::uuid();
+                $user->save();
+            }
+
+            $link = URL::temporarySignedRoute(
+                'user.complete-profile',
+                now()->addHours(24),
+                ['token' => $user->activation_token]
+            );
+
+            Mail::to($user->email)->send(new UserWelcomeMail($user, $link));
+
+            Log::info('Complete profile email sent', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'mailer' => config('mail.default'),
+            ]);
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('Complete profile email failed', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'mailer' => config('mail.default'),
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 }

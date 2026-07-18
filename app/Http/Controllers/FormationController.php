@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\SendGeekLabCertificateEmail;
 use App\Models\Attendance;
 use App\Models\AttendanceListe;
 use App\Models\Formation;
@@ -511,7 +512,8 @@ class FormationController extends Controller
 
     /**
      * Generate or reuse certificates (PDF), store per student, return ZIP download.
-     * Stores: storage/app/public/certificates/{trainingId}/{userId}.pdf
+     * Stores: storage/app/public/certificates/{userId}.pdf
+     * GeekLab trainings must use emailGeekLabCertificates instead.
      */
     public function downloadCertificatesZip(
         Formation $training,
@@ -521,6 +523,14 @@ class FormationController extends Controller
     ) {
         if (! $this->canPrintCertificates($training)) {
             abort(403, 'You are not allowed to print certificates for this training.');
+        }
+
+        if ($trackResolver->isGeekLabTraining($training->name)) {
+            return $this->certificateZipErrorResponse(
+                $request,
+                'Les certificats GeekLab sont envoyés par e-mail, pas en ZIP.',
+                422,
+            );
         }
 
         $validated = $request->validate([
@@ -633,6 +643,148 @@ class FormationController extends Controller
                 'X-Certificate-Warnings' => json_encode($skipped, JSON_UNESCAPED_UNICODE),
             ])
             ->deleteFileAfterSend(true);
+    }
+
+    /**
+     * GeekLab: generate PDFs, store them, mark students Certified, queue email jobs.
+     * No ZIP download for coach/admin.
+     */
+    public function emailGeekLabCertificates(
+        Formation $training,
+        Request $request,
+        CertificateTrackResolver $trackResolver,
+        CertificatePdfGenerator $pdfGenerator,
+    ) {
+        if (! $this->canPrintCertificates($training)) {
+            abort(403, 'You are not allowed to print certificates for this training.');
+        }
+
+        if (! $trackResolver->isGeekLabTraining($training->name)) {
+            return $this->certificateZipErrorResponse(
+                $request,
+                'Cet endpoint est réservé aux formations GeekLab.',
+                422,
+            );
+        }
+
+        $validated = $request->validate([
+            'user_ids' => 'required|array|min:1',
+            'user_ids.*' => 'required|exists:users,id',
+            'issued_date' => 'required|date',
+        ]);
+
+        $issuedCarbon = Carbon::parse($validated['issued_date'])->startOfDay();
+        $issuedDateFormatted = $issuedCarbon->format('d/m/Y');
+
+        $users = User::whereIn('id', $validated['user_ids'])
+            ->where('formation_id', $training->id)
+            ->get();
+
+        if ($users->isEmpty()) {
+            return $this->certificateZipErrorResponse($request, 'No valid users found for this training.', 422);
+        }
+
+        $queuedCount = 0;
+        $skipped = [];
+        $trainingName = (string) $training->name;
+        $recipients = [];
+
+        foreach ($users as $user) {
+            $track = $trackResolver->resolveForTraining($user->field ?? null, $trainingName);
+            if ($track === null) {
+                $skipped[] = [
+                    'id' => $user->id,
+                    'name' => (string) $user->name,
+                    'reason' => 'Le champ doit être « coding » ou « media ».',
+                ];
+
+                continue;
+            }
+
+            $email = trim((string) ($user->email ?? ''));
+            if ($email === '') {
+                $skipped[] = [
+                    'id' => $user->id,
+                    'name' => (string) $user->name,
+                    'reason' => 'Aucune adresse e-mail.',
+                ];
+
+                continue;
+            }
+
+            $pdfStoragePath = 'certificates/'.$user->id.'.pdf';
+
+            try {
+                $pdfBytes = $pdfGenerator->generate(
+                    $track,
+                    (string) ($user->name ?? ''),
+                    $issuedDateFormatted,
+                );
+
+                if ($pdfBytes === null || $pdfBytes === '') {
+                    $skipped[] = [
+                        'id' => $user->id,
+                        'name' => (string) $user->name,
+                        'reason' => 'Échec de génération du PDF.',
+                    ];
+
+                    continue;
+                }
+
+                Storage::disk('public')->put($pdfStoragePath, $pdfBytes);
+
+                // Certify immediately when PDF is stored and the email job is queued.
+                $user->forceFill([
+                    'status' => 'Certified',
+                    'certified_at' => $issuedCarbon,
+                    'certified_training_id' => (int) $training->id,
+                    'certificate_share_token' => $user->certificate_share_token ?: Str::random(48),
+                    'certificate_pdf_path' => $pdfStoragePath,
+                ])->save();
+
+                $recipients[] = [
+                    'user_id' => $user->id,
+                    'pdf_storage_path' => $pdfStoragePath,
+                ];
+                $queuedCount++;
+            } catch (\Throwable $e) {
+                Log::error('Failed to generate/queue GeekLab certificate', [
+                    'training_id' => $training->id,
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $skipped[] = [
+                    'id' => $user->id,
+                    'name' => (string) $user->name,
+                    'reason' => 'Erreur serveur lors de la génération.',
+                ];
+            }
+        }
+
+        // Dispatch email jobs in batches of 100.
+        $jobCount = 0;
+        foreach (array_chunk($recipients, SendGeekLabCertificateEmail::BATCH_SIZE) as $batch) {
+            SendGeekLabCertificateEmail::dispatch($batch, $trainingName);
+            $jobCount++;
+        }
+
+        if ($queuedCount === 0) {
+            return $this->certificateZipErrorResponse(
+                $request,
+                'Aucun certificat envoyé.',
+                422,
+                ['skipped' => $skipped],
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'queued' => $queuedCount,
+            'jobs' => $jobCount,
+            'skipped' => $skipped,
+            'message' => $queuedCount.' certificat(s) généré(s) et e-mail(s) mis en file d’attente ('.$jobCount.' job(s), 100 max par job).',
+        ]);
     }
 
     private function certificateZipErrorResponse(Request $request, string $message, int $status, array $extra = [])
