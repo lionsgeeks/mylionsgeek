@@ -253,12 +253,24 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                         </span>
                                     )}
 
-                                    {/* Status Badge */}
-                                    {getTrainingStatus(training) === 'active' && (
-                                        <span className="absolute top-3 right-3 animate-pulse rounded-full bg-green-500 px-4 py-1.5 text-xs font-bold text-white shadow-lg">
-                                            Active
+                                    {/* Date-window badge (heuristic only — not the reminders gate) */}
+                                    <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5">
+                                        {getTrainingStatus(training) === 'active' && (
+                                            <span className="animate-pulse rounded-full bg-green-500 px-4 py-1.5 text-xs font-bold text-white shadow-lg">
+                                                In session
+                                            </span>
+                                        )}
+                                        {/* Stored is_active — staff-controlled gate for attendance reminders */}
+                                        <span
+                                            className={`rounded-full px-4 py-1.5 text-xs font-bold shadow-lg ${
+                                                training.is_active
+                                                    ? 'bg-alpha text-black'
+                                                    : 'bg-black/70 text-white'
+                                            }`}
+                                        >
+                                            {training.is_active ? 'Reminders on' : 'Reminders off'}
                                         </span>
-                                    )}
+                                    </div>
                                 </div>
 
                                 {/* Card Content */}

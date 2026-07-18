@@ -407,6 +407,7 @@ class FormationController extends Controller
             'end_time' => 'nullable|date',
             'user_id' => 'nullable|exists:users,id',
             'promo' => 'nullable|string|max:50',
+            'is_active' => 'sometimes|boolean',
         ]);
 
         $formation = Formation::findOrFail($id);
@@ -430,9 +431,14 @@ class FormationController extends Controller
             unset($validated['certificate_template']);
         }
 
+        // FormData may send "0"/"1"; always normalize when the field is present
+        if ($request->has('is_active')) {
+            $validated['is_active'] = $request->boolean('is_active');
+        }
+
         $formation->update($validated);
 
-        return back()->with('success', 'Formation deleted successfully!');
+        return back()->with('success', 'Formation updated successfully!');
     }
 
     // Delete formation

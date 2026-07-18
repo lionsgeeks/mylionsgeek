@@ -42,8 +42,8 @@ export default function Show({ training, usersNull, courses = [] }) {
     const isTrainingCoach = auth?.user?.id && training?.coach?.id ? auth.user.id === training.coach.id : false;
     const isAdminRole = userRoles.some((r) => ['admin', 'super_admin'].includes(r));
     const canPrintCertificates = isAdminRole || (isCoachRole && isTrainingCoach);
-    const trainingStatus = String(training?.status || '').toLowerCase();
-    const isActiveTraining = !trainingStatus || trainingStatus === 'active';
+    // Staff-controlled gate (formations.is_active). Replaces the old nonexistent training.status field.
+    const isActiveTraining = !!training?.is_active;
     const [students, setStudents] = useState(training.users || []);
     const [availableUsers, setAvailableUsers] = useState(usersNull || []);
     const [filter, setFilter] = useState('');
@@ -823,14 +823,19 @@ export default function Show({ training, usersNull, courses = [] }) {
                             </div>
                         )}
 
-                        {/* Status */}
-                        {training.status && (
-                            <div className="rounded-2xl border border-alpha/20 bg-light p-4 text-center dark:bg-dark">
-                                <span className="rounded-full bg-alpha/10 px-4 py-2 text-sm font-bold text-alpha">
-                                    {training.status.toUpperCase()}
-                                </span>
-                            </div>
-                        )}
+                        {/* Active for attendance reminders */}
+                        <div className="rounded-2xl border border-alpha/20 bg-light p-4 text-center dark:bg-dark">
+                            <span
+                                className={`rounded-full px-4 py-2 text-sm font-bold ${
+                                    isActiveTraining ? 'bg-alpha/10 text-alpha' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                                }`}
+                            >
+                                {isActiveTraining ? 'REMINDERS ON' : 'REMINDERS OFF'}
+                            </span>
+                            <p className="mt-2 text-xs text-dark/50 dark:text-light/50">
+                                Toggle via Edit Training on the programs list
+                            </p>
+                        </div>
                     </div>
                 </div>
 
