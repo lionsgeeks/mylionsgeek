@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,23 +8,40 @@ import { router, useForm, usePage } from '@inertiajs/react';
 import { Pencil } from 'lucide-react';
 import { useState } from 'react';
 
-export default function UpdateTraining({ training, coaches }) {
-    const [open, setOpen] = useState(false);
-    const page = usePage();
-    const userRoles = Array.isArray(page.props?.auth?.user?.role) ? page.props.auth.user.role : [page.props?.auth?.user?.role].filter(Boolean);
-    const canManageCertificateTemplate = userRoles.includes('admin') || userRoles.includes('super_admin');
-
-    const { data, setData, put, processing, reset, errors } = useForm({
+function buildTrainingFormData(training) {
+    return {
         name: training.name || '',
         category: training.category || '',
         start_time: training.start_time || '',
         user_id: training.user_id || '',
         promo: training.promo || '',
         certificate_template: null,
-    });
+        is_active: !!training.is_active,
+    };
+}
+
+export default function UpdateTraining({ training, coaches }) {
+    const [open, setOpen] = useState(false);
+    const page = usePage();
+    const userRoles = Array.isArray(page.props?.auth?.user?.role) ? page.props.auth.user.role : [page.props?.auth?.user?.role].filter(Boolean);
+    const canManageCertificateTemplate = userRoles.includes('admin') || userRoles.includes('super_admin');
+
+    const { data, setData, put, processing, reset, errors, transform } = useForm(buildTrainingFormData(training));
+
+    // FormData drops false booleans; send explicit 0/1
+    transform((form) => ({
+        ...form,
+        is_active: form.is_active ? 1 : 0,
+    }));
+
+    const syncFormFromTraining = () => {
+        setData(buildTrainingFormData(training));
+    };
 
     const handleOpenChange = (newOpen) => {
-        if (!newOpen) {
+        if (newOpen) {
+            syncFormFromTraining();
+        } else {
             reset();
         }
         setOpen(newOpen);
@@ -38,8 +56,8 @@ export default function UpdateTraining({ training, coaches }) {
                 setOpen(false);
                 router.reload({ only: ['trainings'], preserveState: false });
             },
-            onError: (errors) => {
-                //('Form errors:', errors);
+            onError: () => {
+                // Form errors surface via errors prop
             },
         });
     }
@@ -111,6 +129,36 @@ export default function UpdateTraining({ training, coaches }) {
                             placeholder="Enter promo name/number"
                         />
                         {errors.promo && <p className="text-sm text-red-600">{errors.promo}</p>}
+                    </div>
+
+                    {/* Manual gate for slot check-in reminders — separate from date-based "Active" badge */}
+                    <div className="rounded-xl border border-alpha/20 bg-alpha/5 p-4">
+                        <div className="flex items-start gap-3">
+                            <Checkbox
+                                id="is_active"
+                                checked={!!data.is_active}
+                                onCheckedChange={(checked) => setData('is_active', checked === true)}
+                                className="mt-0.5"
+                            />
+                            <div className="flex-1">
+                                <Label htmlFor="is_active" className="cursor-pointer font-semibold">
+                                    Active for attendance reminders
+                                </Label>
+                                <p className="mt-1 text-xs text-dark/60 dark:text-light/60">
+                                    When on, enrolled students can receive slot check-in reminder pushes. Off by default until staff enables it.
+                                </p>
+                            </div>
+                            <span
+                                className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium ${
+                                    data.is_active
+                                        ? 'bg-alpha/20 text-alpha'
+                                        : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                                }`}
+                            >
+                                {data.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                        </div>
+                        {errors.is_active && <p className="mt-2 text-sm text-red-600">{errors.is_active}</p>}
                     </div>
 
                     {canManageCertificateTemplate && (
