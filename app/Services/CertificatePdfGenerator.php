@@ -14,7 +14,12 @@ class CertificatePdfGenerator
      * @param  'coding'|'media'|'geeklab_coding'|'geeklab_media'  $track
      * @return string|null Raw PDF bytes
      */
-    public function generate(string $track, string $studentName, string $issuedDateFormatted): ?string
+    public function generate(
+        string $track,
+        string $studentName,
+        string $issuedDateFormatted,
+        ?string $certificateCode = null,
+    ): ?string
     {
         $templateRel = config("certificates.templates.{$track}");
         if (! is_string($templateRel) || $templateRel === '') {
@@ -41,11 +46,19 @@ class CertificatePdfGenerator
 
         try {
             $nameFont = $isGeekLab
-                ? $this->resolveMontserratFont()
+                ? $this->resolveMontserratExtraBoldFont()
                 : $this->resolveCreattionFont();
 
             if ($nameFont === null) {
                 return null;
+            }
+
+            $idFont = null;
+            if ($isGeekLab && $certificateCode !== null && $certificateCode !== '') {
+                $idFont = $this->resolveMontserratIdFont();
+                if ($idFont === null) {
+                    return null;
+                }
             }
 
             $pdf = new Fpdi('L', 'mm', 'A4');
@@ -87,6 +100,24 @@ class CertificatePdfGenerator
                 } else {
                     $this->drawStandardName($pdf, $positions['name'], $studentName, $nameFont, $pageWidth, $pageHeight);
                 }
+            }
+
+            if (
+                $isGeekLab
+                && $idFont !== null
+                && is_string($certificateCode)
+                && $certificateCode !== ''
+                && isset($positions['certificate_id'])
+                && is_array($positions['certificate_id'])
+            ) {
+                $this->drawGeekLabCertificateId(
+                    $pdf,
+                    $positions['certificate_id'],
+                    $certificateCode,
+                    $idFont,
+                    $pageWidth,
+                    $pageHeight,
+                );
             }
 
             return $pdf->Output('', 'S');
@@ -137,17 +168,32 @@ class CertificatePdfGenerator
     /**
      * Prefer ExtraBold (then Bold/Black static); fall back to the variable font path.
      */
-    private function resolveMontserratFont(): ?string
+    private function resolveMontserratExtraBoldFont(): ?string
     {
-        $tcpdfFontsDir = base_path('vendor/tecnickcom/tcpdf/fonts/');
-
-        $candidates = [
+        return $this->resolveMontserratFontFromCandidates([
             public_path('assets/fonts/Montserrat-ExtraBold.ttf'),
             public_path('assets/images/certif/Montserrat/static/Montserrat-ExtraBold.ttf'),
             public_path('assets/images/certif/Montserrat/static/Montserrat-Bold.ttf'),
             public_path('assets/images/certif/Montserrat/static/Montserrat-Black.ttf'),
             public_path('assets/fonts/Montserrat-VariableFont_wght.ttf'),
-        ];
+        ]);
+    }
+
+    private function resolveMontserratIdFont(): ?string
+    {
+        return $this->resolveMontserratFontFromCandidates([
+            public_path('assets/fonts/Montserrat-Light.ttf'),
+            public_path('assets/images/certif/Montserrat/static/Montserrat-Light.ttf'),
+            public_path('assets/fonts/Montserrat-Thin.ttf'),
+        ]);
+    }
+
+    /**
+     * @param  list<string>  $candidates
+     */
+    private function resolveMontserratFontFromCandidates(array $candidates): ?string
+    {
+        $tcpdfFontsDir = base_path('vendor/tecnickcom/tcpdf/fonts/');
 
         foreach ($candidates as $ttfPath) {
             if (! is_file($ttfPath)) {
@@ -169,7 +215,9 @@ class CertificatePdfGenerator
             Log::warning('CertificatePdfGenerator: failed to convert Montserrat TTF', ['path' => $ttfPath]);
         }
 
-        Log::error('CertificatePdfGenerator: Montserrat font missing or unreadable');
+        Log::error('CertificatePdfGenerator: Montserrat font missing or unreadable', [
+            'candidates' => $candidates,
+        ]);
 
         return null;
     }
@@ -303,6 +351,38 @@ class CertificatePdfGenerator
             $pdf->SetXY($x, $y + $lineHeightMm + $lineGap);
             $pdf->Cell($maxWidth, $lineHeightMm, $lastName, 0, 0, 'L');
         }
+    }
+
+    /**
+     * GeekLab top-right reference code (C-ID001) in Montserrat Light.
+     */
+    private function drawGeekLabCertificateId(
+        Fpdi $pdf,
+        array $idCfg,
+        string $certificateCode,
+        string $idFont,
+        float $pageWidth,
+        float $pageHeight,
+    ): void {
+        $fontSize = (int) ($idCfg['size'] ?? 12);
+        $y = isset($idCfg['y_pct'])
+            ? $pageHeight * (float) $idCfg['y_pct'] / 100
+            : (float) ($idCfg['y'] ?? 9);
+        $rightMm = (float) ($idCfg['right_mm'] ?? 20);
+
+        $pdf->setCellPadding(0);
+        $pdf->setFontSubsetting(false);
+        $pdf->setTextRenderingMode(0, true, false);
+        $pdf->SetFont($idFont, '', $fontSize);
+        $pdf->SetTextColor(0, 0, 0);
+
+        $textWidth = $pdf->GetStringWidth($certificateCode);
+        $x = isset($idCfg['x_mm'])
+            ? (float) $idCfg['x_mm']
+            : max(0.0, $pageWidth - $rightMm - $textWidth);
+
+        $pdf->Text($x, $y, $certificateCode);
+        $pdf->setFontSubsetting(true);
     }
 
     /**

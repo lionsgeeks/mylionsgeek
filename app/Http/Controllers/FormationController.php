@@ -14,6 +14,7 @@ use App\Services\CertificatePdfGenerator;
 use App\Services\CertificateTrackResolver;
 use App\Services\CoachAttendanceSaveService;
 use App\Services\DisciplineService;
+use App\Services\GeekLabCertificateCodeAllocator;
 use App\Services\StudentCheckInSlotService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -654,6 +655,7 @@ class FormationController extends Controller
         Request $request,
         CertificateTrackResolver $trackResolver,
         CertificatePdfGenerator $pdfGenerator,
+        GeekLabCertificateCodeAllocator $codeAllocator,
     ) {
         if (! $this->canPrintCertificates($training)) {
             abort(403, 'You are not allowed to print certificates for this training.');
@@ -715,10 +717,13 @@ class FormationController extends Controller
             $pdfStoragePath = 'certificates/'.$user->id.'.pdf';
 
             try {
+                $certificateCode = $codeAllocator->resolveForUser($user->certificate_code ?? null);
+
                 $pdfBytes = $pdfGenerator->generate(
                     $track,
                     (string) ($user->name ?? ''),
                     $issuedDateFormatted,
+                    $certificateCode,
                 );
 
                 if ($pdfBytes === null || $pdfBytes === '') {
@@ -740,6 +745,7 @@ class FormationController extends Controller
                     'certified_training_id' => (int) $training->id,
                     'certificate_share_token' => $user->certificate_share_token ?: Str::random(48),
                     'certificate_pdf_path' => $pdfStoragePath,
+                    'certificate_code' => $certificateCode,
                 ])->save();
 
                 $recipients[] = [
