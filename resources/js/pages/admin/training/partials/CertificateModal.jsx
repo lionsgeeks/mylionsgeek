@@ -140,6 +140,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
     const [selectedIds, setSelectedIds] = useState([]);
     const [issuedDate, setIssuedDate] = useState(todayIso);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [activeAction, setActiveAction] = useState(null); // 'email' | 'zip' | null
     const [warnings, setWarnings] = useState([]);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
@@ -163,28 +164,33 @@ export default function CertificateModal({ open, onOpenChange, training }) {
         setError('');
         setSuccess(false);
         setSuccessMessage('');
+        setActiveAction(null);
     }, []);
 
-    const handleConfirm = async () => {
+    const handleConfirm = async (action = 'zip') => {
         if (selectedIds.length === 0 || isGenerating) return;
         if (!isGeekLab && !issuedDate) return;
 
+        const mode = isGeekLab ? action : 'zip';
+
         setIsGenerating(true);
+        setActiveAction(mode);
         setError('');
         setWarnings([]);
         setSuccess(false);
         setSuccessMessage('');
 
-        const endpoint = isGeekLab
-            ? `/trainings/${training.id}/certificates/email`
-            : `/trainings/${training.id}/certificates/zip`;
+        const endpoint =
+            mode === 'email'
+                ? `/trainings/${training.id}/certificates/email`
+                : `/trainings/${training.id}/certificates/zip`;
 
         try {
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Accept: isGeekLab ? 'application/json' : 'application/json, application/zip',
+                    Accept: mode === 'email' ? 'application/json' : 'application/json, application/zip',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
                     'X-Requested-With': 'XMLHttpRequest',
                 },
@@ -196,7 +202,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
 
             let parsedWarnings = [];
 
-            if (isGeekLab) {
+            if (mode === 'email') {
                 const data = await response.json().catch(() => ({}));
 
                 if (Array.isArray(data?.skipped) && data.skipped.length > 0) {
@@ -271,6 +277,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
             setError(err?.message || 'Certificate generation failed. Please try again.');
         } finally {
             setIsGenerating(false);
+            setActiveAction(null);
         }
     };
 
@@ -434,7 +441,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                 <div className="flex items-center justify-between gap-3 border-t border-alpha/10 bg-light/60 px-6 py-4 backdrop-blur dark:bg-dark/60">
                     <p className="hidden text-xs text-dark/40 sm:block dark:text-light/40">
                         {isGeekLab
-                            ? 'Selected students are certified immediately · PDF emailed via queue'
+                            ? 'Download ZIP or email PDFs · students certified immediately'
                             : 'Each selected student gets an individual PDF · packaged as a ZIP'}
                     </p>
                     <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
@@ -447,13 +454,41 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                         >
                             Cancel
                         </Button>
+
+                        {isGeekLab && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => handleConfirm('zip')}
+                                disabled={selectedIds.length === 0 || isGenerating || success}
+                                className="min-w-[140px] gap-2 border-alpha/30 font-semibold text-alpha hover:bg-alpha/10 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {isGenerating && activeAction === 'zip' ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Generating…
+                                    </>
+                                ) : success && activeAction !== 'email' ? (
+                                    <>
+                                        <CheckCircle2 className="h-4 w-4" />
+                                        Done!
+                                    </>
+                                ) : (
+                                    <>
+                                        <Download className="h-4 w-4" />
+                                        Download ({selectedIds.length})
+                                    </>
+                                )}
+                            </Button>
+                        )}
+
                         <Button
                             type="button"
-                            onClick={handleConfirm}
+                            onClick={() => handleConfirm(isGeekLab ? 'email' : 'zip')}
                             disabled={selectedIds.length === 0 || (!isGeekLab && !issuedDate) || isGenerating || success}
                             className="min-w-[140px] gap-2 border border-alpha bg-alpha font-semibold text-beta transition hover:bg-transparent hover:text-alpha disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            {isGenerating ? (
+                            {isGenerating && (!isGeekLab || activeAction === 'email') ? (
                                 <>
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                     {isGeekLab ? 'Sending…' : 'Generating…'}
