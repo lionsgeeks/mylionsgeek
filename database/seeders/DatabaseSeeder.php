@@ -27,11 +27,11 @@ class DatabaseSeeder extends Seeder
         $this->call([
             //* this was used for testing purposes
             // StudentSeeder::class,
-            PostSeeder::class,
-            CommentSeeder::class,
-            LikeSeeder::class,
-            JobSeeder::class,
-            // FollowersSeed::class,
+            // PostSeeder::class,
+            // CommentSeeder::class,
+            // LikeSeeder::class,
+            // JobSeeder::class,
+            // // FollowersSeed::class,
         ]);
     }
 }

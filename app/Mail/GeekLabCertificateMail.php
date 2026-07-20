@@ -20,7 +20,7 @@ class GeekLabCertificateMail extends Mailable
 
     public function build()
     {
-        $safeName = preg_replace('/[^a-zA-Z0-9_\- ]/u', '', (string) $this->user->name) ?: 'certificat';
+        $attachmentName = basename($this->pdfStoragePath) ?: 'certificat.pdf';
         $mail = $this->subject('Votre certificat GeekLab — LionsGeek')
             ->view('emails.geeklab-certificate')
             ->with([
@@ -30,7 +30,7 @@ class GeekLabCertificateMail extends Mailable
 
         if (Storage::disk('public')->exists($this->pdfStoragePath)) {
             $mail->attach(Storage::disk('public')->path($this->pdfStoragePath), [
-                'as' => 'certificat-geeklab-'.$safeName.'.pdf',
+                'as' => $attachmentName,
                 'mime' => 'application/pdf',
             ]);
         }

@@ -518,26 +518,19 @@ class FormationController extends Controller
     }
 
     /**
-     * Generate or reuse certificates (PDF), store per student, return ZIP download.
-     * Stores: storage/app/public/certificates/{userId}.pdf
-     * GeekLab trainings must use emailGeekLabCertificates instead.
+     * Generate certificates (PDF), store per student, return ZIP download.
+     * Stores: storage/app/public/certificates/{name-slug}.pdf (e.g. yahya-moussair.pdf)
+     * Supports standard and GeekLab templates (GeekLab also assigns C-ID codes).
      */
     public function downloadCertificatesZip(
         Formation $training,
         Request $request,
         CertificateTrackResolver $trackResolver,
         CertificatePdfGenerator $pdfGenerator,
+        GeekLabCertificateCodeAllocator $codeAllocator,
     ) {
         if (! $this->canPrintCertificates($training)) {
             abort(403, 'You are not allowed to print certificates for this training.');
-        }
-
-        if ($trackResolver->isGeekLabTraining($training->name)) {
-            return $this->certificateZipErrorResponse(
-                $request,
-                'Les certificats GeekLab sont envoyés par e-mail, pas en ZIP.',
-                422,
-            );
         }
 
         $validated = $request->validate([
@@ -548,6 +541,8 @@ class FormationController extends Controller
 
         $issuedCarbon = Carbon::parse($validated['issued_date'])->startOfDay();
         $issuedDateFormatted = $issuedCarbon->format('d/m/Y');
+        $isGeekLab = $trackResolver->isGeekLabTraining($training->name);
+        $trainingName = (string) $training->name;
 
         $users = User::whereIn('id', $validated['user_ids'])
             ->where('formation_id', $training->id)
@@ -569,9 +564,13 @@ class FormationController extends Controller
 
         $savedCount = 0;
         $skipped = [];
+        $usedZipNames = [];
 
         foreach ($users as $user) {
-            $track = $trackResolver->resolve($user->field ?? null);
+            $track = $isGeekLab
+                ? $trackResolver->resolveForTraining($user->field ?? null, $trainingName)
+                : $trackResolver->resolve($user->field ?? null);
+
             if ($track === null) {
                 $skipped[] = [
                     'id' => $user->id,
@@ -582,16 +581,21 @@ class FormationController extends Controller
                 continue;
             }
 
-            // Flat path: one file per student, regardless of training.
-            // put() overwrites automatically, so regeneration is always safe.
-            $pdfStoragePath = 'certificates/'.$user->id.'.pdf';
-            $zipEntryName = 'certificat-'.preg_replace('/[^a-zA-Z0-9_\- ]/u', '', (string) $user->name).'.pdf';
+            // Stored + ZIP entry as yahya-moussair.pdf
+            $pdfFileName = $this->certificatePdfFileName($user);
+            $pdfStoragePath = 'certificates/'.$pdfFileName;
+            $zipEntryName = $this->uniqueZipEntryName($pdfFileName, $usedZipNames, $user);
 
             try {
+                $certificateCode = $isGeekLab
+                    ? $codeAllocator->resolveForUser($user->certificate_code ?? null)
+                    : null;
+
                 $pdfBytes = $pdfGenerator->generate(
                     $track,
                     (string) ($user->name ?? ''),
                     $issuedDateFormatted,
+                    $certificateCode,
                 );
 
                 if ($pdfBytes === null || $pdfBytes === '') {
@@ -604,15 +608,20 @@ class FormationController extends Controller
                     continue;
                 }
 
-                Storage::disk('public')->put($pdfStoragePath, $pdfBytes);
+                $this->storeCertificatePdf($user, $pdfStoragePath, $pdfBytes);
 
-                $user->forceFill([
+                $certFields = [
                     'status' => 'Certified',
                     'certified_at' => $issuedCarbon,
                     'certified_training_id' => (int) $training->id,
                     'certificate_share_token' => $user->certificate_share_token ?: Str::random(48),
                     'certificate_pdf_path' => $pdfStoragePath,
-                ])->save();
+                ];
+                if ($isGeekLab && $certificateCode !== null) {
+                    $certFields['certificate_code'] = $certificateCode;
+                }
+
+                $user->forceFill($certFields)->save();
 
                 $zip->addFromString($zipEntryName, $pdfBytes);
                 $savedCount++;
@@ -654,7 +663,6 @@ class FormationController extends Controller
 
     /**
      * GeekLab: generate PDFs, store them, mark students Certified, queue email jobs.
-     * No ZIP download for coach/admin.
      */
     public function emailGeekLabCertificates(
         Formation $training,
@@ -695,7 +703,6 @@ class FormationController extends Controller
         $queuedCount = 0;
         $skipped = [];
         $trainingName = (string) $training->name;
-        $recipients = [];
 
         foreach ($users as $user) {
             $track = $trackResolver->resolveForTraining($user->field ?? null, $trainingName);
@@ -720,7 +727,8 @@ class FormationController extends Controller
                 continue;
             }
 
-            $pdfStoragePath = 'certificates/'.$user->id.'.pdf';
+            $pdfFileName = $this->certificatePdfFileName($user);
+            $pdfStoragePath = 'certificates/'.$pdfFileName;
 
             try {
                 $certificateCode = $codeAllocator->resolveForUser($user->certificate_code ?? null);
@@ -742,7 +750,7 @@ class FormationController extends Controller
                     continue;
                 }
 
-                Storage::disk('public')->put($pdfStoragePath, $pdfBytes);
+                $this->storeCertificatePdf($user, $pdfStoragePath, $pdfBytes);
 
                 // Certify immediately when PDF is stored and the email job is queued.
                 $user->forceFill([
@@ -754,10 +762,7 @@ class FormationController extends Controller
                     'certificate_code' => $certificateCode,
                 ])->save();
 
-                $recipients[] = [
-                    'user_id' => $user->id,
-                    'pdf_storage_path' => $pdfStoragePath,
-                ];
+                SendGeekLabCertificateEmail::dispatch($user, $pdfStoragePath, $trainingName);
                 $queuedCount++;
             } catch (\Throwable $e) {
                 Log::error('Failed to generate/queue GeekLab certificate', [
@@ -774,13 +779,6 @@ class FormationController extends Controller
             }
         }
 
-        // Dispatch email jobs in batches of 100.
-        $jobCount = 0;
-        foreach (array_chunk($recipients, SendGeekLabCertificateEmail::BATCH_SIZE) as $batch) {
-            SendGeekLabCertificateEmail::dispatch($batch, $trainingName);
-            $jobCount++;
-        }
-
         if ($queuedCount === 0) {
             return $this->certificateZipErrorResponse(
                 $request,
@@ -793,10 +791,73 @@ class FormationController extends Controller
         return response()->json([
             'success' => true,
             'queued' => $queuedCount,
-            'jobs' => $jobCount,
             'skipped' => $skipped,
-            'message' => $queuedCount.' certificat(s) généré(s) et e-mail(s) mis en file d’attente ('.$jobCount.' job(s), 100 max par job).',
+            'message' => $queuedCount.' certificat(s) généré(s) et e-mail(s) mis en file d’attente.',
         ]);
+    }
+
+    /**
+     * Filename like yahya-moussair.pdf (fallback certificat-{id}.pdf).
+     * Appends -{id} when another user already owns the same slug path.
+     */
+    private function certificatePdfFileName(User $user): string
+    {
+        $slug = Str::slug((string) ($user->name ?? ''), '-');
+        if ($slug === '') {
+            $slug = 'certificat-'.$user->id;
+        }
+
+        $fileName = $slug.'.pdf';
+        $path = 'certificates/'.$fileName;
+
+        $takenByOther = User::query()
+            ->where('certificate_pdf_path', $path)
+            ->where('id', '!=', $user->id)
+            ->exists();
+
+        if ($takenByOther) {
+            $fileName = $slug.'-'.$user->id.'.pdf';
+        }
+
+        return $fileName;
+    }
+
+    /**
+     * Ensure ZIP entry names stay unique within one archive.
+     *
+     * @param  array<string, true>  $usedNames
+     */
+    private function uniqueZipEntryName(string $fileName, array &$usedNames, User $user): string
+    {
+        if (! isset($usedNames[$fileName])) {
+            $usedNames[$fileName] = true;
+
+            return $fileName;
+        }
+
+        $slug = pathinfo($fileName, PATHINFO_FILENAME);
+        $unique = $slug.'-'.$user->id.'.pdf';
+        $usedNames[$unique] = true;
+
+        return $unique;
+    }
+
+    /**
+     * Store PDF under the name-based path and remove any previous certificate file.
+     */
+    private function storeCertificatePdf(User $user, string $pdfStoragePath, string $pdfBytes): void
+    {
+        $disk = Storage::disk('public');
+        $previous = $user->certificate_pdf_path;
+        $legacyIdPath = 'certificates/'.$user->id.'.pdf';
+
+        $disk->put($pdfStoragePath, $pdfBytes);
+
+        foreach (array_unique(array_filter([$previous, $legacyIdPath])) as $oldPath) {
+            if ($oldPath !== $pdfStoragePath && $disk->exists($oldPath)) {
+                $disk->delete($oldPath);
+            }
+        }
     }
 
     private function certificateZipErrorResponse(Request $request, string $message, int $status, array $extra = [])
