@@ -41,6 +41,12 @@ return [
                 'line_gap_mm' => 2,
                 'align' => 'L',
             ],
+            // Top-right of white card, to the RIGHT of the MEDIA/CODING SCHOOL badge (Montserrat Light)
+            'certificate_id' => [
+                'y_pct' => 8,
+                'right_mm' => 12.5,
+                'size' => 9.5,
+            ],
         ],
         'geeklab_media' => [
             'name' => [
@@ -49,6 +55,11 @@ return [
                 'size' => 42,
                 'line_gap_mm' => 2,
                 'align' => 'L',
+            ],
+            'certificate_id' => [
+                'y_pct' => 9.5,
+                'right_mm' => 32,
+                'size' => 8,
             ],
         ],
     ],
