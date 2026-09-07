@@ -100,7 +100,9 @@ class FormationController extends Controller
         // Attach the discipline score to every enrolled user so the frontend
         // can display the attendance percentage without extra API calls.
         $disciplineService = new \App\Services\DisciplineService;
-        $canViewHealthData = $this->actorCanViewHealthData(Auth::user());
+        $actor = Auth::user();
+        $canViewHealthData = $this->actorCanViewHealthData($actor)
+            || $this->actorIsAssignedCoach($actor, $training);
         $training->users->each(function (User $user) use ($disciplineService, $canViewHealthData) {
             $user->discipline = $disciplineService->calculateDisciplineScore($user);
 
@@ -472,6 +474,11 @@ class FormationController extends Controller
     // Bulk update users roles, program status, and handicap
     public function bulkUpdateUsers(Formation $training, Request $request, ProgramStatusService $programStatusService)
     {
+        $actor = Auth::user();
+        if (! $this->canManageTrainingUsers($training, $actor)) {
+            abort(403, 'Only admins or the assigned coach can update users for this training.');
+        }
+
         $validated = $request->validate([
             'user_ids' => 'required|array|min:1',
             'user_ids.*' => 'required|exists:users,id',
@@ -481,7 +488,9 @@ class FormationController extends Controller
             'has_handicap' => 'nullable|in:0,1',
         ]);
 
-        $actor = Auth::user();
+        $isAdmin = $this->actorCanViewHealthData($actor);
+        $isAssignedCoach = $this->actorIsAssignedCoach($actor, $training);
+
         if ($request->exists('program_status')) {
             $programStatus = $request->input('program_status');
             if ($programStatus !== null && $programStatus !== '') {
@@ -489,8 +498,12 @@ class FormationController extends Controller
             }
         }
 
-        if ($request->exists('has_handicap') && ! $this->actorCanViewHealthData($actor)) {
-            abort(403, 'Only admins can update handicap data.');
+        if ($request->exists('has_handicap') && ! $isAdmin && ! $isAssignedCoach) {
+            abort(403, 'Only admins or the assigned coach can update handicap data for this training.');
+        }
+
+        if ($request->has('roles') && ! empty($validated['roles']) && ! $isAdmin) {
+            abort(403, 'Only admins can update user roles.');
         }
 
         $users = User::whereIn('id', $validated['user_ids'])
@@ -505,7 +518,7 @@ class FormationController extends Controller
         foreach ($users as $user) {
             $updateData = [];
 
-            if ($request->has('roles') && ! empty($validated['roles'])) {
+            if ($isAdmin && $request->has('roles') && ! empty($validated['roles'])) {
                 $updateData['role'] = array_values(array_map(function ($r) {
                     return strtolower((string) $r);
                 }, array_filter($validated['roles'])));
@@ -568,23 +581,39 @@ class FormationController extends Controller
      */
     private function canPrintCertificates(Formation $training): bool
     {
-        $user = Auth::user();
-        if (! $user) {
+        return $this->canManageTrainingUsers($training, Auth::user());
+    }
+
+    /**
+     * Admins can manage any training; coaches only their assigned class.
+     */
+    private function canManageTrainingUsers(Formation $training, ?User $actor): bool
+    {
+        if (! $actor) {
             return false;
         }
 
-        $roles = is_array($user->role) ? $user->role : [(string) $user->role];
-        $roles = array_filter(array_map('strval', $roles));
-
-        if (count(array_intersect($roles, ['admin', 'super_admin'])) > 0) {
+        if ($this->actorCanViewHealthData($actor)) {
             return true;
         }
 
-        if (in_array('coach', $roles, true) && (int) $training->user_id === (int) $user->id) {
-            return true;
+        return $this->actorIsAssignedCoach($actor, $training);
+    }
+
+    private function actorIsAssignedCoach(?User $actor, Formation $training): bool
+    {
+        if (! $actor) {
+            return false;
         }
 
-        return false;
+        $roles = is_array($actor->role) ? $actor->role : array_filter([(string) $actor->role]);
+        $rolesLower = array_map('strtolower', array_map('strval', $roles));
+
+        if (! in_array('coach', $rolesLower, true)) {
+            return false;
+        }
+
+        return (int) $training->user_id === (int) $actor->id;
     }
 
     /**

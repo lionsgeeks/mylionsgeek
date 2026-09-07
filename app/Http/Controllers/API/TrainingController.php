@@ -397,15 +397,15 @@ class TrainingController extends Controller
             return $checkResult;
         }
 
-        // SECURITY: this route is only guarded by auth:sanctum, so authorization must be
-        // enforced here. Only privileged actors may change roles — otherwise any
-        // authenticated user enrolled in a training can promote themselves to admin.
         $actor = $request->user();
-        $actorRoles = is_array($actor->role) ? $actor->role : array_filter([(string) $actor->role]);
-        $canManageRoles = ! empty(array_intersect(
-            array_map('strtolower', $actorRoles),
-            ['admin', 'super_admin', 'moderateur', 'coach']
-        ));
+        $training = Formation::findOrFail($id);
+
+        if (! $this->canManageTrainingUsers($actor, $training)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only admins or the assigned coach can update users for this training.',
+            ], 403);
+        }
 
         $validated = $request->validate([
             'user_ids' => 'required|array|min:1',
@@ -416,7 +416,8 @@ class TrainingController extends Controller
             'has_handicap' => 'nullable|in:0,1',
         ]);
 
-        $training = Formation::findOrFail($id);
+        $isAdmin = $this->actorIsAdmin($actor);
+        $isAssignedCoach = $this->actorIsAssignedCoach($actor, $training);
 
         if ($request->exists('program_status')) {
             $programStatus = $request->input('program_status');
@@ -425,15 +426,18 @@ class TrainingController extends Controller
             }
         }
 
-        if ($request->exists('has_handicap')) {
-            $actorRoles = is_array($actor->role) ? $actor->role : array_filter([(string) $actor->role]);
-            $canViewHealthData = count(array_intersect($actorRoles, ['admin', 'super_admin'])) > 0;
-            if (! $canViewHealthData) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Only admins can update handicap data.',
-                ], 403);
-            }
+        if ($request->exists('has_handicap') && ! $isAdmin && ! $isAssignedCoach) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only admins or the assigned coach can update handicap data for this training.',
+            ], 403);
+        }
+
+        if ($request->has('roles') && ! empty($validated['roles']) && ! $isAdmin) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only admins can update user roles.',
+            ], 403);
         }
 
         $users = User::whereIn('id', $validated['user_ids'])
@@ -451,7 +455,7 @@ class TrainingController extends Controller
         foreach ($users as $user) {
             $updateData = [];
 
-            if ($request->has('roles') && !empty($validated['roles']) && $canManageRoles) {
+            if ($isAdmin && $request->has('roles') && ! empty($validated['roles'])) {
                 $updateData['role'] = array_values(array_map(function ($r) {
                     return strtolower((string) $r);
                 }, array_filter($validated['roles'])));
@@ -471,7 +475,7 @@ class TrainingController extends Controller
                 }
             }
 
-            if (!empty($updateData)) {
+            if (! empty($updateData)) {
                 $user->update($updateData);
                 $updated++;
             }
@@ -671,6 +675,39 @@ class TrainingController extends Controller
         $lower = array_map('strtolower', array_map('strval', $roles));
 
         return (bool) array_intersect($lower, ['admin', 'super_admin', 'moderateur', 'coach', 'studio_responsable']);
+    }
+
+    private function actorIsAdmin(?User $actor): bool
+    {
+        if (! $actor) {
+            return false;
+        }
+
+        $roles = is_array($actor->role) ? $actor->role : array_filter([(string) $actor->role]);
+        $rolesLower = array_map('strtolower', array_map('strval', $roles));
+
+        return count(array_intersect($rolesLower, ['admin', 'super_admin'])) > 0;
+    }
+
+    private function actorIsAssignedCoach(?User $actor, Formation $training): bool
+    {
+        if (! $actor) {
+            return false;
+        }
+
+        $roles = is_array($actor->role) ? $actor->role : array_filter([(string) $actor->role]);
+        $rolesLower = array_map('strtolower', array_map('strval', $roles));
+
+        if (! in_array('coach', $rolesLower, true)) {
+            return false;
+        }
+
+        return (int) $training->user_id === (int) $actor->id;
+    }
+
+    private function canManageTrainingUsers(?User $actor, Formation $training): bool
+    {
+        return $this->actorIsAdmin($actor) || $this->actorIsAssignedCoach($actor, $training);
     }
 
     private function normalizeAttendanceSlot(?string $value): string
