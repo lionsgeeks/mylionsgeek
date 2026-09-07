@@ -52,7 +52,9 @@ Route::post('/reservations/store', [ReservationController::class, 'storemobile']
     ->middleware('auth:sanctum')
     ->name('reservations.store');
 
-Route::post('/cowork/reserve', [ReservationController::class, 'storeReservationCoworkMobile']);
+Route::post('/cowork/reserve', [ReservationController::class, 'storeReservationCoworkMobile'])
+    ->middleware('auth:sanctum')
+    ->name('cowork.reserve');
 
 require __DIR__ . "/api/learning.php";
 
@@ -74,9 +76,11 @@ Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
     // Push token endpoint
     Route::post('/push-token', [\App\Http\Controllers\API\PushTokenController::class, 'store']);
 
-    // Test push notification endpoints (for debugging)
-    Route::post('/test-push', [\App\Http\Controllers\API\TestPushController::class, 'test']);
-    Route::get('/push-status', [\App\Http\Controllers\API\TestPushController::class, 'status']);
+    // Test push notification endpoints (admin-only debug surface)
+    Route::post('/test-push', [\App\Http\Controllers\API\TestPushController::class, 'test'])
+        ->middleware('role:admin');
+    Route::get('/push-status', [\App\Http\Controllers\API\TestPushController::class, 'status'])
+        ->middleware('role:admin');
 
     // Chat routes
     Route::prefix('chat')->name('chat.')->group(function () {

@@ -17,6 +17,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -224,12 +225,17 @@ class TrainingController extends Controller
         }
 
         $auth = Auth::guard('sanctum')->user();
-        $canManage = $auth instanceof User && EnsureTrainingManagementRole::allows($auth);
-
-        if (! $canManage && ! $auth->isEnrolledInFormation((int) $id)) {
-            return response()->json(['message' => 'Forbidden'], 403);
+        if (! $auth instanceof User) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
+        // Authorize before loading roster / coach relations (no PII until allowed).
+        $formation = Formation::query()->findOrFail($id);
+        if (! Gate::forUser($auth)->allows('view', $formation)) {
+            return response()->make('', 403);
+        }
+
+        $canManage = EnsureTrainingManagementRole::allows($auth);
         $training = Formation::with(['coach', 'users'])->findOrFail($id);
 
         $usersNull = $canManage
@@ -261,6 +267,15 @@ class TrainingController extends Controller
             $coachImg = 'storage/img/profile/' . ltrim($coachImg, '/');
         }
 
+        $coachPayload = $training->coach ? [
+            'id' => $training->coach->id,
+            'name' => $training->coach->name,
+            'image' => $coachImg ? asset($coachImg) : null,
+        ] : null;
+        if ($canManage && $coachPayload) {
+            $coachPayload['email'] = $training->coach->email;
+        }
+
         $trainingData = [
             'id' => $training->id,
             'name' => $training->name,
@@ -269,24 +284,24 @@ class TrainingController extends Controller
             'start_time' => $training->start_time,
             'end_time' => $training->end_time,
             'promo' => $training->promo,
-            'coach' => $training->coach ? [
-                'id' => $training->coach->id,
-                'name' => $training->coach->name,
-                'email' => $training->coach->email,
-                'image' => $coachImg ? asset($coachImg) : null,
-            ] : null,
-            'users' => $training->users->map(function ($user) {
+            'coach' => $coachPayload,
+            'users' => $training->users->map(function ($user) use ($canManage) {
                 $userImg = $user->image;
                 if ($userImg && !Str::startsWith($userImg, ['http://', 'https://', 'storage/'])) {
                     $userImg = 'storage/img/profile/' . ltrim($userImg, '/');
                 }
-                
-                return [
+
+                // Students: minimal classmate roster (id/name/avatar only). Staff keep email.
+                $row = [
                     'id' => $user->id,
                     'name' => $user->name,
-                    'email' => $user->email,
                     'image' => $userImg ? asset($userImg) : null,
                 ];
+                if ($canManage) {
+                    $row['email'] = $user->email;
+                }
+
+                return $row;
             }),
             'created_at' => $training->created_at ? (is_string($training->created_at) ? $training->created_at : $training->created_at->toDateTimeString()) : null,
             'updated_at' => $training->updated_at ? (is_string($training->updated_at) ? $training->updated_at : $training->updated_at->toDateTimeString()) : null,
@@ -434,6 +449,11 @@ class TrainingController extends Controller
             'program_status' => 'nullable|in:active,certified,not_certified,left',
             'has_handicap' => 'nullable|in:0,1',
         ]);
+
+        $actor = Auth::guard('sanctum')->user();
+        if (! $actor instanceof User) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
 
         $training = Formation::findOrFail($id);
 

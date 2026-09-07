@@ -44,6 +44,28 @@ test('anonymous cannot reserve a cowork table', function () {
     expect(DB::table('reservation_coworks')->count())->toBe(0);
 });
 
+test('forged role and access_cowork body fields do not grant cowork access', function () {
+    $user = m6User(['access_cowork' => 0]);
+
+    m6Reserve($user, m6Payload([
+        'user_id' => 999999,
+        'role' => 'admin',
+        'roles' => ['admin'],
+        'access_cowork' => 1,
+        'is_admin' => true,
+    ]))->assertForbidden();
+
+    expect(DB::table('reservation_coworks')->count())->toBe(0);
+});
+
+test('invalid bearer token cannot reserve cowork', function () {
+    $this->withToken('invalid-cowork-token')
+        ->postJson('/api/cowork/reserve', m6Payload())
+        ->assertUnauthorized();
+
+    expect(DB::table('reservation_coworks')->count())->toBe(0);
+});
+
 test('authenticated user without access_cowork cannot reserve', function () {
     $user = m6User(['access_cowork' => 0]);
 

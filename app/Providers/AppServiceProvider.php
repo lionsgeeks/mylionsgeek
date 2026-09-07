@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\Formation;
 use App\Models\Reservation;
 use App\Models\ReservationCowork;
+use App\Policies\FormationPolicy;
 use App\Services\FaceVerification\AwsRekognitionClient;
 use App\Services\FaceVerification\FaceVerificationService;
 use App\Services\FaceVerification\FaceVerificationSettings;
@@ -12,6 +14,7 @@ use App\Services\FaceVerification\RekognitionFaceVerificationService;
 use App\Services\FaceVerification\UnavailableFaceVerificationService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
@@ -41,6 +44,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::policy(Formation::class, FormationPolicy::class);
+
         RateLimiter::for('events-info-read', function (Request $request) {
             return Limit::perMinute(60)->by((string) ($request->user()?->id ?: $request->ip()));
         });

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -132,6 +133,8 @@ class EventsInfoProxyController extends Controller
 
     public function validateEventInvitation(Request $request): JsonResponse
     {
+        $this->assertCanAccessEventsScan($request);
+
         $validated = $request->validate([
             'email' => 'required|email',
             'code' => 'required',
@@ -145,6 +148,8 @@ class EventsInfoProxyController extends Controller
 
     public function manualEventChecking(Request $request): JsonResponse
     {
+        $this->assertCanAccessEventsScan($request);
+
         $validated = $request->validate([
             'id' => 'required|integer',
             'event_id' => 'required|integer',
@@ -194,8 +199,10 @@ class EventsInfoProxyController extends Controller
         ]);
     }
 
-    public function infoSessions(): JsonResponse
+    public function infoSessions(Request $request): JsonResponse
     {
+        $this->assertCanAccessEventsScan($request);
+
         $response = $this->forward('GET', 'lionsgate/infosessions');
         if ($response->getStatusCode() !== 200) {
             return $response;
@@ -218,6 +225,8 @@ class EventsInfoProxyController extends Controller
 
     public function sessionData(Request $request): JsonResponse
     {
+        $this->assertCanAccessEventsScan($request);
+
         $validated = $request->validate([
             'id' => 'required|integer',
         ]);
@@ -251,6 +260,8 @@ class EventsInfoProxyController extends Controller
 
     public function validateInvitation(Request $request): JsonResponse
     {
+        $this->assertCanAccessEventsScan($request);
+
         $validated = $request->validate([
             'email' => 'required|email',
             'code' => 'required',
@@ -264,6 +275,8 @@ class EventsInfoProxyController extends Controller
 
     public function manualChecking(Request $request): JsonResponse
     {
+        $this->assertCanAccessEventsScan($request);
+
         $validated = $request->validate([
             'id' => 'required|integer',
         ]);
@@ -275,6 +288,8 @@ class EventsInfoProxyController extends Controller
 
     public function profileData(Request $request): JsonResponse
     {
+        $this->assertCanAccessEventsScan($request);
+
         $validated = $request->validate([
             'id' => 'required|integer',
         ]);
@@ -294,6 +309,8 @@ class EventsInfoProxyController extends Controller
 
     public function sessionPhoto(Request $request): JsonResponse
     {
+        $this->assertCanAccessEventsScan($request);
+
         $request->validate([
             'photo' => 'required|file',
             'id' => 'required|integer',
@@ -346,8 +363,10 @@ class EventsInfoProxyController extends Controller
         return response()->json($json, $response->status());
     }
 
-    public function participantPhoto(string $photo): Response
+    public function participantPhoto(Request $request, string $photo): Response
     {
+        $this->assertCanAccessEventsScan($request);
+
         $baseUrl = rtrim((string) config('services.lionsgeek.url'), '/');
 
         if ($baseUrl === '') {
@@ -496,6 +515,20 @@ class EventsInfoProxyController extends Controller
         }
 
         return response()->json($response->json(), $response->status());
+    }
+
+    /**
+     * Defense-in-depth for scan/PII actions (middleware already gates these routes).
+     */
+    private function assertCanAccessEventsScan(Request $request): void
+    {
+        $user = $request->user('sanctum') ?? $request->user();
+        if (! $user instanceof User) {
+            throw new HttpResponseException(response()->json(['message' => 'Unauthenticated'], 401));
+        }
+        if (! $user->canAccessEventsScan()) {
+            throw new HttpResponseException(response()->json(['message' => 'Forbidden'], 403));
+        }
     }
 
     /**

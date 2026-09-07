@@ -7,8 +7,12 @@ use Illuminate\Support\Facades\Route;
  * Proxy routes for the public LionsGeek site (lionsgeek.ma).
  *
  * Incoming callers authenticate with Sanctum. Authorization is applied per
- * group (public-event users vs admin/access_scan staff). Upstream lionsgeek.ma
- * is still called with the server-side LIONSGEEK_MA_API_KEY — never a client key.
+ * group:
+ *   - read/book: any authenticated Sanctum user (non-staff still filtered in
+ *     controller for private events / empty participants / no admin_override)
+ *   - scan/PII: auth:sanctum + events.info.scan (admin role OR access_scan)
+ * Upstream lionsgeek.ma is still called with the server-side LIONSGEEK_MA_API_KEY
+ * — never a client key.
  *
  * Mounted under the global /api prefix => final paths are /api/events-info/*.
  */

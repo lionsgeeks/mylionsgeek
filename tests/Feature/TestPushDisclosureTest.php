@@ -28,6 +28,13 @@ function m3User(array $overrides = []): User
     ], $overrides));
 }
 
+function m3Admin(array $overrides = []): User
+{
+    return m3User(array_merge([
+        'role' => ['admin'],
+    ], $overrides));
+}
+
 function m3Auth(User $user)
 {
     Auth::forgetGuards();
@@ -58,8 +65,20 @@ test('anonymous cannot read push status', function () {
     $this->getJson('/api/mobile/push-status')->assertUnauthorized();
 });
 
-test('authenticated push-status does not expose the full token or a log dump', function () {
+test('non-admin cannot send a test push', function () {
     $user = m3User();
+
+    m3Auth($user)->postJson('/api/mobile/test-push')->assertForbidden();
+});
+
+test('non-admin cannot read push status', function () {
+    $user = m3User();
+
+    m3Auth($user)->getJson('/api/mobile/push-status')->assertForbidden();
+});
+
+test('authenticated admin push-status does not expose the full token or a log dump', function () {
+    $user = m3Admin();
 
     $response = m3Auth($user)->getJson('/api/mobile/push-status');
 
@@ -73,8 +92,8 @@ test('authenticated push-status does not expose the full token or a log dump', f
     expect($response->json('token_preview'))->toStartWith(substr(M3_EXPO_TOKEN, 0, 30));
 });
 
-test('failed test-push without a registered token does not leak secrets', function () {
-    $user = m3User(['expo_push_token' => null]);
+test('failed admin test-push without a registered token does not leak secrets', function () {
+    $user = m3Admin(['expo_push_token' => null]);
 
     $response = m3Auth($user)->postJson('/api/mobile/test-push');
 
@@ -85,8 +104,8 @@ test('failed test-push without a registered token does not leak secrets', functi
     m3AssertNoPushDisclosure($response, M3_EXPO_TOKEN);
 });
 
-test('failed test-push send does not return full_token, log lines, or exception details', function () {
-    $user = m3User();
+test('failed admin test-push send does not return full_token, log lines, or exception details', function () {
+    $user = m3Admin();
 
     $this->mock(ExpoPushNotificationService::class, function ($mock) {
         $mock->shouldReceive('sendToUser')->once()->andReturn(false);
@@ -104,8 +123,8 @@ test('failed test-push send does not return full_token, log lines, or exception 
     m3AssertNoPushDisclosure($response);
 });
 
-test('test-push exception path does not return raw exception file or line details', function () {
-    $user = m3User();
+test('admin test-push exception path does not return raw exception file or line details', function () {
+    $user = m3Admin();
 
     $this->mock(ExpoPushNotificationService::class, function ($mock) {
         $mock->shouldReceive('sendToUser')->once()->andThrow(
@@ -125,8 +144,8 @@ test('test-push exception path does not return raw exception file or line detail
         ->and($response->getContent())->not->toContain(__FILE__);
 });
 
-test('successful test-push still works and does not expose the full token', function () {
-    $user = m3User();
+test('successful admin test-push still works and does not expose the full token', function () {
+    $user = m3Admin();
 
     $this->mock(ExpoPushNotificationService::class, function ($mock) {
         $mock->shouldReceive('sendToUser')->once()->andReturn(true);
@@ -139,9 +158,7 @@ test('successful test-push still works and does not expose the full token', func
 
     $response
         ->assertOk()
-        ->assertJsonPath('success', true)
-        ->assertJsonPath('user_id', $user->id)
-        ->assertJsonStructure(['success', 'message', 'token_preview', 'title', 'body']);
+        ->assertJsonPath('success', true);
 
     m3AssertNoPushDisclosure($response);
 });

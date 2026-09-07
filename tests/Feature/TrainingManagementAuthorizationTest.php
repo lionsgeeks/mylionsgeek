@@ -171,14 +171,18 @@ test('student cannot bulk-update role or status', function () {
 test('student cannot view another formation', function () {
     $own = h1Formation(['name' => 'Own Training']);
     $other = h1Formation(['name' => 'Other Training']);
+    $classmate = h1User(['student'], ['formation_id' => $other->id, 'email' => 'classmate.other@example.com']);
     $student = h1User(['student'], ['formation_id' => $own->id]);
 
-    $this->actingAs($student, 'sanctum')
-        ->getJson('/api/mobile/trainings/'.$other->id)
-        ->assertForbidden()
-        ->assertJsonMissingPath('usersNull');
-});
+    $response = $this->actingAs($student, 'sanctum')
+        ->getJson('/api/mobile/trainings/'.$other->id);
 
+    $response->assertForbidden();
+    expect($response->getContent())->toBe('')
+        ->and($response->getContent())->not->toContain($classmate->email)
+        ->and($response->getContent())->not->toContain('users')
+        ->and($response->getContent())->not->toContain('training');
+});
 test('student can view own formation without usersNull', function () {
     $training = h1Formation(['name' => 'Own Training']);
     $unassigned = h1User(['student'], ['formation_id' => null, 'email' => 'unassigned.h1@example.com']);
@@ -192,6 +196,54 @@ test('student can view own formation without usersNull', function () {
         ->assertJsonMissingPath('usersNull');
 
     expect(json_encode($response->json()))->not->toContain($unassigned->email);
+});
+
+test('enrolled student sees classmate names but not emails or coach email', function () {
+    $training = h1Formation(['name' => 'Roster Privacy']);
+    $classmate = h1User(['student'], [
+        'formation_id' => $training->id,
+        'name' => 'Classmate Visible',
+        'email' => 'classmate.secret@example.com',
+    ]);
+    $student = h1User(['student'], [
+        'formation_id' => $training->id,
+        'email' => 'viewer.student@example.com',
+    ]);
+
+    $response = $this->actingAs($student, 'sanctum')
+        ->getJson('/api/mobile/trainings/'.$training->id)
+        ->assertOk()
+        ->assertJsonPath('training.id', $training->id)
+        ->assertJsonFragment(['id' => $classmate->id, 'name' => 'Classmate Visible'])
+        ->assertJsonMissingPath('usersNull');
+
+    $body = $response->getContent();
+    $users = collect($response->json('training.users'));
+    $classmateRow = $users->firstWhere('id', $classmate->id);
+
+    expect($classmateRow)->not->toBeNull()
+        ->and($classmateRow)->toHaveKeys(['id', 'name', 'image'])
+        ->and(array_key_exists('email', $classmateRow))->toBeFalse()
+        ->and($body)->not->toContain('classmate.secret@example.com')
+        ->and($response->json('training.coach.email'))->toBeNull()
+        ->and($body)->not->toContain('phone')
+        ->and($body)->not->toContain('password')
+        ->and($body)->not->toContain('expo_push_token')
+        ->and($body)->not->toContain('access_scan');
+});
+
+test('staff still receives classmate emails on training show', function () {
+    $training = h1Formation(['name' => 'Staff Roster']);
+    $classmate = h1User(['student'], [
+        'formation_id' => $training->id,
+        'email' => 'staff.sees@example.com',
+    ]);
+    $admin = h1User(['admin']);
+
+    $this->actingAs($admin, 'sanctum')
+        ->getJson('/api/mobile/trainings/'.$training->id)
+        ->assertOk()
+        ->assertJsonFragment(['email' => 'staff.sees@example.com']);
 });
 
 test('student enrolled listing remains scoped to own formations', function () {
@@ -275,24 +327,25 @@ test('super_admin can enroll a user', function () {
     expect((int) $target->fresh()->formation_id)->toBe((int) $training->id);
 });
 
-test('moderateur can bulk-update status and role', function () {
+test('moderateur can bulk-update program status and role', function () {
     $training = h1Formation();
     $moderateur = h1User(['moderateur']);
     $enrolled = h1User(['student'], [
         'formation_id' => $training->id,
         'status' => 'Studying',
+        'program_status' => null,
     ]);
 
     $this->actingAs($moderateur, 'sanctum')
         ->postJson('/api/mobile/trainings/'.$training->id.'/bulk-update-users', [
             'user_ids' => [$enrolled->id],
             'roles' => ['student'],
-            'status' => 'Internship',
+            'program_status' => 'active',
         ])
         ->assertOk();
 
     $enrolled->refresh();
-    expect($enrolled->status)->toBe('Internship')
+    expect($enrolled->program_status)->toBe('active')
         ->and($enrolled->normalizedRoles())->toBe(['student']);
 });
 

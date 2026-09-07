@@ -307,11 +307,10 @@ class ReservationController extends Controller
             'team_members.*' => 'integer|exists:users,id',
             'equipment' => 'nullable|array',
             'equipment.*' => 'integer|exists:equipment,id',
-            'user_id' => 'nullable|integer',
         ]);
 
-        // Never trust client-supplied user_id as the reservation owner.
-        $validated['user_id'] = (int) $authUser->id;
+        // Never accept client-supplied user_id — bind to authenticated Sanctum user only.
+        $ownerId = (int) $authUser->id;
 
         if (!$this->userHasAccessFlag($authUser, 'access_studio')) {
             return response()->json([
@@ -323,7 +322,7 @@ class ReservationController extends Controller
         try {
             $reservationId = $studioReservations->createPending([
                 'studio_id' => (int) $validated['studio_id'],
-                'user_id' => (int) $validated['user_id'],
+                'user_id' => $ownerId,
                 'title' => $validated['title'],
                 'description' => $validated['description'] ?? '',
                 'day' => $validated['day'],
@@ -332,12 +331,12 @@ class ReservationController extends Controller
                 'type' => 'studio',
             ]);
 
-            DB::transaction(function () use ($validated, $reservationId) {
+            DB::transaction(function () use ($validated, $reservationId, $ownerId) {
                 // Send Expo push notification to studio responsables
                 try {
                     \Illuminate\Support\Facades\Log::info('Attempting to send push notification for reservation (API)', [
                         'reservation_id' => $reservationId,
-                        'user_id' => $validated['user_id'],
+                        'user_id' => $ownerId,
                     ]);
 
                     $notifyUsers = \App\Models\User::where(function ($query) {
@@ -349,7 +348,7 @@ class ReservationController extends Controller
                             ->orWhereJsonContains('role', 'super_admin');
                     })->get();
 
-                    $reservationUser = \App\Models\User::find($validated['user_id']);
+                    $reservationUser = \App\Models\User::find($ownerId);
 
                     if ($reservationUser) {
                         $reservationTitle = $validated['title'] ?? "Reservation #{$reservationId}";
@@ -363,7 +362,7 @@ class ReservationController extends Controller
                                 $pushService->sendToUser($notifyUser, 'New Reservation', $reservationMessage, [
                                     'type' => 'reservation',
                                     'reservation_id' => $reservationId,
-                                    'user_id' => $validated['user_id'],
+                                    'user_id' => $ownerId,
                                     'user_name' => $reservationUser->name,
                                     'title' => $reservationTitle,
                                     'day' => $validated['day'],
