@@ -15,7 +15,10 @@ use Inertia\Inertia;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Services\CoworkReservationConflictService;
 use App\Services\ExportService;
+use App\Services\MeetingRoomReservationConflictService;
+use App\Services\StudioReservationConflictService;
 use App\Mail\ReservationApprovedMail;
 use App\Mail\ReservationCanceledMail;
 use App\Mail\ReservationCreatedAdminMail;
@@ -29,6 +32,9 @@ use App\Models\AccessRequestResponseNotification;
 class ReservationsController extends Controller
 {
     private const ACCESS_BYPASS_ROLES = ['admin', 'super_admin', 'moderateur', 'coach', 'studio_responsable'];
+
+    /** Web reservation staff who may view/cancel any reservation. Do not reuse H1/H2 sets. */
+    private const RESERVATION_STAFF_ROLES = ['admin', 'super_admin', 'moderateur', 'studio_responsable', 'pro'];
     public function index(Request $request)
     {
 
@@ -879,17 +885,17 @@ class ReservationsController extends Controller
     /**
      * Store new reservation with teams and equipment
      */
-    public function store(Request $request)
+    public function store(Request $request, StudioReservationConflictService $studioReservations)
     {
         // Determine if this is an external reservation
         $isExternal = $request->has('type') && $request->type === 'exterior';
-        
+
         $validationRules = [
             'title' => 'required|string|max:255',
             'description' => $isExternal ? 'required|string' : 'nullable|string',
             'day' => 'required|date',
-            'start' => 'required|string',
-            'end' => 'required|string',
+            'start' => $isExternal ? 'required|string' : StudioReservationConflictService::timeRules(),
+            'end' => $isExternal ? 'required|string' : StudioReservationConflictService::timeRules(),
             'team_members' => 'nullable|array',
             'team_members.*' => 'integer|exists:users,id',
             'equipment' => 'nullable|array',
@@ -907,168 +913,116 @@ class ReservationsController extends Controller
         $validated = $request->validate($validationRules);
 
         $currentUser = auth()->user();
-        
+
         // Only check studio access for studio reservations, not exterior
-        if (!$isExternal && !$this->userHasAccessFlag($currentUser, 'access_studio')) {
+        if (! $isExternal && ! $this->userHasAccessFlag($currentUser, 'access_studio')) {
             return back()->with('error', 'You do not have permission to reserve a studio.');
         }
 
         try {
             $reservationId = null;
 
-            DB::transaction(function () use ($validated, $isExternal, &$reservationId) {
-                $lastId = (int) (DB::table('reservations')->max('id') ?? 0);
-                $reservationId = $lastId + 1;
+            if ($isExternal) {
+                DB::transaction(function () use ($validated, &$reservationId) {
+                    $lastId = (int) (DB::table('reservations')->max('id') ?? 0);
+                    $reservationId = $lastId + 1;
 
-                DB::table('reservations')->insert([
-                    'id' => $reservationId,
-                    'studio_id' => $isExternal ? null : $validated['studio_id'],
-                    'user_id' => auth()->id(),
+                    $row = [
+                        'id' => $reservationId,
+                        'studio_id' => null,
+                        'user_id' => auth()->id(),
+                        'title' => $validated['title'],
+                        'description' => $validated['description'] ?? '',
+                        'day' => $validated['day'],
+                        'start' => $validated['start'],
+                        'end' => $validated['end'],
+                        'type' => 'exterior',
+                        'approved' => 0,
+                        'canceled' => 0,
+                        'passed' => 0,
+                        'start_signed' => 0,
+                        'end_signed' => 0,
+                        'created_at' => now()->toDateTimeString(),
+                        'updated_at' => now()->toDateTimeString(),
+                    ];
+                    if (Schema::hasColumn('reservations', 'studio_responsable_approved')) {
+                        $row['studio_responsable_approved'] = 0;
+                    }
+                    DB::table('reservations')->insert($row);
+
+                    if (! empty($validated['team_members'])) {
+                        $teamData = array_map(function ($userId) use ($reservationId) {
+                            return [
+                                'reservation_id' => $reservationId,
+                                'user_id' => $userId,
+                                'created_at' => now()->toDateTimeString(),
+                                'updated_at' => now()->toDateTimeString(),
+                            ];
+                        }, $validated['team_members']);
+                        DB::table('reservation_teams')->insert($teamData);
+                    }
+
+                    if (! empty($validated['equipment'])) {
+                        $equipmentData = array_map(function ($equipmentId) use ($validated, $reservationId) {
+                            return [
+                                'reservation_id' => $reservationId,
+                                'equipment_id' => $equipmentId,
+                                'day' => $validated['day'],
+                                'start' => $validated['start'],
+                                'end' => $validated['end'],
+                                'created_at' => now()->toDateTimeString(),
+                                'updated_at' => now()->toDateTimeString(),
+                            ];
+                        }, $validated['equipment']);
+                        DB::table('reservation_equipment')->insert($equipmentData);
+                    }
+                });
+            } else {
+                $reservationId = $studioReservations->createPending([
+                    'studio_id' => (int) $validated['studio_id'],
+                    'user_id' => (int) auth()->id(),
                     'title' => $validated['title'],
                     'description' => $validated['description'] ?? '',
                     'day' => $validated['day'],
                     'start' => $validated['start'],
                     'end' => $validated['end'],
-                    'type' => $isExternal ? 'exterior' : ($validated['type'] ?? 'studio'),
-                    'approved' => 0, // Exterior reservations require two-step approval: studio responsable then admin
-                    'studio_responsable_approved' => 0, // First step: studio responsable approval
-                    'canceled' => 0,
-                    'passed' => 0,
-                    'start_signed' => 0,
-                    'end_signed' => 0,
-                    'created_at' => now()->toDateTimeString(),
-                    'updated_at' => now()->toDateTimeString(),
+                    'type' => $validated['type'] ?? 'studio',
+                    'studio_responsable_approved' => 0,
                 ]);
 
-                // Send Expo push notification to studio responsables
-                try {
-                    \Illuminate\Support\Facades\Log::info('Attempting to send push notification for reservation', [
-                        'reservation_id' => $reservationId,
-                        'user_id' => auth()->id(),
-                    ]);
-                    
-                    // Get all users who should be notified (studio responsables and admins)
-                    // Roles can be stored as string or JSON array, so we need to check both
-                    $notifyUsers = \App\Models\User::where(function($query) {
-                        $query->where('role', 'studio_responsable')
-                            ->orWhereJsonContains('role', 'studio_responsable')
-                            ->orWhere('role', 'admin')
-                            ->orWhereJsonContains('role', 'admin')
-                            ->orWhere('role', 'super_admin')
-                            ->orWhereJsonContains('role', 'super_admin');
-                    })->get();
-                    
-                    \Illuminate\Support\Facades\Log::info('Found users to notify for reservation', [
-                        'count' => $notifyUsers->count(),
-                        'ids' => $notifyUsers->pluck('id')->toArray(),
-                        'emails' => $notifyUsers->pluck('email')->toArray(),
-                    ]);
-                    
-                    $reservationUser = \App\Models\User::find(auth()->id());
-                    
-                    if ($reservationUser) {
-                        $reservationTitle = $validated['title'] ?? "Reservation #{$reservationId}";
-                        $reservationMessage = "{$reservationUser->name} submitted a new reservation: {$reservationTitle}";
-                        
-                        foreach ($notifyUsers as $notifyUser) {
-                            // Refresh user to get latest expo_push_token
-                            $notifyUser->refresh();
-                            
-                            \Illuminate\Support\Facades\Log::info('Processing user for push notification', [
-                                'user_id' => $notifyUser->id,
-                                'user_email' => $notifyUser->email,
-                                'has_expo_token' => !empty($notifyUser->expo_push_token),
-                                'token_preview' => $notifyUser->expo_push_token ? substr($notifyUser->expo_push_token, 0, 30) . '...' : null,
-                            ]);
-                            
-                            if ($notifyUser->expo_push_token) {
-                                $pushService = app(\App\Services\ExpoPushNotificationService::class);
-                                
-                                \Illuminate\Support\Facades\Log::info('Sending push notification for reservation', [
-                                    'notify_user_id' => $notifyUser->id,
-                                    'reservation_id' => $reservationId,
-                                    'user_id' => auth()->id(),
-                                    'message' => $reservationMessage,
-                                ]);
-                                
-                                $success = $pushService->sendToUser($notifyUser, 'New Reservation', $reservationMessage, [
-                                    'type' => 'reservation',
-                                    'reservation_id' => $reservationId,
-                                    'user_id' => auth()->id(),
-                                    'user_name' => $reservationUser->name,
-                                    'title' => $reservationTitle,
-                                    'day' => $validated['day'],
-                                    'start' => $validated['start'],
-                                    'end' => $validated['end'],
-                                ]);
-                                
-                                if (!$success) {
-                                    \Illuminate\Support\Facades\Log::warning('Push notification send returned false for reservation', [
-                                        'notify_user_id' => $notifyUser->id,
-                                        'reservation_id' => $reservationId,
-                                    ]);
-                                } else {
-                                    \Illuminate\Support\Facades\Log::info('Push notification sent successfully for reservation', [
-                                        'notify_user_id' => $notifyUser->id,
-                                        'reservation_id' => $reservationId,
-                                    ]);
-                                }
-                            } else {
-                                \Illuminate\Support\Facades\Log::info('User does not have Expo push token, skipping push notification', [
-                                    'user_id' => $notifyUser->id,
-                                    'user_email' => $notifyUser->email,
-                                ]);
-                            }
-                        }
-                    } else {
-                        \Illuminate\Support\Facades\Log::warning('Reservation user not found for push notification', [
-                            'user_id' => auth()->id(),
-                        ]);
+                DB::transaction(function () use ($validated, $reservationId) {
+                    if (! empty($validated['team_members'])) {
+                        $teamData = array_map(function ($userId) use ($reservationId) {
+                            return [
+                                'reservation_id' => $reservationId,
+                                'user_id' => $userId,
+                                'created_at' => now()->toDateTimeString(),
+                                'updated_at' => now()->toDateTimeString(),
+                            ];
+                        }, $validated['team_members']);
+                        DB::table('reservation_teams')->insert($teamData);
                     }
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error('Failed to send Expo push notification for reservation', [
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString(),
-                        'reservation_id' => $reservationId,
-                    ]);
-                    // Don't fail reservation creation if push fails
-                }
 
-                // Insert team members
-                if (!empty($validated['team_members'])) {
-                    $teamData = array_map(function ($userId) use ($reservationId) {
-                        return [
-                            'reservation_id' => $reservationId,
-                            'user_id' => $userId,
-                            'created_at' => now()->toDateTimeString(),
-                            'updated_at' => now()->toDateTimeString(),
-                        ];
-                    }, $validated['team_members']);
-
-                    DB::table('reservation_teams')->insert($teamData);
-                }
-
-                // Insert equipment
-                if (!empty($validated['equipment'])) {
-                    $equipmentData = array_map(function ($equipmentId) use ($validated, $reservationId) {
-                        return [
-                            'reservation_id' => $reservationId,
-                            'equipment_id' => $equipmentId,
-                            'day' => $validated['day'],
-                            'start' => $validated['start'],
-                            'end' => $validated['end'],
-                            'created_at' => now()->toDateTimeString(),
-                            'updated_at' => now()->toDateTimeString(),
-                        ];
-                    }, $validated['equipment']);
-
-                    DB::table('reservation_equipment')->insert($equipmentData);
-                }
-            });
+                    if (! empty($validated['equipment'])) {
+                        $equipmentData = array_map(function ($equipmentId) use ($validated, $reservationId) {
+                            return [
+                                'reservation_id' => $reservationId,
+                                'equipment_id' => $equipmentId,
+                                'day' => $validated['day'],
+                                'start' => $validated['start'],
+                                'end' => $validated['end'],
+                                'created_at' => now()->toDateTimeString(),
+                                'updated_at' => now()->toDateTimeString(),
+                            ];
+                        }, $validated['equipment']);
+                        DB::table('reservation_equipment')->insert($equipmentData);
+                    }
+                });
+            }
 
             // Send admin notification email (outside transaction)
             try {
-                \Log::info('Starting admin notification email process for reservation ID: ' . $reservationId);
+                \Log::info('Starting admin notification email process for reservation ID: '.$reservationId);
 
                 $studioResponsables = collect($this->studioResponsableEmails());
 
@@ -1307,14 +1261,14 @@ class ReservationsController extends Controller
         ]);
     }
 
-    public function storeReservationCowork(Request $request)
+    public function storeReservationCowork(Request $request, CoworkReservationConflictService $coworkReservations)
     {
-        $request->validate([
+        $validated = $request->validate([
             'table' => 'required|integer',
             'seats' => 'required|integer|min:1',
             'day' => 'required|date',
-            'start' => 'required',
-            'end' => 'required',
+            'start' => CoworkReservationConflictService::timeRules(),
+            'end' => CoworkReservationConflictService::timeRules(),
         ]);
 
         $currentUser = auth()->user();
@@ -1328,18 +1282,14 @@ class ReservationsController extends Controller
             return back()->with('error', 'User not found');
         }
 
-        // Create cowork reservation using Eloquent Model (cleaner)
-        $reservation = ReservationCowork::create([
-            'table' => $request->table,
-            'seats' => $request->seats,
-            'day' => $request->day,
-            'start' => $request->start,
-            'end' => $request->end,
-            'user_id' => Auth::id(),
-            'approved' => 1,
-            'canceled' => 0,
-            'passed' => 0,
-        ]);
+        $reservation = $coworkReservations->createApproved(
+            (int) Auth::id(),
+            (int) $validated['table'],
+            (int) $validated['seats'],
+            $validated['day'],
+            $validated['start'],
+            $validated['end'],
+        );
 
         // Send approval email for auto-approved cowork reservation
         try {
@@ -1374,6 +1324,8 @@ class ReservationsController extends Controller
         if (!$reservationData) {
             return back()->with('error', 'Cowork reservation not found');
         }
+
+        $this->denyUnlessReservationStaffOrOwner((int) ($reservationData->user_id ?? 0));
 
         // Get the user who made the reservation
         $user = DB::table('users')->where('id', $reservationData->user_id)->first();
@@ -1623,7 +1575,36 @@ class ReservationsController extends Controller
     // Public calendar feed for place reservations (used by suggestion page)
     public function byPlacePublic(string $type, int $id)
     {
-        return $this->byPlace($type, $id);
+        $reservations = collect();
+
+        if ($type === 'studio' && Schema::hasTable('reservations')) {
+            $reservations = DB::table('reservations')
+                ->where('studio_id', $id)
+                ->where('canceled', 0)
+                ->select('day as start', 'start as startTime', 'end as endTime', 'approved', 'canceled')
+                ->get();
+        } elseif ($type === 'cowork' && Schema::hasTable('reservation_coworks')) {
+            $reservations = DB::table('reservation_coworks')
+                ->where('table', $id)
+                ->where('canceled', 0)
+                ->select('day as start', 'start as startTime', 'end as endTime', 'approved', 'canceled')
+                ->get();
+        } elseif ($type === 'meeting_room' && Schema::hasTable('reservation_meeting_rooms')) {
+            $reservations = DB::table('reservation_meeting_rooms')
+                ->where('meeting_room_id', $id)
+                ->where('canceled', 0)
+                ->select('day as start', 'start as startTime', 'end as endTime', 'approved', 'canceled')
+                ->get();
+        }
+
+        return response()->json($reservations->map(function ($r) {
+            return [
+                'start' => $r->start.'T'.$r->startTime,
+                'end' => $r->start.'T'.$r->endTime,
+                'approved' => (bool) $r->approved,
+                'canceled' => (bool) $r->canceled,
+            ];
+        })->values());
     }
 
     private function buildProposalToken(array $payload): string
@@ -2702,11 +2683,11 @@ class ReservationsController extends Controller
             )
             ->first();
 
-        // if (!$reservationData) {
-        //     return Inertia::render('reservations/ReservationDetails', [
-        //         'reservation' => null
-        //     ]);
-        // }
+        if (!$reservationData) {
+            abort(404);
+        }
+
+        $this->denyUnlessReservationStaffOrOwner((int) ($reservationData->user_id ?? 0));
 
         // Normalize user avatar path
         $userAvatar = $reservationData->user_avatar ?? null;
@@ -2848,17 +2829,14 @@ class ReservationsController extends Controller
         ]);
     }
 
-    public function storeReservationMeetingRoom(Request $request)
+    public function storeReservationMeetingRoom(Request $request, MeetingRoomReservationConflictService $meetingRoomReservations)
     {
-        $request->validate([
+        $validated = $request->validate([
             'meeting_room_id' => 'required|exists:meeting_rooms,id',
             'day' => 'required|date',
-            'start' => 'required',
-            'end' => 'required',
+            'start' => MeetingRoomReservationConflictService::timeRules(),
+            'end' => MeetingRoomReservationConflictService::timeRules(),
         ]);
-
-        $lastId = (int) (DB::table('reservation_meeting_rooms')->max('id') ?? 0);
-        $reservationId = $lastId + 1;
 
         // Get user data for email
         $user = DB::table('users')->where('id', Auth::id())->first();
@@ -2867,31 +2845,24 @@ class ReservationsController extends Controller
         }
 
         // Get meeting room name
-        $meetingRoom = DB::table('meeting_rooms')->where('id', $request->meeting_room_id)->first();
+        $meetingRoom = DB::table('meeting_rooms')->where('id', $validated['meeting_room_id'])->first();
 
-        // Create meeting room reservation as auto-approved
-        DB::table('reservation_meeting_rooms')->insert([
-            'id' => $reservationId,
-            'meeting_room_id' => $request->meeting_room_id,
-            'user_id' => Auth::id(),
-            'day' => $request->day,
-            'start' => $request->start,
-            'end' => $request->end,
-            'passed' => 0,
-            'approved' => 1,
-            'canceled' => 0,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $reservation = $meetingRoomReservations->createApproved(
+            (int) Auth::id(),
+            (int) $validated['meeting_room_id'],
+            $validated['day'],
+            $validated['start'],
+            $validated['end'],
+        );
 
         // Send approval email for auto-approved meeting room reservation
         try {
             $reservationData = (object) [
-                'id' => $reservationId,
+                'id' => $reservation->id,
                 'title' => "Meeting Room - {$meetingRoom->name}",
-                'date' => $request->day,
-                'start' => $request->start,
-                'end' => $request->end,
+                'date' => $validated['day'],
+                'start' => $validated['start'],
+                'end' => $validated['end'],
                 'description' => 'Meeting room reservation',
                 'type' => 'meeting_room'
             ];
@@ -2914,6 +2885,8 @@ class ReservationsController extends Controller
         if (!$reservationData) {
             return back()->with('error', 'Meeting room reservation not found');
         }
+
+        $this->denyUnlessReservationStaffOrOwner((int) ($reservationData->user_id ?? 0));
 
         $user = DB::table('users')->where('id', $reservationData->user_id)->first();
         if (!$user) {
@@ -2983,6 +2956,43 @@ class ReservationsController extends Controller
 
         if ($email) {
             Mail::to($email)->send($mailable);
+        }
+    }
+
+    private function userIsReservationStaff($user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        $roles = $this->normalizeRolesList(data_get($user, 'role'));
+
+        return ! empty(array_intersect($roles, self::RESERVATION_STAFF_ROLES));
+    }
+
+    private function denyUnlessReservationStaffOrOwner(int $ownerId): void
+    {
+        $user = auth()->user();
+        if (! $user) {
+            abort(403, 'Forbidden');
+        }
+
+        if ((int) $user->id === $ownerId) {
+            return;
+        }
+
+        if ($this->userIsReservationStaff($user)) {
+            return;
+        }
+
+        abort(403, 'Forbidden');
+    }
+
+    private function denyUnlessAppointmentPerson(object $appointmentData): void
+    {
+        $personEmail = $this->getPersonEmailByUser(auth()->user());
+        if (! $personEmail || strcasecmp((string) ($appointmentData->person_email ?? ''), $personEmail) !== 0) {
+            abort(403, 'Forbidden');
         }
     }
 
@@ -3076,10 +3086,24 @@ class ReservationsController extends Controller
             return [];
         }
 
+        $viewer = Auth::user();
+        $viewerRoles = is_array($viewer?->role) ? $viewer->role : array_filter([(string) ($viewer?->role ?? '')]);
+        $viewerIsAdmin = (bool) array_intersect(
+            array_map('strtolower', array_map('strval', $viewerRoles)),
+            ['admin', 'super_admin']
+        );
+
         return DB::table('users')
-            ->select('id', 'name', 'email', 'image', 'last_online')
+            ->select('id', 'name', 'image', 'role')
             ->orderBy('name')
             ->get()
+            ->filter(function ($user) use ($viewerIsAdmin) {
+                if ($viewerIsAdmin) {
+                    return true;
+                }
+
+                return ! $this->teamMemberHasAdminRole($user->role ?? null);
+            })
             ->map(function ($user) {
                 $image = $user->image ?? null;
                 if ($image) {
@@ -3095,13 +3119,35 @@ class ReservationsController extends Controller
                 return [
                     'id' => $user->id,
                     'name' => $user->name,
-                    'email' => $user->email,
                     'image' => $imageUrl,
-                    'last_online' => $user->last_online,
                 ];
             })
             ->values()
             ->toArray();
+    }
+
+    private function teamMemberHasAdminRole(mixed $role): bool
+    {
+        if ($role === null || $role === '') {
+            return false;
+        }
+
+        if (is_string($role)) {
+            $decoded = json_decode($role, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $role = $decoded;
+            } else {
+                $role = [$role];
+            }
+        }
+
+        if (! is_array($role)) {
+            $role = [(string) $role];
+        }
+
+        $lower = array_map('strtolower', array_map('strval', $role));
+
+        return (bool) array_intersect($lower, ['admin', 'super_admin']);
     }
 
     /**
@@ -3553,6 +3599,8 @@ class ReservationsController extends Controller
             return back()->with('error', 'Appointment not found');
         }
 
+        $this->denyUnlessAppointmentPerson($appointmentData);
+
         // Get requester user
         $requester = DB::table('users')->where('id', $appointmentData->user_id)->first();
         if (!$requester) {
@@ -3617,6 +3665,8 @@ class ReservationsController extends Controller
             return back()->with('error', 'Appointment not found');
         }
 
+        $this->denyUnlessAppointmentPerson($appointmentData);
+
         // Get requester user
         $requester = DB::table('users')->where('id', $appointmentData->user_id)->first();
         if (!$requester) {
@@ -3665,6 +3715,8 @@ class ReservationsController extends Controller
         if (!$appointmentData) {
             return back()->with('error', 'Appointment not found');
         }
+
+        $this->denyUnlessAppointmentPerson($appointmentData);
 
         // Validate that end time is after start time
         $startTime = strtotime($validated['suggested_start']);

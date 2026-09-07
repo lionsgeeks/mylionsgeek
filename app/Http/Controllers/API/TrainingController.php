@@ -3,21 +3,21 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureTrainingManagementRole;
 use App\Models\Attendance;
 use App\Models\AttendanceListe;
 use App\Models\Note;
 use App\Models\Formation;
 use App\Models\User;
-use App\Exceptions\FaceVerificationException;
 use App\Services\AttendanceCheckInService;
 use App\Services\AttendanceLegacyIdService;
 use App\Services\AttendancePersistenceService;
-use App\Services\FaceVerificationService;
 use App\Services\ProgramStatusService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -37,6 +37,13 @@ class TrainingController extends Controller
             $mineOnly = $request->boolean('mine');
 
             $authUser = Auth::guard('sanctum')->user();
+            $isStaff = $authUser instanceof User && EnsureTrainingManagementRole::allows($authUser);
+
+            // Non-staff may only see formations they are enrolled in (no coach emails).
+            if (! $isStaff) {
+                $mineOnly = true;
+            }
+
             $myFormationIds = $mineOnly && $authUser
                 ? $authUser->resolvedFormationIds()
                 : [];
@@ -47,7 +54,7 @@ class TrainingController extends Controller
                 if (empty($myFormationIds)) {
                     return response()->json([
                         'trainings' => [],
-                        'formation_id' => null,
+                        'formation_id' => $authUser?->primaryFormationId(),
                         'formation_ids' => [],
                         'coaches' => [],
                         'tracks' => [],
@@ -58,37 +65,38 @@ class TrainingController extends Controller
                 $query->whereIn('id', $myFormationIds);
             }
 
-            if (!empty($coachId)) {
+            if (! empty($coachId) && $isStaff) {
                 $query->where('user_id', $coachId);
             }
 
-            if (!empty($track)) {
+            if (! empty($track)) {
                 $query->where('category', $track);
             }
-            
-            if (!empty($promo)) {
+
+            if (! empty($promo)) {
                 $query->where('promo', $promo);
             }
 
-            $trainings = $query->orderBy('created_at', 'desc')->get()->map(function ($training) {
+            $trainings = $query->orderBy('created_at', 'desc')->get()->map(function ($training) use ($isStaff) {
                 try {
                     $img = $training->img ?? null;
-                    if ($img && !Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                        $img = 'storage/img/training/' . ltrim($img, '/');
-                    } elseif ($img && Str::startsWith($img, 'storage/') && !Str::startsWith($img, 'storage/img/')) {
-                        // If it's already storage/ but not storage/img/training/, update it
-                        $img = 'storage/img/training/' . basename($img);
+                    if ($img && ! Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'storage/img/training/'.ltrim($img, '/');
+                    } elseif ($img && Str::startsWith($img, 'storage/') && ! Str::startsWith($img, 'storage/img/')) {
+                        $img = 'storage/img/training/'.basename($img);
                     }
-                    
+
                     $coachData = null;
                     if ($training->coach) {
                         $coachData = [
                             'id' => $training->coach->id ?? null,
                             'name' => $training->coach->name ?? null,
-                            'email' => $training->coach->email ?? null,
                         ];
+                        if ($isStaff) {
+                            $coachData['email'] = $training->coach->email ?? null;
+                        }
                     }
-                    
+
                     return [
                         'id' => $training->id ?? null,
                         'name' => $training->name ?? null,
@@ -103,38 +111,46 @@ class TrainingController extends Controller
                         'updated_at' => $training->updated_at ? (is_string($training->updated_at) ? $training->updated_at : $training->updated_at->toDateTimeString()) : null,
                     ];
                 } catch (\Exception $e) {
-                    Log::error('Error mapping training: ' . $e->getMessage(), [
+                    Log::error('Error mapping training: '.$e->getMessage(), [
                         'training_id' => $training->id ?? 'unknown',
                     ]);
+
                     return null;
                 }
             })->filter();
 
-            // Try to get coaches, but handle errors gracefully
-            try {
-                $coaches = User::whereJsonContains('role', 'coach')->get()->map(function ($coach) {
-                    return [
-                        'id' => $coach->id,
-                        'name' => $coach->name,
-                        'email' => $coach->email,
-                    ];
-                });
-            } catch (\Exception $e) {
-                // Fallback: try to get coaches by role string if JSON query fails
-                $coaches = User::where('role', 'coach')
-                    ->orWhere('role', 'like', '%coach%')
-                    ->get()
-                    ->map(function ($coach) {
+            $coaches = collect();
+            if ($isStaff) {
+                try {
+                    $coaches = User::whereJsonContains('role', 'coach')->get()->map(function ($coach) {
                         return [
                             'id' => $coach->id,
                             'name' => $coach->name,
                             'email' => $coach->email,
                         ];
                     });
+                } catch (\Exception $e) {
+                    $coaches = User::where('role', 'coach')
+                        ->orWhere('role', 'like', '%coach%')
+                        ->get()
+                        ->map(function ($coach) {
+                            return [
+                                'id' => $coach->id,
+                                'name' => $coach->name,
+                                'email' => $coach->email,
+                            ];
+                        });
+                }
             }
 
-            $tracks = Formation::select('category')->distinct()->pluck('category')->filter()->values()->toArray();
-            $promos = Formation::select('promo')->distinct()->pluck('promo')->filter()->values()->toArray();
+            $tracksQuery = Formation::query()->select('category')->distinct();
+            $promosQuery = Formation::query()->select('promo')->distinct();
+            if ($mineOnly && ! empty($myFormationIds)) {
+                $tracksQuery->whereIn('id', $myFormationIds);
+                $promosQuery->whereIn('id', $myFormationIds);
+            }
+            $tracks = $tracksQuery->pluck('category')->filter()->values()->toArray();
+            $promos = $promosQuery->pluck('promo')->filter()->values()->toArray();
 
             $payload = [
                 'trainings' => $trainings->values()->toArray(),
@@ -142,7 +158,7 @@ class TrainingController extends Controller
                 'tracks' => $tracks,
                 'promos' => $promos,
                 'filters' => [
-                    'coach' => $coachId,
+                    'coach' => $isStaff ? $coachId : null,
                     'track' => $track,
                     'promo' => $promo,
                     'mine' => $mineOnly,
@@ -208,21 +224,35 @@ class TrainingController extends Controller
             return $checkResult;
         }
 
+        $auth = Auth::guard('sanctum')->user();
+        if (! $auth instanceof User) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        // Authorize before loading roster / coach relations (no PII until allowed).
+        $formation = Formation::query()->findOrFail($id);
+        if (! Gate::forUser($auth)->allows('view', $formation)) {
+            return response()->make('', 403);
+        }
+
+        $canManage = EnsureTrainingManagementRole::allows($auth);
         $training = Formation::with(['coach', 'users'])->findOrFail($id);
-        
-        $usersNull = User::whereNull('formation_id')->get()->map(function ($user) {
-            $img = $user->image;
-            if ($img && !Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                $img = 'storage/img/profile/' . ltrim($img, '/');
-            }
-            
-            return [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'image' => $img ? asset($img) : null,
-            ];
-        });
+
+        $usersNull = $canManage
+            ? User::whereNull('formation_id')->get()->map(function ($user) {
+                $img = $user->image;
+                if ($img && !Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                    $img = 'storage/img/profile/' . ltrim($img, '/');
+                }
+
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'image' => $img ? asset($img) : null,
+                ];
+            })
+            : null;
 
         $img = $training->img;
         if ($img && !Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
@@ -237,6 +267,15 @@ class TrainingController extends Controller
             $coachImg = 'storage/img/profile/' . ltrim($coachImg, '/');
         }
 
+        $coachPayload = $training->coach ? [
+            'id' => $training->coach->id,
+            'name' => $training->coach->name,
+            'image' => $coachImg ? asset($coachImg) : null,
+        ] : null;
+        if ($canManage && $coachPayload) {
+            $coachPayload['email'] = $training->coach->email;
+        }
+
         $trainingData = [
             'id' => $training->id,
             'name' => $training->name,
@@ -245,33 +284,38 @@ class TrainingController extends Controller
             'start_time' => $training->start_time,
             'end_time' => $training->end_time,
             'promo' => $training->promo,
-            'coach' => $training->coach ? [
-                'id' => $training->coach->id,
-                'name' => $training->coach->name,
-                'email' => $training->coach->email,
-                'image' => $coachImg ? asset($coachImg) : null,
-            ] : null,
-            'users' => $training->users->map(function ($user) {
+            'coach' => $coachPayload,
+            'users' => $training->users->map(function ($user) use ($canManage) {
                 $userImg = $user->image;
                 if ($userImg && !Str::startsWith($userImg, ['http://', 'https://', 'storage/'])) {
                     $userImg = 'storage/img/profile/' . ltrim($userImg, '/');
                 }
-                
-                return [
+
+                // Students: minimal classmate roster (id/name/avatar only). Staff keep email.
+                $row = [
                     'id' => $user->id,
                     'name' => $user->name,
-                    'email' => $user->email,
                     'image' => $userImg ? asset($userImg) : null,
                 ];
+                if ($canManage) {
+                    $row['email'] = $user->email;
+                }
+
+                return $row;
             }),
             'created_at' => $training->created_at ? (is_string($training->created_at) ? $training->created_at : $training->created_at->toDateTimeString()) : null,
             'updated_at' => $training->updated_at ? (is_string($training->updated_at) ? $training->updated_at : $training->updated_at->toDateTimeString()) : null,
         ];
 
-        return response()->json([
+        $payload = [
             'training' => $trainingData,
-            'usersNull' => $usersNull,
-        ]);
+        ];
+
+        if ($canManage) {
+            $payload['usersNull'] = $usersNull;
+        }
+
+        return response()->json($payload);
     }
 
     public function store(Request $request)
@@ -397,16 +441,6 @@ class TrainingController extends Controller
             return $checkResult;
         }
 
-        // SECURITY: this route is only guarded by auth:sanctum, so authorization must be
-        // enforced here. Only privileged actors may change roles — otherwise any
-        // authenticated user enrolled in a training can promote themselves to admin.
-        $actor = $request->user();
-        $actorRoles = is_array($actor->role) ? $actor->role : array_filter([(string) $actor->role]);
-        $canManageRoles = ! empty(array_intersect(
-            array_map('strtolower', $actorRoles),
-            ['admin', 'super_admin', 'moderateur', 'coach']
-        ));
-
         $validated = $request->validate([
             'user_ids' => 'required|array|min:1',
             'user_ids.*' => 'required|exists:users,id',
@@ -415,6 +449,11 @@ class TrainingController extends Controller
             'program_status' => 'nullable|in:active,certified,not_certified,left',
             'has_handicap' => 'nullable|in:0,1',
         ]);
+
+        $actor = Auth::guard('sanctum')->user();
+        if (! $actor instanceof User) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
 
         $training = Formation::findOrFail($id);
 
@@ -447,11 +486,15 @@ class TrainingController extends Controller
             ], 400);
         }
 
+        if ($request->has('roles') && ! empty($validated['roles'])) {
+            Auth::guard('sanctum')->user()->assertMayAssignRoles($validated['roles']);
+        }
+
         $updated = 0;
         foreach ($users as $user) {
             $updateData = [];
 
-            if ($request->has('roles') && !empty($validated['roles']) && $canManageRoles) {
+            if ($request->has('roles') && !empty($validated['roles'])) {
                 $updateData['role'] = array_values(array_map(function ($r) {
                     return strtolower((string) $r);
                 }, array_filter($validated['roles'])));
@@ -472,7 +515,7 @@ class TrainingController extends Controller
             }
 
             if (!empty($updateData)) {
-                $user->update($updateData);
+                $user->forceFill($updateData)->save();
                 $updated++;
             }
         }
@@ -743,7 +786,6 @@ class TrainingController extends Controller
     public function checkIn(
         Request $request,
         AttendanceCheckInService $checkInService,
-        FaceVerificationService $faceService,
     ) {
         $checkResult = $this->checkRequestedUser();
         if ($checkResult) {
@@ -753,43 +795,17 @@ class TrainingController extends Controller
         $validated = $request->validate([
             'formation_id' => 'required|integer|exists:formations,id',
             'attendance_day' => 'nullable|date',
-            'live_photo' => 'required|file|mimes:jpg,jpeg,png,webp|max:5120',
+            'live_photo' => AttendanceCheckInService::livePhotoRules(),
         ]);
 
         $authUser = Auth::guard('sanctum')->user();
         $attendanceDay = $checkInService->resolveAttendanceDay($validated['attendance_day'] ?? null);
 
-        if ($faceService->shouldBypass($authUser)) {
-            $verificationResult = [
-                'passed' => true,
-                'confidence' => null,
-                'method' => 'staff-bypass',
-            ];
-        } else {
-            try {
-                $verificationResult = $faceService->verify(
-                    $authUser,
-                    $request->file('live_photo'),
-                );
-            } catch (FaceVerificationException $e) {
-                return response()->json([
-                    'message' => 'Verification service unavailable. Please contact your teacher.',
-                ], 503);
-            }
-
-            if (! $verificationResult['passed']) {
-                return response()->json([
-                    'message' => 'Face not recognized. Please try again.',
-                    'error_code' => 'FACE_NOT_RECOGNIZED',
-                ], 422);
-            }
-        }
-
         return response()->json($checkInService->checkIn(
             $authUser,
             (int) $validated['formation_id'],
             $attendanceDay,
-            $verificationResult,
+            $request->file('live_photo'),
         ));
     }
 

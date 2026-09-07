@@ -7,16 +7,28 @@ use App\Models\AttendanceListe;
 use App\Models\Formation;
 use App\Models\Note;
 use App\Models\User;
+use App\Services\FaceVerification\FaceVerificationResult;
+use App\Services\FaceVerification\FaceVerificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\UploadedFile;
 use Symfony\Component\HttpFoundation\Response;
 
 class AttendanceCheckInService
 {
+    /**
+     * @return array<int, string>
+     */
+    public static function livePhotoRules(): array
+    {
+        return ['required', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:4096'];
+    }
+
     public function __construct(
         private readonly AttendanceSlotService $slotService,
         private readonly AttendancePersistenceService $persistence,
         private readonly AttendanceLegacyIdService $legacyIdService,
+        private readonly FaceVerificationService $faceVerifier,
     ) {}
 
     /**
@@ -93,7 +105,6 @@ class AttendanceCheckInService
     }
 
     /**
-     * @param  array{passed?: bool, confidence?: float|null, method?: string}|null  $verificationResult
      * @return array{
      *     slot: string,
      *     status: string,
@@ -104,7 +115,7 @@ class AttendanceCheckInService
         User $user,
         int $formationId,
         string $attendanceDay,
-        ?array $verificationResult = null,
+        UploadedFile $livePhoto,
     ): array {
         $this->assertEnrolled($user, $formationId);
 
@@ -120,12 +131,19 @@ class AttendanceCheckInService
             $this->failJson('No attendance to mark right now.', Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $attendance = $this->findOrCreateAttendance($formationId, $attendanceDay, $user->name ?? 'Student');
+        $faceMethod = $this->assertFaceVerified($user, $livePhoto);
 
-        $existingRow = AttendanceListe::query()
-            ->where('attendance_id', $attendance->id)
-            ->where('user_id', $user->id)
+        $attendance = Attendance::query()
+            ->where('formation_id', $formationId)
+            ->whereDate('attendance_day', $attendanceDay)
             ->first();
+
+        $existingRow = $attendance
+            ? AttendanceListe::query()
+                ->where('attendance_id', $attendance->id)
+                ->where('user_id', $user->id)
+                ->first()
+            : null;
 
         $existingSlots = $existingRow
             ? [
@@ -138,6 +156,8 @@ class AttendanceCheckInService
         if ($this->slotService->isSlotMarked($existingSlots[$currentSlot] ?? null)) {
             $this->failJson("You've already marked attendance for this slot.", Response::HTTP_CONFLICT);
         }
+
+        $attendance = $this->findOrCreateAttendance($formationId, $attendanceDay, $user->name ?? 'Student');
 
         $status = $this->slotService->gradeStatus($now, $currentSlot);
         $mergedSlots = $this->slotService->buildCheckInSlots($existingSlots, $currentSlot, $status);
@@ -162,14 +182,12 @@ class AttendanceCheckInService
             $user->name ?? 'Student',
         );
 
-        if ($verificationResult !== null) {
-            try {
-                $row->face_verification_method = $verificationResult['method'] ?? null;
-                $row->face_match_confidence = $verificationResult['confidence'] ?? null;
-                $row->save();
-            } catch (\Throwable) {
-                // Audit columns must never block attendance.
-            }
+        try {
+            $row->face_verification_method = $faceMethod;
+            $row->face_match_confidence = null;
+            $row->save();
+        } catch (\Throwable) {
+            // Audit columns must never block attendance.
         }
 
         return [
@@ -212,6 +230,42 @@ class AttendanceCheckInService
         if (! $user->isEnrolledInFormation($formationId)) {
             $this->failJson('Forbidden', Response::HTTP_FORBIDDEN);
         }
+    }
+
+    private function assertFaceVerified(User $user, UploadedFile $livePhoto): string
+    {
+        if ($this->userMayBypassFaceVerification($user)) {
+            return 'staff-bypass';
+        }
+
+        if (! config('face.required', true)) {
+            return 'face-disabled';
+        }
+
+        $result = $this->faceVerifier->verify($user, $livePhoto);
+
+        if ($result->allowsCheckIn()) {
+            return 'rekognition';
+        }
+
+        if ($result === FaceVerificationResult::Rejected) {
+            $this->failJson('Face not recognized.', Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $this->failJson('Unable to verify your identity.', Response::HTTP_SERVICE_UNAVAILABLE);
+    }
+
+    private function userMayBypassFaceVerification(User $user): bool
+    {
+        $roles = $user->normalizedRoles();
+
+        return (bool) array_intersect($roles, [
+            'admin',
+            'super_admin',
+            'moderateur',
+            'coach',
+            'studio_responsable',
+        ]);
     }
 
     private function failJson(string $message, int $status): never

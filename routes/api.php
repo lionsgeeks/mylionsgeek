@@ -19,18 +19,20 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-Route::post("/invite-student", [UserController::class, "inviteStudent"]);
+Route::post('/invite-student', [UserController::class, 'inviteStudent'])
+    ->middleware('invite.student');
 
-// Mobile authentication endpoints (public)
-Route::post('/mobile/login', [MobileAuthController::class, 'login']);
-Route::post('/mobile/forgot-password', [MobileAuthController::class, 'forgot']);
+// Mobile authentication endpoints (public, throttled before credential/reset work)
+Route::post('/mobile/login', [MobileAuthController::class, 'login'])
+    ->middleware('throttle:mobile-login');
+Route::post('/mobile/forgot-password', [MobileAuthController::class, 'forgot'])
+    ->middleware('throttle:mobile-forgot-password');
 
 // Mobile app version check (public — no auth required)
 Route::get('/mobile/app-version', [AppVersionController::class, 'show']);
 
 // LionsGeek (lionsgeek.ma) events/info-session proxy for the mobile app.
-// Gated by the shared bearer key inside the controller, so it stays public
-// here (the device authenticates with the upstream key, not a sanctum token).
+// Incoming: Sanctum + per-route authorization. Outgoing: server-side LIONSGEEK_MA_API_KEY.
 require __DIR__ . '/api/events-info.php';
 
 // lionsgeek.ma → mylionsgeek webhooks (shared LIONSGEEK_MA_API_KEY bearer).
@@ -43,12 +45,16 @@ Route::get('/equipment', [ReservationController::class, 'getEquipment'])
     ->name('admin.api.equipment');
 
 Route::get('/places', [PlacesController::class, 'getPlacesJson'])
+    ->middleware('auth:sanctum')
     ->name('admin.api.places');
 
 Route::post('/reservations/store', [ReservationController::class, 'storemobile'])
+    ->middleware('auth:sanctum')
     ->name('reservations.store');
 
-Route::post('/cowork/reserve', [ReservationController::class, 'storeReservationCoworkMobile']);
+Route::post('/cowork/reserve', [ReservationController::class, 'storeReservationCoworkMobile'])
+    ->middleware('auth:sanctum')
+    ->name('cowork.reserve');
 
 require __DIR__ . "/api/learning.php";
 
@@ -61,15 +67,20 @@ Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
     require __DIR__ . '/api/leaderboard.php';
     require __DIR__ . '/api/search.php';
     require __DIR__ . '/api/training.php';
+    require __DIR__ . '/api/face-enrollment.php';
+    require __DIR__ . '/api/notifications.php';
 
     Route::post('/password', [MobileAuthController::class, 'updatePassword']);
+    Route::post('/logout', [MobileAuthController::class, 'logout']);
 
     // Push token endpoint
     Route::post('/push-token', [\App\Http\Controllers\API\PushTokenController::class, 'store']);
 
-    // Test push notification endpoints (for debugging)
-    Route::post('/test-push', [\App\Http\Controllers\API\TestPushController::class, 'test']);
-    Route::get('/push-status', [\App\Http\Controllers\API\TestPushController::class, 'status']);
+    // Test push notification endpoints (admin-only debug surface)
+    Route::post('/test-push', [\App\Http\Controllers\API\TestPushController::class, 'test'])
+        ->middleware('role:admin');
+    Route::get('/push-status', [\App\Http\Controllers\API\TestPushController::class, 'status'])
+        ->middleware('role:admin');
 
     // Chat routes
     Route::prefix('chat')->name('chat.')->group(function () {
@@ -82,6 +93,7 @@ Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
         Route::post('/conversation/{conversationId}/send', [ChatController::class, 'sendMessage'])->name('send');
         Route::post('/conversation/{conversationId}/read', [ChatController::class, 'markAsRead'])->name('mark-read');
         Route::delete('/message/{messageId}', [ChatController::class, 'deleteMessage'])->name('message.delete');
+        Route::get('/message/{messageId}/attachment', [ChatController::class, 'downloadAttachment'])->name('message.attachment');
         Route::delete('/conversation/{conversationId}', [ChatController::class, 'deleteConversation'])->name('conversation.delete');
         Route::get('/user/{userId}/posts', [ChatController::class, 'getUserPosts'])->name('user.posts');
         Route::get('/ably-token', [ChatController::class, 'getAblyToken'])->name('ably-token');
