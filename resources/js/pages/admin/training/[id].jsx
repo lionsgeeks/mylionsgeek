@@ -6,6 +6,7 @@ import {
     canAssignProgramStatusLeft,
     canViewHealthData,
     HANDICAP_OPTIONS,
+    handicapSelectValue,
     PROGRAM_STATUS,
     PROGRAM_STATUS_CERTIFICATE_OUTCOME_OPTIONS,
     programStatusLabel,
@@ -45,6 +46,8 @@ import CertificateModal from './partials/CertificateModal';
 import GeekyWheel from './partials/geekyWheel';
 import TrainingStatsCards from './partials/TrainingStatsCards';
 
+const MIXED_SELECT_VALUE = '__mixed__';
+
 export default function Show({ training, usersNull, courses = [] }) {
     const { auth } = usePage().props;
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role].filter(Boolean);
@@ -56,7 +59,9 @@ export default function Show({ training, usersNull, courses = [] }) {
         requireTrainingCoach: true,
         isTrainingCoach,
     });
-    const canEditHealthData = canViewHealthData(userRoles);
+    // Admin always; coach only when assigned to this training.
+    const canManageTrainingUsers = isAdminRole || (isCoachRole && isTrainingCoach);
+    const canEditHealthData = canViewHealthData(userRoles) || (isCoachRole && isTrainingCoach);
     // Staff-controlled gate (formations.is_active). Replaces the old nonexistent training.status field.
     const isActiveTraining = !!training?.is_active;
     const [students, setStudents] = useState(training.users || []);
@@ -104,6 +109,33 @@ export default function Show({ training, usersNull, courses = [] }) {
         if (v === 'pending') return 'border-gray-400/40 bg-gray-400/10 text-gray-600 dark:text-gray-400';
         return '';
     };
+
+    // Keep local roster in sync after Inertia reloads (bulk update, add/remove student).
+    useEffect(() => {
+        setStudents(training.users || []);
+    }, [training.users]);
+
+    // Prefill selects with the current value(s) of the selected students.
+    useEffect(() => {
+        const selected = students.filter((student) => selectedUserIds.includes(student.id));
+        if (selected.length === 0) {
+            setBulkProgramStatus('');
+            setBulkHasHandicap('');
+            return;
+        }
+
+        const programStatuses = selected.map((student) => student.program_status || PROGRAM_STATUS.ACTIVE);
+        const uniqueProgramStatuses = [...new Set(programStatuses)];
+        setBulkProgramStatus(uniqueProgramStatuses.length === 1 ? uniqueProgramStatuses[0] : MIXED_SELECT_VALUE);
+
+        if (canEditHealthData) {
+            const handicaps = selected.map((student) => handicapSelectValue(student.has_handicap));
+            const uniqueHandicaps = [...new Set(handicaps)];
+            setBulkHasHandicap(uniqueHandicaps.length === 1 ? uniqueHandicaps[0] : MIXED_SELECT_VALUE);
+        } else {
+            setBulkHasHandicap('');
+        }
+    }, [selectedUserIds, students, canEditHealthData]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -550,13 +582,15 @@ export default function Show({ training, usersNull, courses = [] }) {
                             <CalendarCheck size={16} />
                             <span>Attendance</span>
                         </Button>
-                        <Button
-                            onClick={() => setShowBulkUpdateModal(true)}
-                            className="flex-1 gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)] sm:flex-none"
-                        >
-                            <Settings size={16} />
-                            <span>Update Users</span>
-                        </Button>
+                        {canManageTrainingUsers && (
+                            <Button
+                                onClick={() => setShowBulkUpdateModal(true)}
+                                className="flex-1 gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)] sm:flex-none"
+                            >
+                                <Settings size={16} />
+                                <span>Update Users</span>
+                            </Button>
+                        )}
                         {canPrintCertificates && (
                             <Button
                                 onClick={() => setShowCertificateModal(true)}
@@ -1288,11 +1322,15 @@ export default function Show({ training, usersNull, courses = [] }) {
                 )}
 
                 {/* Bulk Update Users Modal */}
+                {canManageTrainingUsers && (
                 <Dialog open={showBulkUpdateModal} onOpenChange={setShowBulkUpdateModal}>
                     <DialogContent className="max-h-[80vh] w-full max-w-2xl overflow-y-auto border border-alpha/20 bg-light text-dark dark:bg-dark dark:text-light">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-semibold">Update Users - {training.name}</DialogTitle>
-                            <p className="text-sm text-dark/70 dark:text-light/70">Select users and update their roles, program status, and/or handicap</p>
+                            <p className="text-sm text-dark/70 dark:text-light/70">
+                                Select users and update their{isAdminRole ? ' roles,' : ''} program status
+                                {canEditHealthData ? ', and/or handicap' : ''}
+                            </p>
                         </DialogHeader>
 
                         <div className="mt-4 space-y-6">
@@ -1367,25 +1405,32 @@ export default function Show({ training, usersNull, courses = [] }) {
                             {/* Update Options */}
                             {selectedUserIds.length > 0 && (
                                 <div className="space-y-4 border-t border-alpha/20 pt-4">
-                                    <div>
-                                        <label className="mb-2 block text-sm font-medium">Update Roles (optional)</label>
-                                        <RolesMultiSelect roles={bulkRoles} onChange={setBulkRoles} canGrantStaffRoles={isAdminRole} />
-                                        <p className="mt-1 text-xs text-dark/60 dark:text-light/60">Leave empty to keep existing roles</p>
-                                    </div>
+                                    {isAdminRole && (
+                                        <div>
+                                            <label className="mb-2 block text-sm font-medium">Update Roles (optional)</label>
+                                            <RolesMultiSelect roles={bulkRoles} onChange={setBulkRoles} />
+                                            <p className="mt-1 text-xs text-dark/60 dark:text-light/60">Leave empty to keep existing roles</p>
+                                        </div>
+                                    )}
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium">Update Program status (optional)</label>
+                                        <label className="mb-2 block text-sm font-medium">Program status</label>
                                         <Select
                                             value={bulkProgramStatus || undefined}
-                                            onValueChange={(value) => setBulkProgramStatus(value === 'keep-existing' ? '' : value)}
+                                            onValueChange={(value) => setBulkProgramStatus(value)}
                                         >
                                             <SelectTrigger className="w-full">
-                                                <SelectValue placeholder="Select program status (optional)" />
+                                                <SelectValue placeholder="Select program status" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="keep-existing">Keep existing program status</SelectItem>
+                                                {bulkProgramStatus === MIXED_SELECT_VALUE && (
+                                                    <SelectItem value={MIXED_SELECT_VALUE} disabled>
+                                                        Multiple values — pick one to apply to all
+                                                    </SelectItem>
+                                                )}
                                                 <SelectItem value={PROGRAM_STATUS.ACTIVE}>Active</SelectItem>
-                                                {canAssignProgramStatusLeftOnTraining && (
+                                                {(canAssignProgramStatusLeftOnTraining ||
+                                                    bulkProgramStatus === PROGRAM_STATUS.LEFT) && (
                                                     <SelectItem value={PROGRAM_STATUS.LEFT}>Left</SelectItem>
                                                 )}
                                                 <SelectGroup>
@@ -1402,16 +1447,21 @@ export default function Show({ training, usersNull, courses = [] }) {
 
                                     {canEditHealthData && (
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium">Update Handicap (optional)</label>
+                                            <label className="mb-2 block text-sm font-medium">Handicap</label>
                                             <Select
                                                 value={bulkHasHandicap || undefined}
-                                                onValueChange={(value) => setBulkHasHandicap(value === 'keep-existing' ? '' : value)}
+                                                onValueChange={(value) => setBulkHasHandicap(value)}
                                             >
                                                 <SelectTrigger className="w-full">
-                                                    <SelectValue placeholder="Select handicap (optional)" />
+                                                    <SelectValue placeholder="Select handicap" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="keep-existing">Keep existing handicap</SelectItem>
+                                                    {bulkHasHandicap === MIXED_SELECT_VALUE && (
+                                                        <SelectItem value={MIXED_SELECT_VALUE} disabled>
+                                                            Multiple values — pick one to apply to all
+                                                        </SelectItem>
+                                                    )}
+                                                    <SelectItem value="none">Not set</SelectItem>
                                                     {HANDICAP_OPTIONS.map((option) => (
                                                         <SelectItem key={option.value} value={option.value}>
                                                             {option.label}
@@ -1448,16 +1498,33 @@ export default function Show({ training, usersNull, courses = [] }) {
                                         user_ids: selectedUserIds,
                                     };
 
-                                    if (bulkRoles.length > 0) {
+                                    if (isAdminRole && bulkRoles.length > 0) {
                                         formData.roles = bulkRoles;
                                     }
 
-                                    if (bulkProgramStatus && bulkProgramStatus !== 'keep-existing') {
-                                        formData.program_status = bulkProgramStatus === 'all' ? '' : bulkProgramStatus;
+                                    const hasConcreteProgramStatus =
+                                        bulkProgramStatus &&
+                                        bulkProgramStatus !== MIXED_SELECT_VALUE &&
+                                        bulkProgramStatus !== 'keep-existing';
+                                    if (hasConcreteProgramStatus) {
+                                        formData.program_status = bulkProgramStatus;
                                     }
 
-                                    if (canEditHealthData && bulkHasHandicap && bulkHasHandicap !== 'keep-existing') {
-                                        formData.has_handicap = bulkHasHandicap;
+                                    const hasConcreteHandicap =
+                                        canEditHealthData &&
+                                        bulkHasHandicap &&
+                                        bulkHasHandicap !== MIXED_SELECT_VALUE &&
+                                        bulkHasHandicap !== 'keep-existing';
+                                    if (hasConcreteHandicap) {
+                                        formData.has_handicap = bulkHasHandicap === 'none' ? '' : bulkHasHandicap;
+                                    }
+
+                                    const willUpdate =
+                                        (isAdminRole && bulkRoles.length > 0) ||
+                                        hasConcreteProgramStatus ||
+                                        hasConcreteHandicap;
+                                    if (!willUpdate) {
+                                        return;
                                     }
 
                                     router.post(`/trainings/${training.id}/bulk-update-users`, formData, {
@@ -1475,9 +1542,14 @@ export default function Show({ training, usersNull, courses = [] }) {
                                 }}
                                 disabled={
                                     selectedUserIds.length === 0 ||
-                                    (bulkRoles.length === 0 &&
-                                        (!bulkProgramStatus || bulkProgramStatus === 'keep-existing') &&
-                                        (!canEditHealthData || !bulkHasHandicap || bulkHasHandicap === 'keep-existing'))
+                                    (!(isAdminRole && bulkRoles.length > 0) &&
+                                        (!bulkProgramStatus ||
+                                            bulkProgramStatus === MIXED_SELECT_VALUE ||
+                                            bulkProgramStatus === 'keep-existing') &&
+                                        (!canEditHealthData ||
+                                            !bulkHasHandicap ||
+                                            bulkHasHandicap === MIXED_SELECT_VALUE ||
+                                            bulkHasHandicap === 'keep-existing'))
                                 }
                                 className="border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)] disabled:cursor-not-allowed disabled:opacity-50"
                             >
@@ -1486,6 +1558,7 @@ export default function Show({ training, usersNull, courses = [] }) {
                         </div>
                     </DialogContent>
                 </Dialog>
+                )}
 
                 {/* <Dialog
           open={reminderModal.open}

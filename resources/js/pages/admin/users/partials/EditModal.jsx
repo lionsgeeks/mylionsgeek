@@ -15,12 +15,17 @@ import {
     handicapSelectValue,
     PROGRAM_STATUS,
     PROGRAM_STATUS_CERTIFICATE_OUTCOME_OPTIONS,
-    canAssignProgramStatusLeft,
     canViewHealthData,
+    programStatusLabel,
+    resolveProgramStatusEditOptions,
 } from '@/components/helpers/userDemographics';
 import Rolegard from '../../../../components/rolegard';
 import RolesMultiSelect from './RolesMultiSelect';
 
+const resolveProgramStatusValue = (programStatus) => programStatus || PROGRAM_STATUS.ACTIVE;
+const NONE_TRAINING_VALUE = 'none';
+const resolveFormationSelectValue = (formationId) =>
+    formationId != null && formationId !== '' ? String(formationId) : NONE_TRAINING_VALUE;
 const platformIcons = {
     instagram: Instagram,
     facebook: Facebook,
@@ -68,7 +73,6 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     const isStudying = editedUser?.status?.toLowerCase() === 'studying';
     const showStatusField = canEditOthers || !isEditingSelf || !isStudying;
 
-    const canAssignLeft = canAssignProgramStatusLeft(userRolesLower);
     const canEditHealthData = canViewHealthData(userRolesLower);
 
     const statusOptions = useMemo(
@@ -81,6 +85,23 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         [canEditOthers, status, editedUser?.status],
     );
 
+    const programStatusOptions = useMemo(
+        () => resolveProgramStatusEditOptions(editedUser?.program_status, userRolesLower),
+        [editedUser?.program_status, userRolesLower],
+    );
+
+    const trainingOptions = useMemo(() => {
+        const list = Array.isArray(trainings) ? [...trainings] : [];
+        const currentId = editedUser?.formation_id;
+        if (currentId != null && currentId !== '' && !list.some((training) => String(training.id) === String(currentId))) {
+            list.unshift({
+                id: currentId,
+                name: editedUser?.formation_name || `Training #${currentId}`,
+            });
+        }
+        return list;
+    }, [trainings, editedUser?.formation_id, editedUser?.formation_name]);
+
     // Filter out platforms that are already added
     const availablePlatforms = platforms.filter((platform) => !socialLinks.some((link) => link.title === platform.value));
 
@@ -89,12 +110,12 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         email: editedUser?.email || '',
         roles: [],
         status: editedUser?.status || '',
-        formation_id: editedUser?.formation_id || '',
+        formation_id: resolveFormationSelectValue(editedUser?.formation_id),
         phone: editedUser?.phone ?? '',
         cin: editedUser?.cin ?? '',
         gender: editedUser?.gender || 'none',
         has_handicap: handicapSelectValue(editedUser?.has_handicap),
-        program_status: editedUser?.program_status || PROGRAM_STATUS.ACTIVE,
+        program_status: resolveProgramStatusValue(editedUser?.program_status),
         speciality: editedUser?.speciality ?? '',
         image: editedUser?.image || null,
         resumeFile: null,
@@ -103,56 +124,65 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         access_scan: editedUser?.access_scan === 1 ? 'Yes' : 'No',
     });
 
+    const currentTrainingLabel = useMemo(() => {
+        const selectedId = resolveFormationSelectValue(formData.formation_id);
+        if (selectedId === NONE_TRAINING_VALUE) {
+            return 'No training';
+        }
+        const match = trainingOptions.find((training) => String(training.id) === selectedId);
+        return match?.name || editedUser?.formation_name || 'Select training';
+    }, [formData.formation_id, trainingOptions, editedUser?.formation_name]);
     // Load user data into form when modal opens or user changes
     useEffect(() => {
-        if (editedUser) {
-            let rolesArray = [];
-            if (Array.isArray(editedUser.role)) {
-                rolesArray = editedUser.role;
-            } else if (typeof editedUser.role === 'string' && editedUser.role.length > 0) {
-                try {
-                    const parsed = JSON.parse(editedUser.role);
-                    if (Array.isArray(parsed)) rolesArray = parsed;
-                    else
-                        rolesArray = editedUser.role
-                            .split(',')
-                            .map((r) => r.trim())
-                            .filter(Boolean);
-                } catch {
+        if (!open || !editedUser) {
+            return;
+        }
+
+        let rolesArray = [];
+        if (Array.isArray(editedUser.role)) {
+            rolesArray = editedUser.role;
+        } else if (typeof editedUser.role === 'string' && editedUser.role.length > 0) {
+            try {
+                const parsed = JSON.parse(editedUser.role);
+                if (Array.isArray(parsed)) rolesArray = parsed;
+                else
                     rolesArray = editedUser.role
                         .split(',')
                         .map((r) => r.trim())
                         .filter(Boolean);
-                }
+            } catch {
+                rolesArray = editedUser.role
+                    .split(',')
+                    .map((r) => r.trim())
+                    .filter(Boolean);
             }
-            rolesArray = rolesArray.map((r) => String(r).toLowerCase());
-            const optionsForNormalize = resolveStatusOptions({
-                isStaff: canEditOthers,
-                passedOptions: status,
-                currentStatus: editedUser.status,
-            });
-            setFormData({
-                name: editedUser.name || '',
-                email: editedUser.email || '',
-                roles: rolesArray,
-                status: normalizeStatusForSelect(editedUser.status, optionsForNormalize),
-                formation_id: editedUser.formation_id || '',
-                phone: editedUser.phone ?? '',
-                cin: editedUser.cin ?? '',
-                gender: editedUser.gender || 'none',
-                has_handicap: handicapSelectValue(editedUser.has_handicap),
-                program_status: editedUser.program_status || PROGRAM_STATUS.ACTIVE,
-                speciality: editedUser.speciality ?? '',
-                image: editedUser?.image || null,
-                resumeFile: null,
-                access_studio: editedUser.access_studio === 1 ? 'Yes' : 'No',
-                access_cowork: editedUser.access_cowork === 1 ? 'Yes' : 'No',
-                access_scan: editedUser.access_scan === 1 ? 'Yes' : 'No',
-            });
-            setSocialLinks(editedUser?.social_links || []);
         }
-    }, [editedUser, canEditOthers, status]);
-
+        rolesArray = rolesArray.map((r) => String(r).toLowerCase());
+        const optionsForNormalize = resolveStatusOptions({
+            isStaff: canEditOthers,
+            passedOptions: status,
+            currentStatus: editedUser.status,
+        });
+        setFormData({
+            name: editedUser.name || '',
+            email: editedUser.email || '',
+            roles: rolesArray,
+            status: normalizeStatusForSelect(editedUser.status, optionsForNormalize),
+            formation_id: resolveFormationSelectValue(editedUser.formation_id),
+            phone: editedUser.phone ?? '',
+            cin: editedUser.cin ?? '',
+            gender: editedUser.gender || 'none',
+            has_handicap: handicapSelectValue(editedUser.has_handicap),
+            program_status: resolveProgramStatusValue(editedUser.program_status),
+            speciality: editedUser.speciality ?? '',
+            image: editedUser?.image || null,
+            resumeFile: null,
+            access_studio: editedUser.access_studio === 1 ? 'Yes' : 'No',
+            access_cowork: editedUser.access_cowork === 1 ? 'Yes' : 'No',
+            access_scan: editedUser.access_scan === 1 ? 'Yes' : 'No',
+        });
+        setSocialLinks(editedUser?.social_links || []);
+    }, [open, editedUser, canEditOthers, status]);
     const validateSocialUrl = () => {
         if (!newSocialPlatform || !newSocialUrl) return false;
 
@@ -237,7 +267,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
             form.append('cin', formData.cin ?? '');
         }
         form.append('speciality', formData.speciality ?? '');
-        form.append('formation_id', formData.formation_id || '');
+        form.append('formation_id', formData.formation_id === NONE_TRAINING_VALUE || !formData.formation_id ? '' : String(formData.formation_id));
 
         if (canEditOthers) {
             form.append('gender', formData.gender === 'none' ? '' : formData.gender);
@@ -359,19 +389,23 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         <div className="col-span-1">
                             <Label>Program status</Label>
                             <Select
+                                key={`program-status-${editedUser?.id}`}
                                 value={formData.program_status}
                                 onValueChange={(v) => setFormData({ ...formData, program_status: v })}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select program status" />
+                                    <SelectValue placeholder="Select program status">
+                                        {programStatusLabel(formData.program_status) || 'Select program status'}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value={PROGRAM_STATUS.ACTIVE}>Active</SelectItem>
-                                    {(canAssignLeft ||
-                                        formData.program_status === PROGRAM_STATUS.LEFT ||
-                                        editedUser?.program_status === PROGRAM_STATUS.LEFT) && (
-                                            <SelectItem value={PROGRAM_STATUS.LEFT}>Left</SelectItem>
-                                        )}
+                                    {programStatusOptions
+                                        .filter((option) => option.value === PROGRAM_STATUS.ACTIVE || option.value === PROGRAM_STATUS.LEFT)
+                                        .map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
                                     <SelectGroup>
                                         <SelectLabel>Certificate &amp; Not Certificate</SelectLabel>
                                         {PROGRAM_STATUS_CERTIFICATE_OUTCOME_OPTIONS.map((option) => (
@@ -477,17 +511,19 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
 
                     {/* Left Column - Training */}
                     {isAdminOrStudioResponsable && (
-                        <div className="md:col-span-1 lg:col-span-1 col-span-2">
+                        <div className="col-span-2 md:col-span-1 lg:col-span-1">
                             <Label>Training</Label>
                             <Select
-                                value={formData.formation_id ? String(formData.formation_id) : ''}
-                                onValueChange={(v) => setFormData({ ...formData, formation_id: Number(v) })}
+                                key={`training-${editedUser?.id}`}
+                                value={resolveFormationSelectValue(formData.formation_id)}
+                                onValueChange={(v) => setFormData({ ...formData, formation_id: v })}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select training" />
+                                    <SelectValue placeholder="Select training">{currentTrainingLabel}</SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {trainings.map((t) => (
+                                    <SelectItem value={NONE_TRAINING_VALUE}>No training</SelectItem>
+                                    {trainingOptions.map((t) => (
                                         <SelectItem key={t.id} value={String(t.id)}>
                                             {t.name}
                                         </SelectItem>
@@ -560,7 +596,11 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         {isAdminOrStudioResponsable && (
                             <div className="col-span-1">
                                 <Label htmlFor="roles">Roles</Label>
-                                <RolesMultiSelect roles={formData.roles} onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })} />
+                                <RolesMultiSelect
+                                    roles={formData.roles}
+                                    onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })}
+                                    canGrantStaffRoles={canGrantStaffRoles}
+                                />
                             </div>
                         )}
                     </Rolegard>
