@@ -514,6 +514,10 @@ class FormationController extends Controller
             return back()->with('error', 'No valid users found for this training.');
         }
 
+        if ($request->has('roles') && ! empty($validated['roles'])) {
+            Auth::user()->assertMayAssignRoles($validated['roles']);
+        }
+
         $updated = 0;
         foreach ($users as $user) {
             $updateData = [];
@@ -539,7 +543,7 @@ class FormationController extends Controller
             }
 
             if (! empty($updateData)) {
-                $user->update($updateData);
+                $user->forceFill($updateData)->save();
                 $updated++;
             }
         }

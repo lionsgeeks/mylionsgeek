@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 
@@ -12,10 +13,14 @@ class RoleMiddleware
      */
     public function handle(Request $request, Closure $next, string ...$roles)
     {
-        $user = $request->user();
+        $user = $request->user('sanctum') ?? $request->user();
 
         if (! $user) {
-            return redirect('/'); // or login page
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json(['message' => 'Unauthenticated'], 401);
+            }
+
+            return redirect('/');
         }
 
         // Handle pipe or comma separated roles
@@ -25,20 +30,24 @@ class RoleMiddleware
 
         $allowedRoles = array_map('trim', $roles);
 
-        // Ensure roles are an array
-        $userRoles = is_array($user->role) ? $user->role : [$user->role];
+        $userRoles = $user instanceof User
+            ? $user->normalizedRoles()
+            : (is_array($user->role) ? $user->role : [$user->role]);
 
-        // Check if user has at least one allowed role
         $hasAccess = ! empty(array_intersect($allowedRoles, $userRoles));
 
         if (! $hasAccess) {
-            if (in_array('student', $userRoles)) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+
+            if (in_array('student', $userRoles, true)) {
                 return redirect()->route('student.feed');
             }
-            if (in_array('admin', $userRoles)) {
+            if (in_array('admin', $userRoles, true)) {
                 return redirect()->route('dashboard');
             }
-            if (in_array('recruiter', $userRoles)) {
+            if (in_array('recruiter', $userRoles, true)) {
                 return redirect()->route('recruiter.jobs.index');
             }
 

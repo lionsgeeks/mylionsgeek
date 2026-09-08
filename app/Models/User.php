@@ -27,12 +27,9 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
-        'id',               // UUID primary key
         'name',
         'email',
-        'password',
         'must_change_password',
-        'role',
         'phone',
         'cin',
         'gender',
@@ -40,25 +37,18 @@ class User extends Authenticatable
         'status',
         'program_status',
         'formation_id',
-        'account_state',
         'image',
         'resume',
         'cover', // add cover here
         'about', // short bio
         'speciality',
         'socials', // social links JSON
-        'access_cowork',
-        'access_studio',
-        'access_scan',
         'promo',
         'remember_token',
         'email_verified_at',
-        // 'remember_token',
         'created_at',
         'updated_at',
-        'wakatime_api_key',
         'last_online',
-        'activation_token',
         'invite_source',
         'expo_push_token', // Expo push notification token
         // 'xp'
@@ -72,6 +62,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'activation_token',
     ];
 
     /**
@@ -84,6 +75,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'last_online' => 'datetime',
+            'activation_token_expires_at' => 'datetime',
             'password' => 'hashed',
             'must_change_password' => 'boolean',
             'has_handicap' => 'boolean',
@@ -92,7 +84,225 @@ class User extends Authenticatable
         ];
     }
 
-    public const RESUME_DISK = 'public';
+    public const ACTIVATION_TTL_HOURS = 24;
+
+    /**
+     * Issue a new activation credential. Returns the plaintext token for the
+     * signed email URL only — the database stores a hash.
+     */
+    public function issueActivationToken(): string
+    {
+        $plain = bin2hex(random_bytes(32));
+
+        $this->forceFill([
+            'activation_token' => hash('sha256', $plain),
+            'activation_token_expires_at' => now()->addHours(self::ACTIVATION_TTL_HOURS),
+        ])->save();
+
+        return $plain;
+    }
+
+    public function hasPendingActivation(): bool
+    {
+        return filled($this->getRawOriginal('activation_token') ?? $this->activation_token);
+    }
+
+    public function consumeActivationToken(): void
+    {
+        $this->forceFill([
+            'activation_token' => null,
+            'activation_token_expires_at' => null,
+        ])->save();
+    }
+
+    public static function findByActivationToken(string $plain): ?self
+    {
+        $plain = trim($plain);
+        if ($plain === '') {
+            return null;
+        }
+
+        $hashed = hash('sha256', $plain);
+
+        $user = static::query()
+            ->where('activation_token', $hashed)
+            ->orWhere('activation_token', $plain)
+            ->first();
+
+        if (! $user) {
+            return null;
+        }
+
+        $expiresAt = $user->activation_token_expires_at;
+        if ($expiresAt !== null && $expiresAt->isPast()) {
+            return null;
+        }
+
+        return $user;
+    }
+
+    /**
+     * Normalize role values from DB/casts (JSON arrays, comma lists, quoted strings).
+     *
+     * @return list<string>
+     */
+    public function normalizedRoles(): array
+    {
+        $cast = $this->role;
+        if (is_array($cast) && $cast !== []) {
+            return self::normalizeRolesValue($cast);
+        }
+
+        $raw = $this->getRawOriginal('role');
+        if ($raw === null || $raw === '') {
+            return [];
+        }
+
+        return self::normalizeRolesValue($raw);
+    }
+
+    /**
+     * @param  mixed  $value
+     * @return list<string>
+     */
+    public static function normalizeRolesValue($value): array
+    {
+        if (is_array($value)) {
+            $list = $value;
+        } elseif (is_string($value) && $value !== '') {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $list = $decoded;
+            } else {
+                $list = array_map('trim', explode(',', $value));
+            }
+        } else {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($list as $role) {
+            if ($role === null || $role === '') {
+                continue;
+            }
+            $role = strtolower(trim((string) $role));
+            $role = trim($role, "'\"");
+            if ($role !== '') {
+                $normalized[] = $role;
+            }
+        }
+
+        return array_values(array_unique($normalized));
+    }
+
+    /**
+     * Catalog of users.role values that may be written through staff endpoints.
+     * Arbitrary strings are not accepted.
+     *
+     * @var list<string>
+     */
+    public const ASSIGNABLE_ROLES = [
+        'student',
+        'coach',
+        'admin',
+        'super_admin',
+        'moderateur',
+        'studio_responsable',
+        'responsable_studio',
+        'coworker',
+        'pro',
+        'recruiter',
+    ];
+
+    /**
+     * Roles that mark an actor as allowed to grant ADMIN_ONLY_GRANT_ROLES.
+     * Do not expand this list — mayAssignPrivilegedRoles() means "actor may
+     * grant elevated roles", not "these roles are blocked from assignment".
+     *
+     * @var list<string>
+     */
+    public const PRIVILEGED_ROLES = [
+        'admin',
+        'super_admin',
+    ];
+
+    /**
+     * Roles that only admin / super_admin may grant. Non-admin staff may only
+     * assign student and coworker.
+     *
+     * @var list<string>
+     */
+    public const ADMIN_ONLY_GRANT_ROLES = [
+        'admin',
+        'super_admin',
+        'coach',
+        'moderateur',
+        'studio_responsable',
+        'responsable_studio',
+        'pro',
+        'recruiter',
+    ];
+
+    /**
+     * Roles non-admin staff may assign when they can edit others.
+     *
+     * @var list<string>
+     */
+    public const STAFF_GRANTABLE_ROLES = [
+        'student',
+        'coworker',
+    ];
+
+    public function mayAssignPrivilegedRoles(): bool
+    {
+        return (bool) array_intersect($this->normalizedRoles(), self::PRIVILEGED_ROLES);
+    }
+
+    /**
+     * Abort 403 if $roles includes any ADMIN_ONLY_GRANT_ROLES and this actor
+     * is not admin or super_admin. Call immediately before persisting users.role.
+     *
+     * @param  list<mixed>  $roles
+     */
+    public function assertMayAssignRoles(array $roles): void
+    {
+        $requested = self::normalizeRolesValue($roles);
+        $blocked = array_values(array_intersect($requested, self::ADMIN_ONLY_GRANT_ROLES));
+
+        if ($blocked === []) {
+            return;
+        }
+
+        if (! $this->mayAssignPrivilegedRoles()) {
+            abort(403, 'You are not allowed to assign this role.');
+        }
+    }
+
+    /**
+     * Matches mobile userHasAdminRole: the `admin` role only.
+     */
+    public function isEventsAdmin(): bool
+    {
+        return in_array('admin', $this->normalizedRoles(), true);
+    }
+
+    /**
+     * Matches mobile userCanAccessScan: admin role or access_scan grant.
+     * Reads the authenticated user record only — never request body flags.
+     */
+    public function canAccessEventsScan(): bool
+    {
+        if ($this->isEventsAdmin()) {
+            return true;
+        }
+
+        $flag = $this->access_scan;
+
+        return $flag === 1 || $flag === true || $flag === '1';
+    }
+
+    /** Private disk — never serve resumes via /storage symlink. */
+    public const RESUME_DISK = 'documents';
 
     public const RESUME_DIRECTORY = 'resumes';
 
@@ -129,7 +339,7 @@ class User extends Authenticatable
         self::PROGRAM_STATUS_LEFT => 'Left',
     ];
 
-    /** Relative path on the public disk, e.g. resumes/abc.pdf */
+    /** Relative path on the private disk, e.g. resumes/abc.pdf */
     public function resumeStoragePath(): ?string
     {
         $name = $this->resume;
@@ -139,28 +349,15 @@ class User extends Authenticatable
 
         $basename = basename($name);
 
-        return $basename !== '' ? self::RESUME_DIRECTORY . '/' . $basename : null;
+        return $basename !== '' ? self::RESUME_DIRECTORY.'/'.$basename : null;
     }
 
+    /**
+     * Resumes are private — never expose a public /storage URL.
+     * Clients must use resume_view_url (gated) instead.
+     */
     public function resumePublicUrl(): ?string
     {
-        $relative = $this->resumeStoragePath();
-        if (! $relative) {
-            return null;
-        }
-
-        if (Storage::disk(self::RESUME_DISK)->exists($relative)) {
-            return asset('storage/' . ltrim($relative, '/'));
-        }
-
-        $basename = basename($relative);
-        foreach (['storage/resumes', 'storage/resume'] as $legacyDir) {
-            $legacy = public_path($legacyDir . '/' . $basename);
-            if (is_file($legacy)) {
-                return asset($legacyDir . '/' . $basename);
-            }
-        }
-
         return null;
     }
 
@@ -171,13 +368,18 @@ class User extends Authenticatable
             return Storage::disk(self::RESUME_DISK)->path($relative);
         }
 
+        // Legacy public-disk copies until resumes:migrate-private has been run.
+        if ($relative && Storage::disk('public')->exists($relative)) {
+            return Storage::disk('public')->path($relative);
+        }
+
         $basename = basename((string) $this->resume);
         if ($basename === '') {
             return null;
         }
 
         foreach (['storage/resumes', 'storage/resume'] as $legacyDir) {
-            $legacy = public_path($legacyDir . '/' . $basename);
+            $legacy = public_path($legacyDir.'/'.$basename);
             if (is_file($legacy)) {
                 return $legacy;
             }
@@ -197,27 +399,14 @@ class User extends Authenticatable
 
     public function readStoredResumeContents(): ?string
     {
-        $relative = $this->resumeStoragePath();
-        if (! $relative) {
+        $path = $this->resolveResumeAbsolutePath();
+        if (! $path || ! is_readable($path)) {
             return null;
         }
 
-        $disk = Storage::disk(self::RESUME_DISK);
-        if ($disk->exists($relative)) {
-            return $disk->get($relative);
-        }
+        $contents = file_get_contents($path);
 
-        $basename = basename($relative);
-        foreach (['storage/resumes', 'storage/resume'] as $legacyDir) {
-            $legacy = public_path($legacyDir . '/' . $basename);
-            if (is_file($legacy) && is_readable($legacy)) {
-                $contents = file_get_contents($legacy);
-
-                return $contents !== false ? $contents : null;
-            }
-        }
-
-        return null;
+        return $contents !== false ? $contents : null;
     }
 
     public function deleteStoredResume(): void
@@ -225,6 +414,7 @@ class User extends Authenticatable
         $relative = $this->resumeStoragePath();
         if ($relative) {
             Storage::disk(self::RESUME_DISK)->delete($relative);
+            Storage::disk('public')->delete($relative);
         }
 
         $basename = basename((string) $this->resume);
@@ -233,7 +423,7 @@ class User extends Authenticatable
         }
 
         foreach (['storage/resumes', 'storage/resume'] as $legacyDir) {
-            $legacy = public_path($legacyDir . '/' . $basename);
+            $legacy = public_path($legacyDir.'/'.$basename);
             if (is_file($legacy)) {
                 @unlink($legacy);
             }
@@ -477,6 +667,11 @@ class User extends Authenticatable
     public function socialLinks()
     {
         return $this->hasMany(UserSocialLink::class);
+    }
+
+    public function faceEnrollment(): HasOne
+    {
+        return $this->hasOne(FaceEnrollment::class);
     }
 
     /** Organisation this user logs in as (the company account). */

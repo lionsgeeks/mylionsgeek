@@ -56,6 +56,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     const canEditOthers = userRolesLower.some((r) =>
         ['admin', 'super_admin', 'moderateur', 'coach', 'studio_responsable', 'responsable_studio'].includes(r),
     );
+    const canGrantStaffRoles = userRolesLower.includes('admin') || userRolesLower.includes('super_admin');
     const isAdminOrStudioResponsable =
         userRolesLower.includes('admin') ||
         userRolesLower.includes('super_admin') ||
@@ -257,8 +258,14 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         if (showStatusField && formData.status) {
             form.append('status', formData.status);
         }
-        form.append('phone', formData.phone);
-        form.append('cin', formData.cin);
+        // Only admin/super_admin receive cin/phone/has_handicap on the index DTO.
+        // Never POST empty values for missing keys — that would wipe student records.
+        if (canGrantStaffRoles || Object.prototype.hasOwnProperty.call(editedUser, 'phone')) {
+            form.append('phone', formData.phone ?? '');
+        }
+        if (canGrantStaffRoles || Object.prototype.hasOwnProperty.call(editedUser, 'cin')) {
+            form.append('cin', formData.cin ?? '');
+        }
         form.append('speciality', formData.speciality ?? '');
         form.append('formation_id', formData.formation_id === NONE_TRAINING_VALUE || !formData.formation_id ? '' : String(formData.formation_id));
 
@@ -353,11 +360,13 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         <Label htmlFor="email">Email</Label>
                         <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
                     </div>
-                    {/* Phone */}
-                    <div className="col-span-1">
-                        <Label htmlFor="phone">Phone</Label>
-                        <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
-                    </div>
+                    {/* Phone — only when index DTO includes it (admin/super_admin) */}
+                    {canGrantStaffRoles && (
+                        <div className="col-span-1">
+                            <Label htmlFor="phone">Phone</Label>
+                            <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+                        </div>
+                    )}
                     {canEditOthers && (
                         <div className="col-span-1">
                             <Label>Gender</Label>
@@ -426,7 +435,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                             </Select>
                         </div>
                     )}
-                    {isAdminOrStudioResponsable && (
+                    {canGrantStaffRoles && (
                         <div className="col-span-1">
                             <Label htmlFor="cin">CIN</Label>
                             <Input id="cin" value={formData.cin || ''} onChange={(e) => setFormData({ ...formData, cin: e.target.value })} />

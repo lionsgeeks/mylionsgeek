@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Ably\AblyRest;
 use App\Models\GameSession;
+use App\Services\AblyCapabilityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -56,28 +57,27 @@ class GamesController extends Controller
     }
 
     /**
-     * Get Ably token for real-time game updates
-     * Jib token dial Ably bach n3tiw access l channels dial games
+     * Get Ably token for real-time game updates.
+     * Capabilities are limited to game rooms the user has joined.
      */
-    public function getAblyToken()
+    public function getAblyToken(AblyCapabilityService $capabilities)
     {
         $user = Auth::user();
-        
+        if (! $user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
         try {
             $ablyKey = config('services.ably.key');
             if (!$ablyKey) {
                 return response()->json(['error' => 'Ably not configured'], 500);
             }
 
-            // Generate token request using Ably PHP SDK
             $tokenRequest = [
-                'capability' => json_encode([
-                    'game:*' => ['subscribe', 'publish'], // Access l kolchi games
-                ]),
+                'capability' => $capabilities->encode($capabilities->gameCapabilities($user)),
                 'clientId' => (string) $user->id,
             ];
 
-            // Use Ably REST client to create token request
             $ably = new AblyRest($ablyKey);
             $tokenDetails = $ably->auth->requestToken($tokenRequest);
 
@@ -94,16 +94,21 @@ class GamesController extends Controller
     /**
      * Get game state for polling
      */
-    public function getGameState(Request $request, $roomId)
+    public function getGameState(Request $request, $roomId, AblyCapabilityService $capabilities)
     {
         $session = GameSession::where('room_id', $roomId)->first();
-        
+
         if (!$session) {
             return response()->json([
                 'exists' => false,
                 'game_state' => null,
                 'last_activity' => null,
             ]);
+        }
+
+        $user = Auth::user();
+        if (! $user || ! $capabilities->userIsAuthorizedForGame($user, $session->game_state)) {
+            return response()->json(['error' => 'Forbidden'], 403);
         }
 
         return response()->json([
@@ -117,27 +122,38 @@ class GamesController extends Controller
      * Update game state (POST) - Saves to database and broadcasts via Ably
      * When Ayman (X) or Yahya (O) makes a move, the other sees it IMMEDIATELY
      */
-    public function updateGameState(Request $request, $roomId)
+    public function updateGameState(Request $request, $roomId, AblyCapabilityService $capabilities)
     {
         $request->validate([
             'game_type' => 'required|string',
             'game_state' => 'required|array',
         ]);
 
-        // Get or create session
+        $user = Auth::user();
         $session = GameSession::where('room_id', $roomId)->first();
-        
-        if (!$session) {
-            // Create new session
+        $previousParticipantIds = [];
+
+        if ($session) {
+            if (! $user || ! $capabilities->userIsAuthorizedForGame($user, $session->game_state)) {
+                return response()->json(['error' => 'Forbidden'], 403);
+            }
+
+            if (is_array($session->game_state['participant_user_ids'] ?? null)) {
+                $previousParticipantIds = $session->game_state['participant_user_ids'];
+            }
+
+            $session->updateState($request->game_state);
+        } else {
             $session = GameSession::create([
                 'room_id' => $roomId,
                 'game_type' => $request->game_type,
                 'game_state' => $request->game_state,
                 'last_activity' => now(),
             ]);
-        } else {
-            // Update existing session - preserves players array
-            $session->updateState($request->game_state);
+        }
+
+        if ($user) {
+            $capabilities->recordGameParticipant($session, $user, $previousParticipantIds);
         }
         
         // Refresh to get latest state from database
@@ -192,11 +208,21 @@ class GamesController extends Controller
     /**
      * Reset game session - Saves to database and broadcasts via Ably
      */
-    public function resetGameSession(Request $request, $roomId)
+    public function resetGameSession(Request $request, $roomId, AblyCapabilityService $capabilities)
     {
+        $user = Auth::user();
         $session = GameSession::where('room_id', $roomId)->first();
-        
+        $previousParticipantIds = [];
+
         if ($session) {
+            if (! $user || ! $capabilities->userIsAuthorizedForGame($user, $session->game_state)) {
+                return response()->json(['error' => 'Forbidden'], 403);
+            }
+
+            if (is_array($session->game_state['participant_user_ids'] ?? null)) {
+                $previousParticipantIds = $session->game_state['participant_user_ids'];
+            }
+
             $session->updateState($request->get('initial_state', []));
         } else {
             $session = GameSession::getOrCreate(
@@ -204,6 +230,10 @@ class GamesController extends Controller
                 $request->get('game_type', 'tictactoe'),
                 $request->get('initial_state', [])
             );
+        }
+
+        if ($user) {
+            $capabilities->recordGameParticipant($session, $user, $previousParticipantIds);
         }
         
         // Refresh to get latest state
