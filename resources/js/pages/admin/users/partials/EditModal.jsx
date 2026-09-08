@@ -596,7 +596,11 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         {isAdminOrStudioResponsable && (
                             <div className="col-span-1">
                                 <Label htmlFor="roles">Roles</Label>
-                                <RolesMultiSelect roles={formData.roles} onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })} />
+                                <RolesMultiSelect
+                                    roles={formData.roles}
+                                    onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })}
+                                    canGrantStaffRoles={canGrantStaffRoles}
+                                />
                             </div>
                         )}
                     </Rolegard>

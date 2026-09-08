@@ -1126,10 +1126,11 @@ class UsersController extends Controller
             }
         }
 
-        if ($request->has('formation_id')) {
-            $formation = Formation::query()->whereKey($request->formation_id)->first();
-            // dd($formation->category);
-            $user->field = $formation->category;
+        if ($request->exists('formation_id')) {
+            $formationId = $request->input('formation_id');
+            $user->field = $formationId
+                ? Formation::query()->whereKey($formationId)->value('category')
+                : null;
             $user->save();
         }
         if ($request->hasFile('image')) {
@@ -1164,7 +1165,7 @@ class UsersController extends Controller
         // coach/moderateur/etc. via canEditOthers).
         unset($validated['roles'], $validated['role']);
         $isSelfUpdate = (int) $actor->id === (int) $user->id;
-        if ($request->has('roles') && $canEditOthers) {
+        if ($canEditOthers && $request->exists('roles')) {
             if ($isSelfUpdate && ! $actor->mayAssignPrivilegedRoles()) {
                 abort(403, 'You are not allowed to change your own role.');
             }
@@ -1206,6 +1207,10 @@ class UsersController extends Controller
         }
 
         $user->update($validated);
+
+        if ($canEditOthers && $privileged !== []) {
+            $user->forceFill($privileged)->save();
+        }
 
         if (
             isset($validated['program_status'])
