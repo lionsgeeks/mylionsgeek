@@ -254,7 +254,10 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         form.append('_method', 'put');
         form.append('name', formData.name);
         form.append('email', formData.email);
-        formData.roles.forEach((r) => form.append('roles[]', r));
+        // Never send roles when editing yourself — another admin must change them.
+        if (!isEditingSelf) {
+            formData.roles.forEach((r) => form.append('roles[]', r));
+        }
         if (showStatusField && formData.status) {
             form.append('status', formData.status);
         }
@@ -591,16 +594,38 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                             </p>
                         </div>
                     )}
-                    {/* Right Column - Roles */}
-                    <Rolegard authorized={'admin'}>
-                        {isAdminOrStudioResponsable && (
+                    {/* Right Column - Roles (never editable on your own account) */}
+                    <Rolegard authorized={['admin', 'super_admin']}>
+                        {canGrantStaffRoles && (
                             <div className="col-span-1">
                                 <Label htmlFor="roles">Roles</Label>
-                                <RolesMultiSelect
-                                    roles={formData.roles}
-                                    onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })}
-                                    canGrantStaffRoles={canGrantStaffRoles}
-                                />
+                                {isEditingSelf ? (
+                                    <div className="space-y-2">
+                                        <div className="flex flex-wrap gap-2 rounded-md border border-input px-3 py-2">
+                                            {(formData.roles || []).length === 0 ? (
+                                                <span className="text-sm text-muted-foreground">No roles</span>
+                                            ) : (
+                                                formData.roles.map((r) => (
+                                                    <span
+                                                        key={r}
+                                                        className="inline-flex items-center rounded-md bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+                                                    >
+                                                        {r === 'studio_responsable' ? 'Responsable Studio' : r}
+                                                    </span>
+                                                ))
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            You cannot change your own roles. Another admin must update them for you.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <RolesMultiSelect
+                                        roles={formData.roles}
+                                        onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })}
+                                        canGrantStaffRoles={canGrantStaffRoles}
+                                    />
+                                )}
                             </div>
                         )}
                     </Rolegard>
