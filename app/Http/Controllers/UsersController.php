@@ -61,11 +61,22 @@ class UsersController extends Controller
         $actorRolesLower = array_map('strtolower', array_map('strval', $actorRoles));
         $canSeeSensitive = (bool) array_intersect($actorRolesLower, ['admin', 'super_admin']);
 
+        // Privileged actors (admin / super_admin) must see other admins so they can
+        // manage their roles. Non-privileged staff still cannot browse elevated accounts.
         $allUsers = User::query()
-            ->where('role', '!=', 'admin')
             ->orderByDesc('created_at')
             ->get()
-            ->filter(fn (User $user) => ! $user->isRecruiter())
+            ->filter(function (User $user) use ($actor) {
+                if ($user->isRecruiter()) {
+                    return false;
+                }
+
+                if ($actor instanceof User && $actor->mayAssignPrivilegedRoles()) {
+                    return true;
+                }
+
+                return empty(array_intersect($user->normalizedRoles(), User::PRIVILEGED_ROLES));
+            })
             ->values();
 
         $allFormation = Formation::with(['coach:id,name'])->orderBy('created_at', 'desc')->get();
@@ -207,8 +218,9 @@ class UsersController extends Controller
             'recruiter',
             'coworker'
         ];
+        $viewer = $request->user();
         $profileStats = app(UserProfileStatsService::class)->getStats($user);
-        $canViewHealthData = $this->actorCanViewHealthData($request->user());
+        $canViewHealthData = $this->actorCanViewHealthData($viewer);
         $userPayload = array_merge(
             $this->formatUserPayload($user, $isOnline, $canViewHealthData),
             $profileStats
@@ -1157,16 +1169,13 @@ class UsersController extends Controller
         }
 
         // Map roles (array) to 'role' JSON column, lowercased.
-        // SECURITY: only privileged actors may change roles. A self-updating student
-        // must never be able to escalate their own role. Without this gate the endpoint
-        // is a broken-access-control / mass-assignment privilege escalation (a student
-        // can POST roles[]=admin to /students/update/{their-own-id} and become admin).
-        // Non-admin staff also cannot change their own role (self-escalation to
-        // coach/moderateur/etc. via canEditOthers).
+        // SECURITY: only staff who can edit others may change roles, and never on
+        // themselves (an admin cannot demote/lock themselves out — another admin must).
+        // Students must never escalate via mass-assignment on self-update.
         unset($validated['roles'], $validated['role']);
         $isSelfUpdate = (int) $actor->id === (int) $user->id;
         if ($canEditOthers && $request->exists('roles')) {
-            if ($isSelfUpdate && ! $actor->mayAssignPrivilegedRoles()) {
+            if ($isSelfUpdate) {
                 abort(403, 'You are not allowed to change your own role.');
             }
             $roles = $request->input('roles');
