@@ -20,6 +20,8 @@ use App\Models\TaskAssignmentNotification;
 use App\Models\ProjectMessageNotification;
 use App\Models\JobApplicationNotification;
 use App\Models\PostReportNotification;
+use App\Models\UserReportNotification;
+use App\Models\UserBlockNotification;
 use App\Models\AnnouncementNotification;
 use App\Models\Announcement;
 use App\Models\EventNotification;
@@ -437,6 +439,93 @@ class NotificationController extends Controller
                     }
                 } catch (\Exception $e) {
                     Log::error('Error fetching post report notifications: ' . $e->getMessage());
+                }
+            }
+
+            // 4.6. USER REPORT NOTIFICATIONS (Staff)
+            if ($isStaff && Schema::hasTable('user_report_notifications')) {
+                try {
+                    $userReportNotifs = UserReportNotification::query()
+                        ->with([
+                            'report',
+                            'report.reporter:id,name,image',
+                            'report.reportedUser:id,name',
+                        ])
+                        ->where('notified_user_id', $user->id)
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    foreach ($userReportNotifs as $rn) {
+                        $report = $rn->report;
+                        $reporter = $report?->reporter;
+                        $reported = $report?->reportedUser;
+                        if (! $report || ! $reporter) {
+                            continue;
+                        }
+
+                        $reportedName = $reported?->name ?? 'a user';
+                        $notifications[] = [
+                            'id' => 'user-report-'.$rn->id,
+                            'type' => 'user_report',
+                            'sender_name' => $reporter->name ?? 'User',
+                            'sender_image' => $reporter->image ?? null,
+                            'message' => ($reporter->name ?? 'Someone').' reported '.$reportedName,
+                            'link' => '/admin/users/'.((int) $report->reported_user_id),
+                            'mobile_link' => '/profile/'.((int) $report->reported_user_id),
+                            'icon_type' => 'flag',
+                            'created_at' => $rn->created_at?->toISOString() ?? now()->toISOString(),
+                            'read_at' => $rn->read_at ? $rn->read_at->toISOString() : null,
+                            'reported_user_id' => (int) $report->reported_user_id,
+                            'report_id' => (int) $report->id,
+                            'report_status' => (string) $report->status,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching user report notifications: '.$e->getMessage());
+                }
+            }
+
+            // 4.7. USER BLOCK NOTIFICATIONS (Staff)
+            if ($isStaff && Schema::hasTable('user_block_notifications')) {
+                try {
+                    $blockNotifs = UserBlockNotification::query()
+                        ->with([
+                            'block',
+                            'block.blocker:id,name,image',
+                            'block.blocked:id,name',
+                        ])
+                        ->where('notified_user_id', $user->id)
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    foreach ($blockNotifs as $bn) {
+                        $block = $bn->block;
+                        $blocker = $block?->blocker;
+                        $blocked = $block?->blocked;
+                        if (! $block || ! $blocker) {
+                            continue;
+                        }
+
+                        $blockedName = $blocked?->name ?? 'a user';
+                        $notifications[] = [
+                            'id' => 'user-block-'.$bn->id,
+                            'type' => 'user_block',
+                            'sender_name' => $blocker->name ?? 'User',
+                            'sender_image' => $blocker->image ?? null,
+                            'message' => ($blocker->name ?? 'Someone').' blocked '.$blockedName,
+                            'link' => '/admin/users/'.((int) $block->blocked_id),
+                            'mobile_link' => '/profile/'.((int) $block->blocked_id),
+                            'icon_type' => 'ban',
+                            'created_at' => $bn->created_at?->toISOString() ?? now()->toISOString(),
+                            'read_at' => $bn->read_at ? $bn->read_at->toISOString() : null,
+                            'blocked_user_id' => (int) $block->blocked_id,
+                            'block_id' => (int) $block->id,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching user block notifications: '.$e->getMessage());
                 }
             }
 
@@ -863,6 +952,30 @@ class NotificationController extends Controller
                         }
                     }
                     break;
+                case 'user-report':
+                case 'user_report':
+                    if (Schema::hasTable('user_report_notifications')) {
+                        $notification = UserReportNotification::where('id', $id)
+                            ->where('notified_user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
+                case 'user-block':
+                case 'user_block':
+                    if (Schema::hasTable('user_block_notifications')) {
+                        $notification = UserBlockNotification::where('id', $id)
+                            ->where('notified_user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
                 case 'job-application':
                 case 'job_application':
                     if (Schema::hasTable('job_application_notifications')) {
@@ -980,6 +1093,18 @@ class NotificationController extends Controller
             // Mark all post report notifications as read (for staff)
             if (Schema::hasTable('post_report_notifications')) {
                 PostReportNotification::where('notified_user_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            if (Schema::hasTable('user_report_notifications')) {
+                UserReportNotification::where('notified_user_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            if (Schema::hasTable('user_block_notifications')) {
+                UserBlockNotification::where('notified_user_id', $user->id)
                     ->whereNull('read_at')
                     ->update(['read_at' => now()]);
             }

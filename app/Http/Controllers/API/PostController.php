@@ -167,19 +167,39 @@ class PostController extends Controller
 
             // Get recent posts + recent reposts (pivot), then merge into one feed.
             try {
-                $recentPostsModels = Post::with(['user', 'likes', 'comments'])
+                $blockedIds = $user->blockedUserIds();
+
+                $recentPostsQuery = Post::with(['user', 'likes', 'comments'])
                     ->withCount(['reposts'])
                     ->where(function ($q) {
                         $q->whereNull('is_hidden')->orWhere('is_hidden', false);
                     })
-                    ->whereNotNull('created_at')
+                    ->whereNotNull('created_at');
+
+                if ($blockedIds !== []) {
+                    $recentPostsQuery->whereNotIn('user_id', $blockedIds);
+                }
+
+                $recentPostsModels = $recentPostsQuery
                     ->orderBy('created_at', 'desc')
                     ->limit($windowSize)
                     ->get()
                     ->filter();
 
-                $recentRepostRows = DB::table('reposts_posts')
-                    ->orderByDesc('created_at')
+                $recentRepostQuery = DB::table('reposts_posts')
+                    ->orderByDesc('created_at');
+
+                if ($blockedIds !== []) {
+                    $recentRepostQuery
+                        ->whereNotIn('user_id', $blockedIds)
+                        ->whereNotIn('post_id', function ($q) use ($blockedIds) {
+                            $q->select('id')
+                                ->from('posts')
+                                ->whereIn('user_id', $blockedIds);
+                        });
+                }
+
+                $recentRepostRows = $recentRepostQuery
                     ->limit($windowSize)
                     ->get();
 
@@ -812,9 +832,17 @@ class PostController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        $saved = $user->savedPosts()
+        $blockedIds = $user->blockedUserIds();
+
+        $savedQuery = $user->savedPosts()
             ->with(['user', 'likes', 'comments'])
-            ->withCount(['reposts'])
+            ->withCount(['reposts']);
+
+        if ($blockedIds !== []) {
+            $savedQuery->whereNotIn('posts.user_id', $blockedIds);
+        }
+
+        $saved = $savedQuery
             ->orderByPivot('created_at', 'desc')
             ->limit(60)
             ->get();
