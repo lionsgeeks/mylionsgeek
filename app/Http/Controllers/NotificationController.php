@@ -896,28 +896,7 @@ class NotificationController extends Controller
                         }
                     }
                     break;
-                case 'access_request':
-                    $roles = is_array($user->role) ? $user->role : [$user->role];
-                    $isAdmin = in_array('admin', $roles);
-                    if ($isAdmin && Schema::hasTable('access_request_notifications')) {
-                        $notification = AccessRequestNotification::where('id', $id)->first();
-                        if ($notification) {
-                            $notification->read_at = now();
-                            $notification->save();
-                        }
-                    }
-                    break;
-                case 'access_request_response':
-                    if (Schema::hasTable('access_request_response_notifications')) {
-                        $notification = AccessRequestResponseNotification::where('id', $id)
-                            ->where('user_id', $user->id)
-                            ->first();
-                        if ($notification) {
-                            $notification->read_at = now();
-                            $notification->save();
-                        }
-                    }
-                    break;
+                case 'discipline':
                 case 'discipline_change':
                     $roles = is_array($user->role) ? $user->role : [$user->role];
                     $isAdmin = in_array('admin', $roles);
@@ -942,6 +921,30 @@ class NotificationController extends Controller
                     if ($notification) {
                         $notification->read_at = now();
                         $notification->save();
+                    }
+                    break;
+                case 'access-request':
+                case 'access_request':
+                    $roles = is_array($user->role) ? $user->role : [$user->role];
+                    $isAdmin = in_array('admin', $roles);
+                    if ($isAdmin && Schema::hasTable('access_request_notifications')) {
+                        $notification = AccessRequestNotification::where('id', $id)->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
+                case 'access-request-response':
+                case 'access_request_response':
+                    if (Schema::hasTable('access_request_response_notifications')) {
+                        $notification = AccessRequestResponseNotification::where('id', $id)
+                            ->where('user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
                     }
                     break;
                 case 'task-assignment':

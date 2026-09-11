@@ -45,7 +45,7 @@ Covers: `reservations:check-end-times`, `attendance:send-slot-reminder`, `attend
 
 Never bake a LAN IP into store builds. Set HTTPS secrets for production:
 
-- `EXPO_PUBLIC_APP_URL`
+- `EXPO_PUBLIC_APP_URL` (required — set via EAS secrets / project env; do **not** bake a placeholder into `eas.json`)
 - `EXPO_PUBLIC_EVENTS_INFO_SECTION_URL`
 - `EXPO_PUBLIC_EVENTS_INFO_USE_PROXY=true`
 
@@ -56,8 +56,7 @@ eas secret:create --scope project --name EXPO_PUBLIC_APP_URL --value https://api
 eas build --platform all --profile production
 ```
 
-Or add an `env` block under `build.production` in `eas.json` that references EAS env vars (no local `.env` values).
-
+`eas.json` production profile keeps events proxy defaults only; `EXPO_PUBLIC_APP_URL` must come from EAS env/secrets.
 ## 5. Smoke matrix
 
 - [ ] Push tap opens the correct screen (chat thread / projects / reservations / events)

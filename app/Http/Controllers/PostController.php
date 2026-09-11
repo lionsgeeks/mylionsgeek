@@ -574,10 +574,23 @@ class PostController extends Controller
 
     public function deleteComment($id)
     {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
         $comment = Comment::find($id);
-        $postId = $comment?->post_id;
-        $commentId = $comment?->id;
-        $comment?->delete();
+        if (!$comment) {
+            return response()->json(['error' => 'Comment not found'], 404);
+        }
+
+        if ((int) $comment->user_id !== (int) $user->id) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        $postId = $comment->post_id;
+        $commentId = $comment->id;
+        $comment->delete();
 
         if ($postId && $commentId) {
             $this->publishFeedEvent("feed:post:{$postId}", 'comment-deleted', [
@@ -594,6 +607,11 @@ class PostController extends Controller
 
     public function updateComment(Request $request, $id)
     {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
         $request->validate([
             'comment' => 'required|string|max:2000',
             'image' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:5120',
@@ -601,6 +619,10 @@ class PostController extends Controller
         ]);
 
         $comment = Comment::findOrFail($id);
+
+        if ((int) $comment->user_id !== (int) $user->id) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
 
         $disk = $this->postImagesDisk();
         $removeImage = (bool) $request->boolean('remove_image');

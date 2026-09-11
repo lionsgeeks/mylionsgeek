@@ -321,6 +321,16 @@ class ReservationController extends Controller
         }
 
         try {
+            // Reject equipment conflicts before creating the studio row (avoids orphan pending reservations).
+            if (! empty($validated['equipment'])) {
+                $equipmentConflicts->assertAvailable(
+                    $validated['equipment'],
+                    $validated['day'],
+                    $validated['start'],
+                    $validated['end']
+                );
+            }
+
             $reservationId = $studioReservations->createPending([
                 'studio_id' => (int) $validated['studio_id'],
                 'user_id' => $ownerId,
@@ -331,15 +341,6 @@ class ReservationController extends Controller
                 'end' => $validated['end'],
                 'type' => 'studio',
             ]);
-
-            if (! empty($validated['equipment'])) {
-                $equipmentConflicts->assertAvailable(
-                    $validated['equipment'],
-                    $validated['day'],
-                    $validated['start'],
-                    $validated['end']
-                );
-            }
 
             DB::transaction(function () use ($validated, $reservationId, $ownerId) {
                 // Send Expo push notification to studio responsables
