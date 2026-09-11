@@ -655,6 +655,33 @@ class User extends Authenticatable
             'followed_id'
         )->withTimestamps();
     }
+
+    public function blockedUsers()
+    {
+        return $this->belongsToMany(
+            User::class,
+            'user_blocks',
+            'blocker_id',
+            'blocked_id'
+        )->withTimestamps();
+    }
+
+    /**
+     * @return array<int>
+     */
+    public function blockedUserIds(): array
+    {
+        if (! Schema::hasTable('user_blocks')) {
+            return [];
+        }
+
+        return $this->blockedUsers()
+            ->pluck('users.id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+    }
+
     public function experiences()
     {
         return $this->belongsToMany(Experience::class)->withTimestamps();

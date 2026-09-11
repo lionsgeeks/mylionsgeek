@@ -82,11 +82,7 @@ class StudioReservationConflictService
                     ]);
                 }
 
-                $lastId = (int) (DB::table('reservations')->max('id') ?? 0);
-                $reservationId = $lastId + 1;
-
                 $row = [
-                    'id' => $reservationId,
                     'studio_id' => $studioId,
                     'user_id' => (int) $attributes['user_id'],
                     'title' => $attributes['title'],
@@ -108,9 +104,7 @@ class StudioReservationConflictService
                     $row['studio_responsable_approved'] = (int) ($attributes['studio_responsable_approved'] ?? 0);
                 }
 
-                DB::table('reservations')->insert($row);
-
-                return $reservationId;
+                return (int) DB::table('reservations')->insertGetId($row);
             });
         } finally {
             if ($usesNamedLock) {

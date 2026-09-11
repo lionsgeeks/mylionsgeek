@@ -159,9 +159,17 @@ class ChatController extends Controller
             ]);
         }
 
-        $conversation->load(['userOne', 'userTwo', 'messages' => function ($query) {
-            $query->orderBy('created_at', 'asc');
-        }]);
+        $conversation->load([
+            'userOne',
+            'userTwo',
+            'messages' => function ($query) {
+                $query->with([
+                    'sender:id,name,image',
+                    'replyTo.sender:id,name',
+                    'reactions.user:id,name',
+                ])->orderBy('created_at', 'asc');
+            },
+        ]);
 
         $otherUser = $conversation->getOtherUser($currentUser->id);
 
@@ -175,7 +183,7 @@ class ChatController extends Controller
                 'last_login' => $otherUser->last_login ? Carbon::parse($otherUser->last_login)->toISOString() : null,
                 'last_online' => $otherUser->last_online ? Carbon::parse($otherUser->last_online)->toISOString() : null,
             ],
-            'messages' => $conversation->messages->map(fn ($message) => $this->serializeChatMessage($message)),
+            'messages' => $conversation->messages->map(fn ($message) => $this->serializeChatMessage($message, true)),
         ];
 
         if (request()->header('X-Inertia')) {
@@ -203,20 +211,46 @@ class ChatController extends Controller
             })
             ->firstOrFail();
 
-        $messages = $conversation->messages()
-            ->with('sender:id,name,image')
-            ->orderBy('created_at', 'asc')
+        $messagesQuery = $conversation->messages()
+            ->with([
+                'sender:id,name,image',
+                'replyTo.sender:id,name',
+                'reactions.user:id,name',
+            ])
+            ->orderBy('created_at', 'asc');
+
+        // Optional windowing: ?limit=150 returns the latest N messages (chronological).
+        // Optional cursor: ?before_id=123 returns older messages before that id.
+        $limit = request()->integer('limit');
+        $beforeId = request()->integer('before_id');
+        if ($beforeId > 0) {
+            $messagesQuery->where('id', '<', $beforeId);
+        }
+        if ($limit > 0) {
+            $limit = min(200, $limit);
+            $latestIds = (clone $messagesQuery)
+                ->reorder()
+                ->orderByDesc('created_at')
+                ->limit($limit)
+                ->pluck('id');
+            $messagesQuery->whereIn('id', $latestIds);
+        }
+
+        $messages = $messagesQuery
             ->get()
             ->map(fn ($message) => $this->serializeChatMessage($message, true));
 
-        // Mark messages as read
-        $updatedCount = $conversation->messages()
-            ->where('sender_id', '!=', $user->id)
-            ->where('is_read', false)
-            ->update([
-                'is_read' => true,
-                'read_at' => now(),
-            ]);
+        // Mark messages as read only on the primary (latest-window) fetch, not when paging older.
+        $updatedCount = 0;
+        if ($beforeId <= 0) {
+            $updatedCount = $conversation->messages()
+                ->where('sender_id', '!=', $user->id)
+                ->where('is_read', false)
+                ->update([
+                    'is_read' => true,
+                    'read_at' => now(),
+                ]);
+        }
 
         // Broadcast seen status via Ably if messages were marked as read
         if ($updatedCount > 0) {
@@ -302,6 +336,7 @@ class ChatController extends Controller
                 'mimetypes:'.implode(',', self::CHAT_ATTACHMENT_MIMETYPES),
             ],
             'attachment_type' => 'nullable|in:file,audio,image,video',
+            'reply_to' => 'nullable|integer|exists:messages,id',
         ]);
 
         $user = Auth::user();
@@ -318,17 +353,7 @@ class ChatController extends Controller
             ? $conversation->user_two_id
             : $conversation->user_one_id;
 
-        // Check if current user is following the other user
-        $isFollowing = \App\Models\Follower::where('follower_id', $user->id)
-            ->where('followed_id', $otherUserId)
-            ->exists();
-
-        if (!$isFollowing) {
-            if (request()->header('X-Inertia')) {
-                return redirect()->back()->withErrors(['error' => 'You can only message users you follow']);
-            }
-            return response()->json(['error' => 'You can only message users you follow'], 403);
-        }
+        // Follow is enforced when creating a conversation; existing threads can always reply.
 
         // Require either body or attachment
         if (empty($request->body) && !$request->hasFile('attachment')) {
@@ -350,9 +375,21 @@ class ChatController extends Controller
             $attachmentPath = $file->store('chat/attachments', self::ATTACHMENT_DISK);
         }
 
+        $replyToId = null;
+        if ($request->filled('reply_to')) {
+            $replyMessage = Message::where('id', (int) $request->reply_to)
+                ->where('conversation_id', $conversation->id)
+                ->first();
+            if (! $replyMessage) {
+                return response()->json(['error' => 'Invalid reply target'], 422);
+            }
+            $replyToId = $replyMessage->id;
+        }
+
         $message = Message::create([
             'conversation_id' => $conversation->id,
             'sender_id' => $user->id,
+            'reply_to' => $replyToId,
             'body' => (string) ($request->body ?? ''),
             'attachment_path' => $attachmentPath,
             'attachment_type' => $attachmentType,
@@ -564,7 +601,11 @@ class ChatController extends Controller
             }
         }
 
-        $message->load('sender:id,name,image');
+        $message->load([
+            'sender:id,name,image',
+            'replyTo.sender:id,name',
+            'reactions.user:id,name',
+        ]);
 
         $messageData = $this->serializeChatMessage($message, true);
 
@@ -743,6 +784,67 @@ class ChatController extends Controller
     }
 
     /**
+     * Update a plain-text message body (no attachments / structured payloads).
+     */
+    public function updateMessage(Request $request, $messageId)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'body' => 'required|string|max:5000',
+        ]);
+
+        $message = Message::where('id', $messageId)
+            ->where('sender_id', $user->id)
+            ->firstOrFail();
+
+        if (! $this->isPlainTextChatMessage($message)) {
+            return response()->json([
+                'message' => 'Only plain text messages can be edited.',
+            ], 422);
+        }
+
+        $newBody = trim($validated['body']);
+        if ($newBody === '') {
+            return response()->json([
+                'message' => 'Message body cannot be empty.',
+            ], 422);
+        }
+
+        // Reject structured payloads masquerading as edits.
+        if ($this->looksLikeStructuredChatPayload($newBody)) {
+            return response()->json([
+                'message' => 'Only plain text messages can be edited.',
+            ], 422);
+        }
+
+        $message->body = $newBody;
+        $message->save();
+        $message->load([
+            'sender:id,name,image',
+            'replyTo.sender:id,name',
+            'reactions.user:id,name',
+        ]);
+
+        $messageData = $this->serializeChatMessage($message, true, true);
+
+        try {
+            $ablyKey = config('services.ably.key');
+            if ($ablyKey) {
+                $ably = new AblyRest($ablyKey);
+                $channel = $ably->channels->get("chat:conversation:{$message->conversation_id}");
+                $channel->publish('message-updated', $messageData);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to broadcast message update via Ably: '.$e->getMessage());
+        }
+
+        return response()->json([
+            'message' => $messageData,
+        ]);
+    }
+
+    /**
      * Delete a message
      */
     public function deleteMessage($messageId)
@@ -810,6 +912,70 @@ class ChatController extends Controller
     }
 
     /**
+     * Toggle a reaction on a chat message (one reaction per user).
+     */
+    public function toggleReaction(Request $request, $messageId)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'reaction' => 'required|string|max:16',
+        ]);
+
+        $message = Message::query()->with('conversation')->findOrFail($messageId);
+        $conversation = $message->conversation;
+
+        if (
+            ! $conversation
+            || ($conversation->user_one_id !== $user->id && $conversation->user_two_id !== $user->id)
+        ) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $reaction = trim($validated['reaction']);
+        $existing = \App\Models\MessageReaction::query()
+            ->where('message_id', $message->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($existing && $existing->reaction === $reaction) {
+            $existing->delete();
+        } else {
+            \App\Models\MessageReaction::query()->updateOrCreate(
+                [
+                    'message_id' => $message->id,
+                    'user_id' => $user->id,
+                ],
+                ['reaction' => $reaction]
+            );
+        }
+
+        $message->load([
+            'sender:id,name,image',
+            'replyTo.sender:id,name',
+            'reactions.user:id,name',
+        ]);
+
+        $messageData = $this->serializeChatMessage($message, true);
+
+        try {
+            $ablyKey = config('services.ably.key');
+            if ($ablyKey) {
+                $ably = new AblyRest($ablyKey);
+                $channel = $ably->channels->get("chat:conversation:{$conversation->id}");
+                $channel->publish('message-reaction-updated', $messageData);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to broadcast message reaction via Ably: '.$e->getMessage());
+        }
+
+        return response()->json([
+            'message' => $messageData,
+            'reactions' => $messageData['reactions'] ?? [],
+        ]);
+    }
+
+    /**
      * Stream a chat attachment for conversation participants only.
      */
     public function downloadAttachment($messageId): BinaryFileResponse|StreamedResponse|\Illuminate\Http\Response
@@ -842,25 +1008,74 @@ class ChatController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function serializeChatMessage(Message $message, bool $withSender = false): array
+    private function serializeChatMessage(Message $message, bool $withSender = false, bool $forceEdited = false): array
     {
+        $createdAt = $message->created_at?->toISOString();
+        $updatedAt = $message->updated_at?->toISOString();
+        $viewerId = Auth::id();
+
         $data = [
             'id' => $message->id,
             'body' => $message->body,
             'sender_id' => $message->sender_id,
+            'reply_to' => $message->reply_to,
             'attachment_path' => $message->attachment_path,
             'attachment_url' => $message->attachment_path
-                ? (request()->is('api/*')
-                    ? url('/api/mobile/chat/message/'.$message->id.'/attachment')
-                    : url('/chat/message/'.$message->id.'/attachment'))
+                ? url('/api/mobile/chat/message/'.$message->id.'/attachment')
+                : null,
+            'attachment_url_web' => $message->attachment_path
+                ? url('/chat/message/'.$message->id.'/attachment')
                 : null,
             'attachment_type' => $message->attachment_type,
             'attachment_name' => $message->attachment_name,
             'attachment_size' => $this->chatAttachmentSize($message->attachment_path),
             'is_read' => $message->is_read,
             'read_at' => $message->read_at ? $message->read_at->toISOString() : null,
-            'created_at' => $message->created_at->toISOString(),
+            'created_at' => $createdAt,
+            'updated_at' => $updatedAt,
+            'edited' => $forceEdited || (
+                $message->created_at
+                && $message->updated_at
+                && $message->updated_at->gt($message->created_at)
+            ),
+            'reactions' => [],
+            'my_reaction' => null,
+            'reply_preview' => null,
         ];
+
+        if ($message->relationLoaded('reactions')) {
+            $grouped = $message->reactions->groupBy('reaction')->map(function ($reactions, $reaction) {
+                return [
+                    'reaction' => $reaction,
+                    'count' => $reactions->count(),
+                    'users' => $reactions->pluck('user.name')->filter()->values()->toArray(),
+                ];
+            })->values()->toArray();
+
+            $data['reactions'] = $grouped;
+            $mine = $message->reactions->firstWhere('user_id', $viewerId);
+            $data['my_reaction'] = $mine?->reaction;
+        }
+
+        if ($message->relationLoaded('replyTo') && $message->replyTo) {
+            $reply = $message->replyTo;
+            $previewBody = trim((string) $reply->body);
+            if ($previewBody === '' && $reply->attachment_type) {
+                $previewBody = match ($reply->attachment_type) {
+                    'image' => 'Photo',
+                    'video' => 'Video',
+                    'audio' => 'Voice message',
+                    default => 'Attachment',
+                };
+            }
+            $data['reply_preview'] = [
+                'id' => $reply->id,
+                'body' => $previewBody,
+                'sender_id' => $reply->sender_id,
+                'sender_name' => $reply->relationLoaded('sender') ? ($reply->sender->name ?? null) : null,
+                'attachment_type' => $reply->attachment_type,
+            ];
+        }
 
         if ($withSender && $message->relationLoaded('sender') && $message->sender) {
             $data['sender'] = [
@@ -871,6 +1086,36 @@ class ChatController extends Controller
         }
 
         return $data;
+    }
+
+    private function isPlainTextChatMessage(Message $message): bool
+    {
+        if ($message->attachment_path || $message->attachment_type) {
+            return false;
+        }
+
+        $body = trim((string) $message->body);
+
+        if ($body === '') {
+            return false;
+        }
+
+        return ! $this->looksLikeStructuredChatPayload($body);
+    }
+
+    private function looksLikeStructuredChatPayload(string $body): bool
+    {
+        $trimmed = trim($body);
+        if (! str_starts_with($trimmed, '{') || ! str_ends_with($trimmed, '}')) {
+            return false;
+        }
+
+        $decoded = json_decode($trimmed, true);
+        if (! is_array($decoded) || ! isset($decoded['type'])) {
+            return false;
+        }
+
+        return in_array($decoded['type'], ['post_share', 'story_reply'], true);
     }
 
     private function chatAttachmentSize(?string $relative): ?int

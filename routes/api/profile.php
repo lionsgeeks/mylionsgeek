@@ -20,5 +20,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile/{userId}/followers', [ProfileController::class, 'listFollowers']);
     Route::get('/profile/{userId}/following', [ProfileController::class, 'listFollowing']);
     Route::post('/users/{userId}/follow', [ProfileController::class, 'follow']);
+
+    Route::get('/blocks', [\App\Http\Controllers\API\UserModerationController::class, 'index']);
+    Route::post('/users/{userId}/block', [\App\Http\Controllers\API\UserModerationController::class, 'block'])->whereNumber('userId');
+    Route::delete('/users/{userId}/block', [\App\Http\Controllers\API\UserModerationController::class, 'unblock'])->whereNumber('userId');
+    Route::post('/users/{userId}/report', [\App\Http\Controllers\API\UserModerationController::class, 'report'])->whereNumber('userId');
 });
 
