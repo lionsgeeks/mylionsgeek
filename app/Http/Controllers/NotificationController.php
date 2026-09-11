@@ -77,11 +77,12 @@ class NotificationController extends Controller
                         'sender_image' => $notif->user->image ?? null,
                         'message' => $notif->message_notification ?? '',
                         'link' => $notif->path ?? "/admin/users/{$notif->user_id}",
+                        'mobile_link' => '/profile/' . $notif->user_id,
                         'icon_type' => 'user',
                         'discipline_value' => $notif->discipline_change,
                         'change_type' => $notif->type, // 'increase' or 'decrease'
-                        'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                        'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                        'created_at' => $notif->created_at->toISOString(),
+                        'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                     ];
                 }
             } elseif ($isCoach) {
@@ -108,11 +109,12 @@ class NotificationController extends Controller
                         'sender_image' => $notif->user->image ?? null,
                         'message' => $notif->message_notification ?? '',
                         'link' => $notif->path ?? "/admin/users/{$notif->user_id}",
+                        'mobile_link' => '/profile/' . $notif->user_id,
                         'icon_type' => 'user',
                         'discipline_value' => $notif->discipline_change,
                         'change_type' => $notif->type,
-                        'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                        'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                        'created_at' => $notif->created_at->toISOString(),
+                        'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                     ];
                 }
             }
@@ -156,9 +158,10 @@ class NotificationController extends Controller
                                 'sender_image' => $notif->user->image ?? null,
                                 'message' => $notif->message_notification ?? 'Student asked you to review his exercise',
                                 'link' => $link,
+                                'mobile_link' => '/training',
                                 'icon_type' => 'file-text',
-                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                                'created_at' => $notif->created_at->toISOString(),
+                                'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                             ];
                         }
                     }
@@ -187,9 +190,10 @@ class NotificationController extends Controller
                                 'sender_image' => $notif->student->image ?? null,
                                 'message' => $notif->message_notification ?? 'A student submitted a new project',
                                 'link' => $link,
+                                'mobile_link' => '/projects',
                                 'icon_type' => 'folder',
-                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                                'created_at' => $notif->created_at->toISOString(),
+                                'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                             ];
                         }
                     }
@@ -223,11 +227,12 @@ class NotificationController extends Controller
                                 'sender_image' => $notif->user->image ?? null,
                                 'message' => $notif->message ?? "{$notif->user->name} requested {$accessTypeLabel} access",
                                 'link' => "/admin/users/{$notif->user_id}",
+                                'mobile_link' => '/reservations',
                                 'icon_type' => 'lock',
                                 'access_type' => $notif->requested_access_type,
                                 'notification_id' => $notif->id,
-                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                                'created_at' => $notif->created_at->toISOString(),
+                                'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                             ];
                         }
                     }
@@ -272,8 +277,11 @@ class NotificationController extends Controller
                         'sender_name' => $reservation->sender_name ?? 'Unknown',
                         'sender_image' => $reservation->sender_image,
                         'message' => $message,
-                        'created_at' => $reservation->created_at,
+                        'created_at' => $reservation->created_at
+                            ? \Illuminate\Support\Carbon::parse($reservation->created_at)->toISOString()
+                            : now()->toISOString(),
                         'link' => '/admin/reservations/' . $reservation->id . '/details',
+                        'mobile_link' => '/admin/reservations/' . $reservation->id . '/details',
                         'icon_type' => 'calendar',
                     ];
                 }
@@ -312,8 +320,11 @@ class NotificationController extends Controller
                             'sender_name' => $appointment->requester_name ?? 'Unknown',
                             'sender_image' => $appointment->requester_image,
                             'message' => $message,
-                            'created_at' => $appointment->created_at,
+                            'created_at' => $appointment->created_at
+                                ? \Illuminate\Support\Carbon::parse($appointment->created_at)->toISOString()
+                                : now()->toISOString(),
                             'link' => '/admin/appointments',
+                            'mobile_link' => '/admin/appointments',
                             'icon_type' => 'calendar',
                         ];
                     }
@@ -345,11 +356,12 @@ class NotificationController extends Controller
                             'sender_image' => $notif->reviewer ? $notif->reviewer->image : null,
                             'message' => $message,
                             'link' => $notif->path ?? '/student/spaces',
+                            'mobile_link' => '/reservations',
                             'icon_type' => $notif->status === 'approved' ? 'check-circle' : 'x-circle',
                             'status' => $notif->status,
                             'denial_reason' => $notif->denial_reason,
-                            'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                            'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                            'created_at' => $notif->created_at->toISOString(),
+                            'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                         ];
                     }
                 } catch (\Exception $e) {
@@ -395,6 +407,8 @@ class NotificationController extends Controller
                     'sender_image' => $senderImage,
                     'message' => $message,
                     'link' => '/students/feed#post-' . $notif->post_id,
+                    'mobile_link' => '/posts/' . $notif->post_id,
+                    'post_id' => $notif->post_id,
                     'icon_type' => 'user',
                     'created_at' => $notif->created_at->toISOString(),
                     'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
@@ -547,6 +561,7 @@ class NotificationController extends Controller
                     'sender_image' => $senderImage,
                     'message' => "{$senderName} started following you",
                     'link' => "/students/{$notif->follower_id}",
+                    'mobile_link' => '/profile/' . $notif->follower_id,
                     'icon_type' => 'user',
                     'created_at' => $notif->created_at->toISOString(),
                     'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
@@ -578,6 +593,7 @@ class NotificationController extends Controller
                             'sender_image' => $applicant?->image,
                             'message' => "{$applicantName} applied to {$jobTitle}",
                             'link' => $jobId ? "/recruiter/applications/jobs/{$jobId}" : '/recruiter/applications',
+                            'mobile_link' => '/home',
                             'icon_type' => 'briefcase',
                             'created_at' => $notif->created_at->toISOString(),
                             'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
@@ -612,9 +628,10 @@ class NotificationController extends Controller
                                 'sender_image' => $notif->reviewer ? $notif->reviewer->image : null,
                                 'message' => $notif->message_notification,
                                 'link' => $link,
+                                'mobile_link' => '/projects',
                                 'icon_type' => $iconType,
-                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                                'created_at' => $notif->created_at->toISOString(),
+                                'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                                 'status' => $notif->status,
                                 'rejection_reason' => $notif->rejection_reason,
                             ];
@@ -645,9 +662,10 @@ class NotificationController extends Controller
                                 'sender_image' => $notif->assignedByUser->image ?? null,
                                 'message' => $notif->message_notification,
                                 'link' => $link,
+                                'mobile_link' => '/projects',
                                 'icon_type' => 'briefcase',
-                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                                'created_at' => $notif->created_at->toISOString(),
+                                'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                             ];
                         }
                     }
@@ -676,9 +694,10 @@ class NotificationController extends Controller
                                 'sender_image' => $notif->sender->image ?? null,
                                 'message' => $notif->message_notification,
                                 'link' => $link,
+                                'mobile_link' => '/projects',
                                 'icon_type' => 'message-square',
-                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                                'created_at' => $notif->created_at->toISOString(),
+                                'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                             ];
                         }
                     }
@@ -711,9 +730,10 @@ class NotificationController extends Controller
                             'sender_image' => $announcement->creator?->image,
                             'message' => $announcement->message,
                             'link' => '/dashboard',
+                            'mobile_link' => '/home',
                             'icon_type' => 'megaphone',
-                            'created_at' => $announcement->created_at->format('Y-m-d H:i:s'),
-                            'read_at' => $readAt ? $readAt->format('Y-m-d H:i:s') : null,
+                            'created_at' => $announcement->created_at->toISOString(),
+                            'read_at' => $readAt ? $readAt->toISOString() : null,
                         ];
                     }
                 } catch (\Exception $e) {
@@ -745,8 +765,8 @@ class NotificationController extends Controller
                             'message' => $eventNotification->message,
                             'mobile_link' => '/events/' . $eventNotification->lionsgeek_event_id,
                             'icon_type' => 'calendar',
-                            'created_at' => $eventNotification->created_at->format('Y-m-d H:i:s'),
-                            'read_at' => $readAt ? $readAt->format('Y-m-d H:i:s') : null,
+                            'created_at' => $eventNotification->created_at->toISOString(),
+                            'read_at' => $readAt ? $readAt->toISOString() : null,
                         ];
                     }
                 } catch (\Exception $e) {
@@ -781,11 +801,12 @@ class NotificationController extends Controller
                             'sender_image' => null,
                             'message' => $message,
                             'link' => $notif->path ?? '/students/attendance',
+                            'mobile_link' => '/training/check-in',
                             'icon_type' => 'clock',
                             'slot' => $notif->slot,
                             'date' => $notif->date?->format('Y-m-d'),
-                            'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                            'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                            'created_at' => $notif->created_at->toISOString(),
+                            'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                         ];
                     }
                 } catch (\Exception $e) {
@@ -1023,6 +1044,11 @@ class NotificationController extends Controller
                             $notification->save();
                         }
                     }
+                    break;
+                case 'reservation':
+                case 'appointment':
+                    // Synthetic inbox items (pending reservations/appointments) have no
+                    // dedicated read table — acknowledge so mobile can clear locally.
                     break;
                 default:
                     return response()->json(['error' => 'Invalid notification type'], 400);

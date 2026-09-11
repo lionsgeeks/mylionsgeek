@@ -159,9 +159,17 @@ class ChatController extends Controller
             ]);
         }
 
-        $conversation->load(['userOne', 'userTwo', 'messages' => function ($query) {
-            $query->orderBy('created_at', 'asc');
-        }]);
+        $conversation->load([
+            'userOne',
+            'userTwo',
+            'messages' => function ($query) {
+                $query->with([
+                    'sender:id,name,image',
+                    'replyTo.sender:id,name',
+                    'reactions.user:id,name',
+                ])->orderBy('created_at', 'asc');
+            },
+        ]);
 
         $otherUser = $conversation->getOtherUser($currentUser->id);
 
@@ -175,7 +183,7 @@ class ChatController extends Controller
                 'last_login' => $otherUser->last_login ? Carbon::parse($otherUser->last_login)->toISOString() : null,
                 'last_online' => $otherUser->last_online ? Carbon::parse($otherUser->last_online)->toISOString() : null,
             ],
-            'messages' => $conversation->messages->map(fn ($message) => $this->serializeChatMessage($message)),
+            'messages' => $conversation->messages->map(fn ($message) => $this->serializeChatMessage($message, true)),
         ];
 
         if (request()->header('X-Inertia')) {
@@ -203,24 +211,46 @@ class ChatController extends Controller
             })
             ->firstOrFail();
 
-        $messages = $conversation->messages()
+        $messagesQuery = $conversation->messages()
             ->with([
                 'sender:id,name,image',
                 'replyTo.sender:id,name',
                 'reactions.user:id,name',
             ])
-            ->orderBy('created_at', 'asc')
+            ->orderBy('created_at', 'asc');
+
+        // Optional windowing: ?limit=150 returns the latest N messages (chronological).
+        // Optional cursor: ?before_id=123 returns older messages before that id.
+        $limit = request()->integer('limit');
+        $beforeId = request()->integer('before_id');
+        if ($beforeId > 0) {
+            $messagesQuery->where('id', '<', $beforeId);
+        }
+        if ($limit > 0) {
+            $limit = min(200, $limit);
+            $latestIds = (clone $messagesQuery)
+                ->reorder()
+                ->orderByDesc('created_at')
+                ->limit($limit)
+                ->pluck('id');
+            $messagesQuery->whereIn('id', $latestIds);
+        }
+
+        $messages = $messagesQuery
             ->get()
             ->map(fn ($message) => $this->serializeChatMessage($message, true));
 
-        // Mark messages as read
-        $updatedCount = $conversation->messages()
-            ->where('sender_id', '!=', $user->id)
-            ->where('is_read', false)
-            ->update([
-                'is_read' => true,
-                'read_at' => now(),
-            ]);
+        // Mark messages as read only on the primary (latest-window) fetch, not when paging older.
+        $updatedCount = 0;
+        if ($beforeId <= 0) {
+            $updatedCount = $conversation->messages()
+                ->where('sender_id', '!=', $user->id)
+                ->where('is_read', false)
+                ->update([
+                    'is_read' => true,
+                    'read_at' => now(),
+                ]);
+        }
 
         // Broadcast seen status via Ably if messages were marked as read
         if ($updatedCount > 0) {
@@ -323,17 +353,7 @@ class ChatController extends Controller
             ? $conversation->user_two_id
             : $conversation->user_one_id;
 
-        // Check if current user is following the other user
-        $isFollowing = \App\Models\Follower::where('follower_id', $user->id)
-            ->where('followed_id', $otherUserId)
-            ->exists();
-
-        if (!$isFollowing) {
-            if (request()->header('X-Inertia')) {
-                return redirect()->back()->withErrors(['error' => 'You can only message users you follow']);
-            }
-            return response()->json(['error' => 'You can only message users you follow'], 403);
-        }
+        // Follow is enforced when creating a conversation; existing threads can always reply.
 
         // Require either body or attachment
         if (empty($request->body) && !$request->hasFile('attachment')) {
@@ -1001,9 +1021,10 @@ class ChatController extends Controller
             'reply_to' => $message->reply_to,
             'attachment_path' => $message->attachment_path,
             'attachment_url' => $message->attachment_path
-                ? (request()->is('api/*')
-                    ? url('/api/mobile/chat/message/'.$message->id.'/attachment')
-                    : url('/chat/message/'.$message->id.'/attachment'))
+                ? url('/api/mobile/chat/message/'.$message->id.'/attachment')
+                : null,
+            'attachment_url_web' => $message->attachment_path
+                ? url('/chat/message/'.$message->id.'/attachment')
                 : null,
             'attachment_type' => $message->attachment_type,
             'attachment_name' => $message->attachment_name,

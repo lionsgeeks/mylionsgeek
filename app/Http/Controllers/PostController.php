@@ -302,11 +302,11 @@ class PostController extends Controller
 
         $this->broadcastPostStats($original);
 
-        $posts = Post::withCount(['likes', 'comments', 'reposts'])->latest()->get();
+        $original->loadCount(['likes', 'comments', 'reposts']);
 
         return back()->with([
             'success' => $already ? 'Repost updated successfully' : 'Reposted successfully',
-            'posts' => $posts,
+            'post' => $original,
         ]);
     }
 
@@ -934,11 +934,11 @@ class PostController extends Controller
             }
         }
 
-        $posts = Post::withCount(['likes', 'comments'])->latest()->get();
+        $post->loadCount(['likes', 'comments']);
 
         return back()->with([
             'success' => 'Post Created Successfully',
-            'posts' => $posts
+            'post' => $post,
         ]);
     }
 

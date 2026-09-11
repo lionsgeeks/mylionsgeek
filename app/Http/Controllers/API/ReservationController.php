@@ -8,6 +8,7 @@ use App\Models\Reservation;
 use App\Models\ReservationCowork;
 use App\Models\User;
 use App\Services\CoworkReservationConflictService;
+use App\Services\EquipmentReservationConflictService;
 use App\Services\StudioReservationConflictService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -283,7 +284,7 @@ class ReservationController extends Controller
 
 
 
-    public function storemobile(Request $request, StudioReservationConflictService $studioReservations)
+    public function storemobile(Request $request, StudioReservationConflictService $studioReservations, EquipmentReservationConflictService $equipmentConflicts)
     {
         // Check authentication
         $checkResult = $this->checkRequestedUser();
@@ -330,6 +331,15 @@ class ReservationController extends Controller
                 'end' => $validated['end'],
                 'type' => 'studio',
             ]);
+
+            if (! empty($validated['equipment'])) {
+                $equipmentConflicts->assertAvailable(
+                    $validated['equipment'],
+                    $validated['day'],
+                    $validated['start'],
+                    $validated['end']
+                );
+            }
 
             DB::transaction(function () use ($validated, $reservationId, $ownerId) {
                 // Send Expo push notification to studio responsables
@@ -501,7 +511,7 @@ class ReservationController extends Controller
         }
         $request->validate([
             'table' => 'required|integer',
-            'seats' => 'required|integer|min:1',
+            'seats' => 'required|integer|min:1|max:50',
             'day' => 'required|date',
             'start' => CoworkReservationConflictService::timeRules(),
             'end' => CoworkReservationConflictService::timeRules(),
