@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -280,6 +281,9 @@ class NotificationController extends Controller
                         'created_at' => $reservation->created_at
                             ? \Illuminate\Support\Carbon::parse($reservation->created_at)->toISOString()
                             : now()->toISOString(),
+                        'read_at' => $this->isSyntheticNotificationDismissed($user->id, 'reservation', (int) $reservation->id)
+                            ? now()->toISOString()
+                            : null,
                         'link' => '/admin/reservations/' . $reservation->id . '/details',
                         'mobile_link' => '/admin/reservations/' . $reservation->id . '/details',
                         'icon_type' => 'calendar',
@@ -323,6 +327,9 @@ class NotificationController extends Controller
                             'created_at' => $appointment->created_at
                                 ? \Illuminate\Support\Carbon::parse($appointment->created_at)->toISOString()
                                 : now()->toISOString(),
+                            'read_at' => $this->isSyntheticNotificationDismissed($user->id, 'appointment', (int) $appointment->id)
+                                ? now()->toISOString()
+                                : null,
                             'link' => '/admin/appointments',
                             'mobile_link' => '/admin/appointments',
                             'icon_type' => 'calendar',
@@ -1048,7 +1055,8 @@ class NotificationController extends Controller
                 case 'reservation':
                 case 'appointment':
                     // Synthetic inbox items (pending reservations/appointments) have no
-                    // dedicated read table — acknowledge so mobile can clear locally.
+                    // dedicated read table — persist a dismissal so mark-read sticks after refresh.
+                    $this->dismissSyntheticNotification((int) $user->id, $type === 'appointment' ? 'appointment' : 'reservation', (int) $id);
                     break;
                 default:
                     return response()->json(['error' => 'Invalid notification type'], 400);
@@ -1176,15 +1184,18 @@ class NotificationController extends Controller
                     ->update(['read_at' => now()]);
             }
 
-            // Don't auto-mark access request notifications as read - they should only be marked when action is taken
-            // Access request notifications will be marked as read individually when approve/deny actions are performed
-
-            // Mark all discipline notifications as read
             $roles = is_array($user->role) ? $user->role : [$user->role];
             $isAdmin = in_array('admin', $roles);
             $isModerator = in_array('moderateur', $roles);
             $isCoach = in_array('coach', $roles);
-            
+
+            // Mark pending access-request notifications as read when user explicitly taps Mark all
+            if (Schema::hasTable('access_request_notifications') && ($isAdmin || $isModerator)) {
+                AccessRequestNotification::whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            // Mark all discipline notifications as read
             if ($isAdmin || $isModerator) {
                 // Admins/Moderators mark all discipline notifications as read
                 DisciplineNotification::whereNull('read_at')
@@ -1210,11 +1221,57 @@ class NotificationController extends Controller
                     ->update(['read_at' => now()]);
             }
 
+            // Dismiss synthetic pending reservation / appointment inbox items
+            if (Schema::hasTable('reservations')) {
+                $pendingReservationIds = DB::table('reservations')
+                    ->where('canceled', 0)
+                    ->where('approved', 0)
+                    ->orderByDesc('created_at')
+                    ->limit(50)
+                    ->pluck('id');
+                foreach ($pendingReservationIds as $reservationId) {
+                    $this->dismissSyntheticNotification((int) $user->id, 'reservation', (int) $reservationId);
+                }
+            }
+
+            if (Schema::hasTable('appointments')) {
+                $userEmail = strtolower($user->email ?? '');
+                if ($userEmail) {
+                    $pendingAppointmentIds = DB::table('appointments')
+                        ->whereRaw('LOWER(person_email) = ?', [$userEmail])
+                        ->where('status', 'pending')
+                        ->orderByDesc('created_at')
+                        ->limit(50)
+                        ->pluck('id');
+                    foreach ($pendingAppointmentIds as $appointmentId) {
+                        $this->dismissSyntheticNotification((int) $user->id, 'appointment', (int) $appointmentId);
+                    }
+                }
+            }
+
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
             Log::error('Failed to mark all notifications as read: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to mark all as read'], 500);
         }
+    }
+
+    private function syntheticNotificationDismissKey(int $userId, string $type, int $id): string
+    {
+        return "notif_dismissed:{$userId}:{$type}:{$id}";
+    }
+
+    private function dismissSyntheticNotification(int $userId, string $type, int $id): void
+    {
+        if ($id < 1) {
+            return;
+        }
+        Cache::put($this->syntheticNotificationDismissKey($userId, $type, $id), true, now()->addDays(60));
+    }
+
+    private function isSyntheticNotificationDismissed(int $userId, string $type, int $id): bool
+    {
+        return Cache::has($this->syntheticNotificationDismissKey($userId, $type, $id));
     }
 
     /**
