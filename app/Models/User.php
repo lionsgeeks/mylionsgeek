@@ -51,6 +51,7 @@ class User extends Authenticatable
         'last_online',
         'invite_source',
         'expo_push_token', // Expo push notification token
+        'apns_voip_token', // iOS PushKit VoIP token for CallKit cold-start
         // 'xp'
     ];
 
@@ -655,6 +656,54 @@ class User extends Authenticatable
             'followed_id'
         )->withTimestamps();
     }
+
+    public function blockedUsers()
+    {
+        return $this->belongsToMany(
+            User::class,
+            'user_blocks',
+            'blocker_id',
+            'blocked_id'
+        )->withTimestamps();
+    }
+
+    /**
+     * @return array<int>
+     */
+    public function blockedUserIds(): array
+    {
+        if (! Schema::hasTable('user_blocks')) {
+            return [];
+        }
+
+        return $this->blockedUsers()
+            ->pluck('users.id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Authors hidden from this user's social surfaces (I blocked them, or they blocked me).
+     *
+     * @return array<int>
+     */
+    public function excludedAuthorIds(): array
+    {
+        if (! Schema::hasTable('user_blocks')) {
+            return [];
+        }
+
+        $blockedByMe = $this->blockedUserIds();
+        $blockedMe = UserBlock::query()
+            ->where('blocked_id', $this->id)
+            ->pluck('blocker_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        return array_values(array_unique(array_merge($blockedByMe, $blockedMe)));
+    }
+
     public function experiences()
     {
         return $this->belongsToMany(Experience::class)->withTimestamps();

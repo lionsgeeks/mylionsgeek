@@ -65,11 +65,7 @@ class MeetingRoomReservationConflictService
                     ]);
                 }
 
-                $lastId = (int) (DB::table('reservation_meeting_rooms')->max('id') ?? 0);
-                $reservationId = $lastId + 1;
-
-                DB::table('reservation_meeting_rooms')->insert([
-                    'id' => $reservationId,
+                $reservationId = DB::table('reservation_meeting_rooms')->insertGetId([
                     'meeting_room_id' => $meetingRoomId,
                     'user_id' => $userId,
                     'day' => $day,

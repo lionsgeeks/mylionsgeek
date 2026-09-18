@@ -283,9 +283,18 @@ export default function NotificationIcon() {
                 // Handle "attendance-reminder-123" (Ably may use hyphen like task-assignment)
                 type = 'attendance_reminder';
                 id = parts[2];
+            } else if (parts.length === 3 && parts[0] === 'exercise' && parts[1] === 'review') {
+                type = 'exercise-review';
+                id = parts[2];
+            } else if (parts.length === 3 && parts[0] === 'user' && parts[1] === 'report') {
+                type = 'user-report';
+                id = parts[2];
+            } else if (parts.length === 3 && parts[0] === 'user' && parts[1] === 'block') {
+                type = 'user-block';
+                id = parts[2];
             } else {
-                // Handle simple types like "follow-123" or "attendance_reminder-123"
-                type = parts[0];
+                // Handle simple types like "follow-123", "post-123", "discipline-123"
+                type = parts[0] === 'discipline' ? 'discipline_change' : parts[0];
                 id = parts.slice(1).join('-');
             }
 

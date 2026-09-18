@@ -16,6 +16,7 @@ use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Services\CoworkReservationConflictService;
+use App\Services\EquipmentReservationConflictService;
 use App\Services\ExportService;
 use App\Services\MeetingRoomReservationConflictService;
 use App\Services\StudioReservationConflictService;
@@ -885,7 +886,7 @@ class ReservationsController extends Controller
     /**
      * Store new reservation with teams and equipment
      */
-    public function store(Request $request, StudioReservationConflictService $studioReservations)
+    public function store(Request $request, StudioReservationConflictService $studioReservations, EquipmentReservationConflictService $equipmentConflicts)
     {
         // Determine if this is an external reservation
         $isExternal = $request->has('type') && $request->type === 'exterior';
@@ -923,12 +924,17 @@ class ReservationsController extends Controller
             $reservationId = null;
 
             if ($isExternal) {
-                DB::transaction(function () use ($validated, &$reservationId) {
-                    $lastId = (int) (DB::table('reservations')->max('id') ?? 0);
-                    $reservationId = $lastId + 1;
+                DB::transaction(function () use ($validated, &$reservationId, $equipmentConflicts) {
+                    if (! empty($validated['equipment'])) {
+                        $equipmentConflicts->assertAvailable(
+                            $validated['equipment'],
+                            $validated['day'],
+                            $validated['start'],
+                            $validated['end']
+                        );
+                    }
 
                     $row = [
-                        'id' => $reservationId,
                         'studio_id' => null,
                         'user_id' => auth()->id(),
                         'title' => $validated['title'],
@@ -948,7 +954,7 @@ class ReservationsController extends Controller
                     if (Schema::hasColumn('reservations', 'studio_responsable_approved')) {
                         $row['studio_responsable_approved'] = 0;
                     }
-                    DB::table('reservations')->insert($row);
+                    $reservationId = (int) DB::table('reservations')->insertGetId($row);
 
                     if (! empty($validated['team_members'])) {
                         $teamData = array_map(function ($userId) use ($reservationId) {
@@ -978,6 +984,15 @@ class ReservationsController extends Controller
                     }
                 });
             } else {
+                if (! empty($validated['equipment'])) {
+                    $equipmentConflicts->assertAvailable(
+                        $validated['equipment'],
+                        $validated['day'],
+                        $validated['start'],
+                        $validated['end']
+                    );
+                }
+
                 $reservationId = $studioReservations->createPending([
                     'studio_id' => (int) $validated['studio_id'],
                     'user_id' => (int) auth()->id(),
@@ -1265,7 +1280,7 @@ class ReservationsController extends Controller
     {
         $validated = $request->validate([
             'table' => 'required|integer',
-            'seats' => 'required|integer|min:1',
+            'seats' => 'required|integer|min:1|max:50',
             'day' => 'required|date',
             'start' => CoworkReservationConflictService::timeRules(),
             'end' => CoworkReservationConflictService::timeRules(),

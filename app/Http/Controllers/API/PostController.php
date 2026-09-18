@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\API;
 
+use Ably\AblyRest;
 use App\Http\Controllers\Controller;
 use App\Models\Comment;
 use App\Models\CommentLike;
 use App\Models\Like;
 use App\Models\Post;
+use App\Models\PostNotification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -98,6 +100,109 @@ class PostController extends Controller
         return $post;
     }
 
+    /**
+     * Broadcast post notification via Ably for real-time updates.
+     */
+    private function broadcastNotification($notification, $sender, $post, $type): void
+    {
+        try {
+            $ablyKey = config('services.ably.key');
+            if (! $ablyKey) {
+                return;
+            }
+
+            $ably = new AblyRest($ablyKey);
+            $channel = $ably->channels->get("notifications:{$notification->user_id}");
+
+            $message = match ($type) {
+                'like' => "{$sender->name} liked your post",
+                'comment' => "{$sender->name} commented on your post",
+                'comment_like' => "{$sender->name} liked your comment",
+                'mention' => "{$sender->name} mentioned you in a post",
+                'repost' => "{$sender->name} reposted your post",
+                'share' => "{$sender->name} shared a post with you",
+                'repost_like' => "{$sender->name} liked the post you reposted",
+                'repost_comment' => "{$sender->name} commented on the post you reposted",
+                default => "{$sender->name} interacted with your post"
+            };
+
+            $channel->publish('new_notification', [
+                'id' => 'post-'.$notification->id,
+                'type' => 'post_interaction',
+                'sender_name' => $sender->name,
+                'sender_image' => $sender->image,
+                'message' => $message,
+                'link' => '/students/feed#post-'.$post->id,
+                'icon_type' => 'user',
+                'created_at' => $notification->created_at->toISOString(),
+                'post_id' => $post->id,
+                'interaction_type' => $type,
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Failed to broadcast notification via Ably: '.$e->getMessage());
+        }
+    }
+
+    private function broadcastPostStats(Post $post): void
+    {
+        try {
+            $ablyKey = config('services.ably.key');
+            if (! $ablyKey) {
+                return;
+            }
+
+            $post->loadCount(['likes', 'comments', 'reposts']);
+
+            $ably = new AblyRest($ablyKey);
+            $channel = $ably->channels->get('feed:global');
+            $channel->publish('post-stats-updated', [
+                'post_id' => (int) $post->id,
+                'likes_count' => (int) $post->likes_count,
+                'comments_count' => (int) $post->comments_count,
+                'reposts_count' => (int) $post->reposts_count,
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Failed to broadcast feed event via Ably: '.$e->getMessage());
+        }
+    }
+
+    private function notifyRepostersForInteraction(Post $originalPost, User $actor, string $type): void
+    {
+        $reposterIds = DB::table('reposts_posts')
+            ->where('post_id', $originalPost->id)
+            ->pluck('user_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($reposterIds->isEmpty()) {
+            return;
+        }
+
+        foreach ($reposterIds as $reposterId) {
+            $reposterId = (int) $reposterId;
+
+            if ($reposterId === (int) $actor->id) {
+                continue;
+            }
+
+            if ($reposterId === (int) $originalPost->user_id) {
+                continue;
+            }
+
+            $notification = PostNotification::createNotification(
+                $reposterId,
+                $actor->id,
+                $originalPost->id,
+                $type
+            );
+
+            if ($notification) {
+                $this->broadcastNotification($notification, $actor, $originalPost, $type);
+            }
+        }
+    }
+
     private function mapRepostForMobileFeed(object $repostRow, Post $originalPost, ?User $reposter, $authUser, array $savedInteractionPostIds = []): array
     {
         $originalPost->loadMissing(['user', 'likes', 'comments']);
@@ -167,19 +272,39 @@ class PostController extends Controller
 
             // Get recent posts + recent reposts (pivot), then merge into one feed.
             try {
-                $recentPostsModels = Post::with(['user', 'likes', 'comments'])
+                $blockedIds = $user->blockedUserIds();
+
+                $recentPostsQuery = Post::with(['user', 'likes', 'comments'])
                     ->withCount(['reposts'])
                     ->where(function ($q) {
                         $q->whereNull('is_hidden')->orWhere('is_hidden', false);
                     })
-                    ->whereNotNull('created_at')
+                    ->whereNotNull('created_at');
+
+                if ($blockedIds !== []) {
+                    $recentPostsQuery->whereNotIn('user_id', $blockedIds);
+                }
+
+                $recentPostsModels = $recentPostsQuery
                     ->orderBy('created_at', 'desc')
                     ->limit($windowSize)
                     ->get()
                     ->filter();
 
-                $recentRepostRows = DB::table('reposts_posts')
-                    ->orderByDesc('created_at')
+                $recentRepostQuery = DB::table('reposts_posts')
+                    ->orderByDesc('created_at');
+
+                if ($blockedIds !== []) {
+                    $recentRepostQuery
+                        ->whereNotIn('user_id', $blockedIds)
+                        ->whereNotIn('post_id', function ($q) use ($blockedIds) {
+                            $q->select('id')
+                                ->from('posts')
+                                ->whereIn('user_id', $blockedIds);
+                        });
+                }
+
+                $recentRepostRows = $recentRepostQuery
                     ->limit($windowSize)
                     ->get();
 
@@ -736,6 +861,7 @@ class PostController extends Controller
     /**
      * Toggle a like on a post for the authenticated mobile user.
      * Returns the new liked state and updated like count.
+     * On a new like, notifies the post owner (DB + Expo push + Ably), matching web AddLike.
      */
     public function toggleLike(int $id)
     {
@@ -746,22 +872,41 @@ class PostController extends Controller
         }
 
         $post = Post::findOrFail($id);
+        $interactionPost = $this->resolveInteractionPost($post);
 
-        $existingLike = $post->likes()->where('user_id', $user->id)->first();
+        $existingLike = $interactionPost->likes()->where('user_id', $user->id)->first();
 
         if ($existingLike) {
             $existingLike->delete();
             $liked = false;
         } else {
-            $post->likes()->create(['user_id' => $user->id]);
+            $interactionPost->likes()->create(['user_id' => $user->id]);
             $liked = true;
+
+            $notification = PostNotification::createNotification(
+                $interactionPost->user_id,
+                $user->id,
+                $interactionPost->id,
+                'like'
+            );
+
+            if ($notification) {
+                $this->broadcastNotification($notification, $user, $interactionPost, 'like');
+            }
+
+            $this->notifyRepostersForInteraction(
+                $interactionPost,
+                $user,
+                PostNotification::TYPE_REPOST_LIKE
+            );
         }
 
-        $post->loadCount('likes');
+        $interactionPost->loadCount('likes');
+        $this->broadcastPostStats($interactionPost);
 
         return response()->json([
             'liked' => $liked,
-            'likes_count' => $post->likes_count,
+            'likes_count' => $interactionPost->likes_count,
         ]);
     }
 
@@ -812,9 +957,17 @@ class PostController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        $saved = $user->savedPosts()
+        $blockedIds = $user->blockedUserIds();
+
+        $savedQuery = $user->savedPosts()
             ->with(['user', 'likes', 'comments'])
-            ->withCount(['reposts'])
+            ->withCount(['reposts']);
+
+        if ($blockedIds !== []) {
+            $savedQuery->whereNotIn('posts.user_id', $blockedIds);
+        }
+
+        $saved = $savedQuery
             ->orderByPivot('created_at', 'desc')
             ->limit(60)
             ->get();
