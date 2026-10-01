@@ -3,6 +3,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { Link, usePage } from '@inertiajs/react';
 import {
     AwardIcon,
+    BookOpen,
     Briefcase,
     Building2,
     Calendar,
@@ -109,6 +110,7 @@ const getAllNavItems = () => [
     { id: 'computers', title: 'Computers', href: '/admin/computers', icon: Monitor, authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'] },
     { id: 'equipment', title: 'Equipment', href: '/admin/equipements', icon: Wrench, excludedRoles: ['coach'] },
     { id: 'training', title: 'Training', href: '/admin/training', icon: GraduationCap, authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'] },
+    { id: 'programmes', title: 'Programmes', href: '/admin/programmes', icon: BookOpen, authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'] },
     // { id: 'games', title: 'Games', href: '/games', icon: Gamepad2 },
     {
         id: 'jobs',

@@ -49,4 +49,13 @@ class Formation extends Model
         return $this->hasMany(Exercices::class, 'training_id');
     }
 
+    public function trainingWeeks()
+    {
+        return $this->hasMany(TrainingWeek::class, 'formation_id')->orderBy('week_number');
+    }
+
+    public function trainingSessions()
+    {
+        return $this->hasMany(TrainingSession::class, 'formation_id');
+    }
 }

@@ -569,4 +569,4 @@ class FormationController extends Controller
 
         return back()->with('error', $message);
     }
-}
+}
