@@ -36,7 +36,7 @@ import TrainingProgrammeGrid from './components/TrainingProgrammeGrid';
 import GeekyWheel from './partials/geekyWheel';
 
 
-export default function Show({ training, usersNull, courses = [] }) {
+export default function Show({ training, usersNull, courses = [], coaches = [] }) {
     const { auth } = usePage().props;
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role].filter(Boolean);
     const isCoachRole = userRoles.includes('coach');
@@ -563,7 +563,12 @@ export default function Show({ training, usersNull, courses = [] }) {
 
 
                 {/* Class Training Programme (Appears ABOVE Enrolled Students) */}
-                <TrainingProgrammeGrid trainingTitle={training?.name} startDate={training?.start_time} />
+                <TrainingProgrammeGrid
+                    trainingTitle={training?.name}
+                    startDate={training?.start_time}
+                    training={training}
+                    coaches={coaches}
+                />
 
                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
                     {/* Left Side – Students List */}

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { 
     ChevronLeft, 
@@ -82,6 +83,7 @@ const initialWeeksList = Array.from({ length: DEFAULT_WEEKS_COUNT }, (_, i) => (
 export default function TrainingProgrammeGrid({
     trainingTitle = 'Training Programme',
     startDate = '2026-10-06',
+    training = null,
     coaches = [],
     assignedCoach = null,
 }) {
@@ -110,6 +112,102 @@ export default function TrainingProgrammeGrid({
 
     // Initial state (empty)
     const [items, setItems] = useState([]);
+
+    // Helper to parse Eloquent training_weeks -> sessions into grid items
+    const parseTrainingItems = (trainingObj) => {
+        if (!trainingObj) return [];
+        const weeksList = trainingObj.training_weeks || trainingObj.trainingWeeks;
+        if (!Array.isArray(weeksList)) return [];
+
+        const loadedItems = [];
+        weeksList.forEach((week) => {
+            if (Array.isArray(week.sessions)) {
+                week.sessions.forEach((session) => {
+                    let startDay = 0;
+                    let endWeek = week.week_number;
+                    let endDay = 0;
+
+                    // Parse startDay from grid format (0..4) or from session date
+                    const rawStart = String(session.start_time || '').trim();
+                    if (/^[0-4]$/.test(rawStart)) {
+                        startDay = parseInt(rawStart, 10);
+                    } else if (session.date) {
+                        const d = new Date(session.date);
+                        if (!isNaN(d.getTime())) {
+                            const dayOfWeek = d.getDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+                            if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+                                startDay = dayOfWeek - 1;
+                            }
+                        }
+                    }
+
+                    // Parse endWeek & endDay
+                    const rawEnd = String(session.end_time || '').trim();
+                    if (rawEnd.includes(':')) {
+                        const parts = rawEnd.split(':');
+                        const ew = parseInt(parts[0], 10);
+                        const ed = parseInt(parts[1], 10);
+                        if (!isNaN(ew) && ew >= 1) endWeek = ew;
+                        if (!isNaN(ed) && ed >= 0 && ed <= 4) endDay = ed;
+                        else endDay = startDay;
+                    } else if (/^[0-4]$/.test(rawEnd)) {
+                        endDay = parseInt(rawEnd, 10);
+                    } else {
+                        endDay = startDay;
+                    }
+
+                    // Ensure startDay and endDay are bounded to valid 0..4 day indices
+                    startDay = Math.max(0, Math.min(4, startDay));
+                    endDay = Math.max(0, Math.min(4, endDay));
+
+                    const firstCoach = Array.isArray(session.coaches) && session.coaches.length > 0 ? session.coaches[0] : null;
+
+                    let color = 'blue';
+                    let desc = session.description || '';
+                    const colorMatch = desc.match(/\[color:([a-z]+)\]/);
+                    if (colorMatch) {
+                        color = colorMatch[1];
+                        desc = desc.replace(/\[color:[a-z]+\]/, '').trim();
+                    }
+
+                    loadedItems.push({
+                        id: session.id,
+                        title: session.title,
+                        description: desc,
+                        color: color,
+                        coach: firstCoach ? {
+                            id: firstCoach.id,
+                            name: firstCoach.name,
+                            type: firstCoach.speciality || (firstCoach.status === 'External' ? 'External' : 'Internal'),
+                        } : null,
+                        startWeek: week.week_number,
+                        endWeek: endWeek,
+                        startDay: startDay,
+                        endDay: endDay,
+                    });
+                });
+            }
+        });
+        return loadedItems;
+    };
+
+    // Load persisted training items on mount and when training prop updates
+    useEffect(() => {
+        if (training) {
+            const parsed = parseTrainingItems(training);
+            setItems(parsed);
+
+            const maxWk = parsed.reduce((max, item) => Math.max(max, item.endWeek || 1), DEFAULT_WEEKS_COUNT);
+            if (maxWk > weeks.length) {
+                setWeeks(Array.from({ length: maxWk }, (_, i) => ({
+                    id: i + 1,
+                    number: i + 1,
+                    label: `Week ${i + 1}`,
+                    isDefault: i < DEFAULT_WEEKS_COUNT,
+                })));
+            }
+        }
+    }, [training]);
     
     // Cell Drag selection state (for creating new items)
     const [isSelecting, setIsSelecting] = useState(false);
@@ -399,19 +497,22 @@ export default function TrainingProgrammeGrid({
         const handleGlobalMouseUp = () => {
             if (resizingItem) {
                 if (resizeTargetRange && resizeTargetRange.isValid) {
+                    const updatedItem = {
+                        ...resizingItem,
+                        startWeek: resizeTargetRange.startWeek,
+                        endWeek: resizeTargetRange.endWeek,
+                        startDay: resizeTargetRange.startDay,
+                        endDay: resizeTargetRange.endDay,
+                    };
                     setItems((prev) =>
-                        prev.map((i) =>
-                            i.id === resizingItem.id
-                                ? {
-                                      ...i,
-                                      startWeek: resizeTargetRange.startWeek,
-                                      endWeek: resizeTargetRange.endWeek,
-                                      startDay: resizeTargetRange.startDay,
-                                      endDay: resizeTargetRange.endDay,
-                                  }
-                                : i
-                        )
+                        prev.map((i) => (String(i.id) === String(resizingItem.id) ? updatedItem : i))
                     );
+                    if (training?.id && typeof resizingItem.id !== 'string') {
+                        router.put(`/trainings/${training.id}/programme-items/${resizingItem.id}`, updatedItem, {
+                            preserveScroll: true,
+                            preserveState: true,
+                        });
+                    }
                 }
                 setResizingItem(null);
                 setResizeEdge(null);
@@ -432,19 +533,22 @@ export default function TrainingProgrammeGrid({
                     setIsModalOpen(true);
                 } else if (targetRange && targetRange.isValid) {
                     // Dragged item to valid destination -> Move item preserving duration
+                    const updatedItem = {
+                        ...draggingItem,
+                        startWeek: targetRange.startWeek,
+                        endWeek: targetRange.endWeek,
+                        startDay: targetRange.startDay,
+                        endDay: targetRange.endDay,
+                    };
                     setItems((prev) =>
-                        prev.map((i) =>
-                            i.id === draggingItem.id
-                                ? {
-                                      ...i,
-                                      startWeek: targetRange.startWeek,
-                                      endWeek: targetRange.endWeek,
-                                      startDay: targetRange.startDay,
-                                      endDay: targetRange.endDay,
-                                  }
-                                : i
-                        )
+                        prev.map((i) => (String(i.id) === String(draggingItem.id) ? updatedItem : i))
                     );
+                    if (training?.id && typeof draggingItem.id !== 'string') {
+                        router.put(`/trainings/${training.id}/programme-items/${draggingItem.id}`, updatedItem, {
+                            preserveScroll: true,
+                            preserveState: true,
+                        });
+                    }
                 }
                 // Reset item drag state
                 setDraggingItem(null);
@@ -461,20 +565,35 @@ export default function TrainingProgrammeGrid({
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleGlobalMouseUp);
         };
-    }, [draggingItem, dragStartMouse, hasDraggedItem, isSelecting, selectionStart, selectionEnd, targetRange, resizingItem, resizeTargetRange]);
+    }, [draggingItem, dragStartMouse, hasDraggedItem, isSelecting, selectionStart, selectionEnd, targetRange, resizingItem, resizeTargetRange, training]);
 
     // Item CRUD handlers
     const handleSaveItem = (itemData) => {
         setItems((prev) => {
-            const exists = prev.some((i) => i.id === itemData.id);
+            const exists = prev.some((i) => String(i.id) === String(itemData.id));
             if (exists) {
-                return prev.map((i) => (i.id === itemData.id ? itemData : i));
+                return prev.map((i) => (String(i.id) === String(itemData.id) ? itemData : i));
             } else {
                 return [...prev, itemData];
             }
         });
         setSelectionStart(null);
         setSelectionEnd(null);
+
+        if (training?.id) {
+            const isNew = typeof itemData.id === 'string' && (itemData.id.startsWith('item_') || itemData.id.startsWith('new_'));
+            if (isNew) {
+                router.post(`/trainings/${training.id}/programme-items`, itemData, {
+                    preserveScroll: true,
+                    preserveState: true,
+                });
+            } else {
+                router.put(`/trainings/${training.id}/programme-items/${itemData.id}`, itemData, {
+                    preserveScroll: true,
+                    preserveState: true,
+                });
+            }
+        }
     };
 
     const promptDeleteProgramme = (item) => {
@@ -485,9 +604,16 @@ export default function TrainingProgrammeGrid({
 
     const handleConfirmDeleteProgramme = (itemId) => {
         if (!itemId) return;
-        setItems((prev) => prev.filter((i) => i.id !== itemId));
+        setItems((prev) => prev.filter((i) => String(i.id) !== String(itemId)));
         setDeletingProgrammeItem(null);
         setIsDeleteProgrammeModalOpen(false);
+
+        if (training?.id && typeof itemId !== 'string') {
+            router.delete(`/trainings/${training.id}/programme-items/${itemId}`, {
+                preserveScroll: true,
+                preserveState: true,
+            });
+        }
     };
 
     const handleEditItemDirect = (item, e) => {
@@ -891,7 +1017,7 @@ export default function TrainingProgrammeGrid({
                                             <span>
                                                 {totalDaysSpan === 5 && totalWeeksSpan === 1
                                                     ? 'Full Week (Mon - Fri)'
-                                                    : `${DAYS[item.startDay].short} → ${DAYS[item.endDay].short}`}
+                                                    : `${DAYS[item.startDay]?.short || 'Mon'} → ${DAYS[item.endDay]?.short || 'Fri'}`}
                                             </span>
                                             <span>
                                                 {totalWeeksSpan > 1 ? `${totalWeeksSpan} Wks (${totalDaysSpan}d)` : `Week ${item.startWeek}`}

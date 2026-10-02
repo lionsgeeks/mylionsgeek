@@ -6,6 +6,8 @@ use App\Models\Attendance;
 use App\Models\AttendanceListe;
 use App\Models\Formation;
 use App\Models\Note;
+use App\Models\TrainingSession;
+use App\Models\TrainingWeek;
 use App\Models\User;
 use App\Services\AttendanceNoteService;
 use App\Services\CertificatePdfGenerator;
@@ -15,6 +17,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -87,7 +90,9 @@ class FormationController extends Controller
             $query->where('training_id', $training->id);
         })->with('exercices')->get();
 
-        $training->load('coach', 'users');
+        $training->load(['coach', 'users', 'trainingWeeks.sessions.coaches']);
+
+        $coaches = User::whereJsonContains('role', 'coach')->get();
 
         // Attach the discipline score to every enrolled user so the frontend
         // can display the attendance percentage without extra API calls.
@@ -100,7 +105,196 @@ class FormationController extends Controller
             'training' => $training,
             'usersNull' => $usersNull,
             'courses' => $courses,
+            'coaches' => $coaches,
         ]);
+    }
+
+    public function storeProgrammeItem(Formation $training, Request $request)
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'color' => 'nullable|string|max:50',
+            'startWeek' => 'required|integer|min:1',
+            'endWeek' => 'required|integer|min:1',
+            'startDay' => 'required|integer|min:0|max:4',
+            'endDay' => 'required|integer|min:0|max:4',
+            'coach' => 'nullable',
+        ]);
+
+        $startWeekNum = (int) $validated['startWeek'];
+        $endWeekNum = (int) $validated['endWeek'];
+        $startDay = (int) $validated['startDay'];
+        $endDay = (int) $validated['endDay'];
+
+        $baseDate = $training->start_time ? Carbon::parse($training->start_time) : Carbon::parse('2026-10-06');
+        $weekStartDate = $baseDate->copy()->addWeeks($startWeekNum - 1);
+        $weekEndDate = $weekStartDate->copy()->addDays(4);
+
+        $trainingWeek = TrainingWeek::firstOrCreate(
+            [
+                'formation_id' => $training->id,
+                'week_number' => $startWeekNum,
+            ],
+            [
+                'title' => "Week {$startWeekNum}",
+                'start_date' => $weekStartDate->format('Y-m-d'),
+                'end_date' => $weekEndDate->format('Y-m-d'),
+            ]
+        );
+
+        $sessionDate = $weekStartDate->copy()->addDays($startDay)->format('Y-m-d');
+        $startTimeStr = (string) $startDay;
+        $endTimeStr = "{$endWeekNum}:{$endDay}";
+
+        $description = $validated['description'] ?? '';
+        if (!empty($validated['color']) && $validated['color'] !== 'blue') {
+            $description .= " [color:{$validated['color']}]";
+        }
+
+        $session = TrainingSession::create([
+            'training_week_id' => $trainingWeek->id,
+            'formation_id' => $training->id,
+            'date' => $sessionDate,
+            'start_time' => $startTimeStr,
+            'end_time' => $endTimeStr,
+            'title' => $validated['title'],
+            'description' => trim($description),
+        ]);
+
+        $coachData = $request->input('coach');
+        $coachUserId = null;
+
+        if (!empty($coachData)) {
+            if (is_array($coachData)) {
+                if (!empty($coachData['id']) && is_numeric($coachData['id'])) {
+                    $coachUserId = (int) $coachData['id'];
+                } elseif (!empty($coachData['name'])) {
+                    $newCoach = User::create([
+                        'name' => trim($coachData['name']),
+                        'email' => Str::slug($coachData['name']) . '_' . Str::random(5) . '@lionsgeek.ma',
+                        'password' => Hash::make(Str::random(16)),
+                        'role' => ['coach'],
+                        'speciality' => $coachData['type'] ?? 'External',
+                        'status' => 'External',
+                    ]);
+                    $coachUserId = $newCoach->id;
+                }
+            } elseif (is_numeric($coachData)) {
+                $coachUserId = (int) $coachData;
+            }
+        }
+
+        if ($coachUserId) {
+            $session->coaches()->sync([$coachUserId]);
+        } else {
+            $session->coaches()->detach();
+        }
+
+        return back()->with('success', 'Programme item created successfully.');
+    }
+
+    public function updateProgrammeItem(Formation $training, TrainingSession $session, Request $request)
+    {
+        if ((int) $session->formation_id !== (int) $training->id) {
+            abort(403, 'Session does not belong to this training.');
+        }
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'color' => 'nullable|string|max:50',
+            'startWeek' => 'required|integer|min:1',
+            'endWeek' => 'required|integer|min:1',
+            'startDay' => 'required|integer|min:0|max:4',
+            'endDay' => 'required|integer|min:0|max:4',
+            'coach' => 'nullable',
+        ]);
+
+        $startWeekNum = (int) $validated['startWeek'];
+        $endWeekNum = (int) $validated['endWeek'];
+        $startDay = (int) $validated['startDay'];
+        $endDay = (int) $validated['endDay'];
+
+        $baseDate = $training->start_time ? Carbon::parse($training->start_time) : Carbon::parse('2026-10-06');
+        $weekStartDate = $baseDate->copy()->addWeeks($startWeekNum - 1);
+        $weekEndDate = $weekStartDate->copy()->addDays(4);
+
+        $trainingWeek = TrainingWeek::firstOrCreate(
+            [
+                'formation_id' => $training->id,
+                'week_number' => $startWeekNum,
+            ],
+            [
+                'title' => "Week {$startWeekNum}",
+                'start_date' => $weekStartDate->format('Y-m-d'),
+                'end_date' => $weekEndDate->format('Y-m-d'),
+            ]
+        );
+
+        $sessionDate = $weekStartDate->copy()->addDays($startDay)->format('Y-m-d');
+        $startTimeStr = (string) $startDay;
+        $endTimeStr = "{$endWeekNum}:{$endDay}";
+
+        $description = $validated['description'] ?? '';
+        $description = preg_replace('/\[color:[a-z]+\]/', '', $description);
+        $description = trim($description);
+
+        if (!empty($validated['color']) && $validated['color'] !== 'blue') {
+            $description .= " [color:{$validated['color']}]";
+        }
+
+        $session->update([
+            'training_week_id' => $trainingWeek->id,
+            'date' => $sessionDate,
+            'start_time' => $startTimeStr,
+            'end_time' => $endTimeStr,
+            'title' => $validated['title'],
+            'description' => trim($description),
+        ]);
+
+        $coachData = $request->input('coach');
+        $coachUserId = null;
+
+        if (!empty($coachData)) {
+            if (is_array($coachData)) {
+                if (!empty($coachData['id']) && is_numeric($coachData['id'])) {
+                    $coachUserId = (int) $coachData['id'];
+                } elseif (!empty($coachData['name'])) {
+                    $newCoach = User::create([
+                        'name' => trim($coachData['name']),
+                        'email' => Str::slug($coachData['name']) . '_' . Str::random(5) . '@lionsgeek.ma',
+                        'password' => Hash::make(Str::random(16)),
+                        'role' => ['coach'],
+                        'speciality' => $coachData['type'] ?? 'External',
+                        'status' => 'External',
+                    ]);
+                    $coachUserId = $newCoach->id;
+                }
+            } elseif (is_numeric($coachData)) {
+                $coachUserId = (int) $coachData;
+            }
+        }
+
+        if ($coachUserId) {
+            $session->coaches()->sync([$coachUserId]);
+        } else {
+            $session->coaches()->detach();
+        }
+
+        return back()->with('success', 'Programme item updated successfully.');
+    }
+
+    public function destroyProgrammeItem(Formation $training, TrainingSession $session)
+    {
+        if ((int) $session->formation_id !== (int) $training->id) {
+            abort(403, 'Session does not belong to this training.');
+        }
+
+        $session->coaches()->detach();
+        $session->delete();
+
+        return back()->with('success', 'Programme item deleted successfully.');
     }
 
     public function store(Request $request)
