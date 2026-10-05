@@ -3,15 +3,29 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useInitials } from '@/hooks/use-initials';
 import { router, usePage } from '@inertiajs/react';
 import { Briefcase, ExternalLink, Facebook, Github, ImagePlus, Instagram, Linkedin, MessageCircle, Send, Trash, Twitter, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { normalizeStatusForSelect, resolveStatusOptions } from '@/components/helpers/userStatuses';
+import {
+    GENDER_OPTIONS,
+    HANDICAP_OPTIONS,
+    handicapSelectValue,
+    PROGRAM_STATUS,
+    PROGRAM_STATUS_CERTIFICATE_OUTCOME_OPTIONS,
+    canViewHealthData,
+    programStatusLabel,
+    resolveProgramStatusEditOptions,
+} from '@/components/helpers/userDemographics';
 import Rolegard from '../../../../components/rolegard';
 import RolesMultiSelect from './RolesMultiSelect';
 
+const resolveProgramStatusValue = (programStatus) => programStatus || PROGRAM_STATUS.ACTIVE;
+const NONE_TRAINING_VALUE = 'none';
+const resolveFormationSelectValue = (formationId) =>
+    formationId != null && formationId !== '' ? String(formationId) : NONE_TRAINING_VALUE;
 const platformIcons = {
     instagram: Instagram,
     facebook: Facebook,
@@ -42,6 +56,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     const canEditOthers = userRolesLower.some((r) =>
         ['admin', 'super_admin', 'moderateur', 'coach', 'studio_responsable', 'responsable_studio'].includes(r),
     );
+    const canGrantStaffRoles = userRolesLower.includes('admin') || userRolesLower.includes('super_admin');
     const isAdminOrStudioResponsable =
         userRolesLower.includes('admin') ||
         userRolesLower.includes('super_admin') ||
@@ -58,6 +73,8 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     const isStudying = editedUser?.status?.toLowerCase() === 'studying';
     const showStatusField = canEditOthers || !isEditingSelf || !isStudying;
 
+    const canEditHealthData = canViewHealthData(userRolesLower);
+
     const statusOptions = useMemo(
         () =>
             resolveStatusOptions({
@@ -68,6 +85,23 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         [canEditOthers, status, editedUser?.status],
     );
 
+    const programStatusOptions = useMemo(
+        () => resolveProgramStatusEditOptions(editedUser?.program_status, userRolesLower),
+        [editedUser?.program_status, userRolesLower],
+    );
+
+    const trainingOptions = useMemo(() => {
+        const list = Array.isArray(trainings) ? [...trainings] : [];
+        const currentId = editedUser?.formation_id;
+        if (currentId != null && currentId !== '' && !list.some((training) => String(training.id) === String(currentId))) {
+            list.unshift({
+                id: currentId,
+                name: editedUser?.formation_name || `Training #${currentId}`,
+            });
+        }
+        return list;
+    }, [trainings, editedUser?.formation_id, editedUser?.formation_name]);
+
     // Filter out platforms that are already added
     const availablePlatforms = platforms.filter((platform) => !socialLinks.some((link) => link.title === platform.value));
 
@@ -76,9 +110,12 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         email: editedUser?.email || '',
         roles: [],
         status: editedUser?.status || '',
-        formation_id: editedUser?.formation_id || '',
+        formation_id: resolveFormationSelectValue(editedUser?.formation_id),
         phone: editedUser?.phone ?? '',
         cin: editedUser?.cin ?? '',
+        gender: editedUser?.gender || 'none',
+        has_handicap: handicapSelectValue(editedUser?.has_handicap),
+        program_status: resolveProgramStatusValue(editedUser?.program_status),
         speciality: editedUser?.speciality ?? '',
         image: editedUser?.image || null,
         resumeFile: null,
@@ -87,53 +124,65 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         access_scan: editedUser?.access_scan === 1 ? 'Yes' : 'No',
     });
 
+    const currentTrainingLabel = useMemo(() => {
+        const selectedId = resolveFormationSelectValue(formData.formation_id);
+        if (selectedId === NONE_TRAINING_VALUE) {
+            return 'No training';
+        }
+        const match = trainingOptions.find((training) => String(training.id) === selectedId);
+        return match?.name || editedUser?.formation_name || 'Select training';
+    }, [formData.formation_id, trainingOptions, editedUser?.formation_name]);
     // Load user data into form when modal opens or user changes
     useEffect(() => {
-        if (editedUser) {
-            let rolesArray = [];
-            if (Array.isArray(editedUser.role)) {
-                rolesArray = editedUser.role;
-            } else if (typeof editedUser.role === 'string' && editedUser.role.length > 0) {
-                try {
-                    const parsed = JSON.parse(editedUser.role);
-                    if (Array.isArray(parsed)) rolesArray = parsed;
-                    else
-                        rolesArray = editedUser.role
-                            .split(',')
-                            .map((r) => r.trim())
-                            .filter(Boolean);
-                } catch {
+        if (!open || !editedUser) {
+            return;
+        }
+
+        let rolesArray = [];
+        if (Array.isArray(editedUser.role)) {
+            rolesArray = editedUser.role;
+        } else if (typeof editedUser.role === 'string' && editedUser.role.length > 0) {
+            try {
+                const parsed = JSON.parse(editedUser.role);
+                if (Array.isArray(parsed)) rolesArray = parsed;
+                else
                     rolesArray = editedUser.role
                         .split(',')
                         .map((r) => r.trim())
                         .filter(Boolean);
-                }
+            } catch {
+                rolesArray = editedUser.role
+                    .split(',')
+                    .map((r) => r.trim())
+                    .filter(Boolean);
             }
-            rolesArray = rolesArray.map((r) => String(r).toLowerCase());
-            const optionsForNormalize = resolveStatusOptions({
-                isStaff: canEditOthers,
-                passedOptions: status,
-                currentStatus: editedUser.status,
-            });
-            setFormData({
-                name: editedUser.name || '',
-                email: editedUser.email || '',
-                roles: rolesArray,
-                status: normalizeStatusForSelect(editedUser.status, optionsForNormalize),
-                formation_id: editedUser.formation_id || '',
-                phone: editedUser.phone ?? '',
-                cin: editedUser.cin ?? '',
-                speciality: editedUser.speciality ?? '',
-                image: editedUser?.image || null,
-                resumeFile: null,
-                access_studio: editedUser.access_studio === 1 ? 'Yes' : 'No',
-                access_cowork: editedUser.access_cowork === 1 ? 'Yes' : 'No',
-                access_scan: editedUser.access_scan === 1 ? 'Yes' : 'No',
-            });
-            setSocialLinks(editedUser?.social_links || []);
         }
-    }, [editedUser, canEditOthers, status]);
-
+        rolesArray = rolesArray.map((r) => String(r).toLowerCase());
+        const optionsForNormalize = resolveStatusOptions({
+            isStaff: canEditOthers,
+            passedOptions: status,
+            currentStatus: editedUser.status,
+        });
+        setFormData({
+            name: editedUser.name || '',
+            email: editedUser.email || '',
+            roles: rolesArray,
+            status: normalizeStatusForSelect(editedUser.status, optionsForNormalize),
+            formation_id: resolveFormationSelectValue(editedUser.formation_id),
+            phone: editedUser.phone ?? '',
+            cin: editedUser.cin ?? '',
+            gender: editedUser.gender || 'none',
+            has_handicap: handicapSelectValue(editedUser.has_handicap),
+            program_status: resolveProgramStatusValue(editedUser.program_status),
+            speciality: editedUser.speciality ?? '',
+            image: editedUser?.image || null,
+            resumeFile: null,
+            access_studio: editedUser.access_studio === 1 ? 'Yes' : 'No',
+            access_cowork: editedUser.access_cowork === 1 ? 'Yes' : 'No',
+            access_scan: editedUser.access_scan === 1 ? 'Yes' : 'No',
+        });
+        setSocialLinks(editedUser?.social_links || []);
+    }, [open, editedUser, canEditOthers, status]);
     const validateSocialUrl = () => {
         if (!newSocialPlatform || !newSocialUrl) return false;
 
@@ -205,14 +254,31 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         form.append('_method', 'put');
         form.append('name', formData.name);
         form.append('email', formData.email);
-        formData.roles.forEach((r) => form.append('roles[]', r));
+        // Never send roles when editing yourself — another admin must change them.
+        if (!isEditingSelf) {
+            formData.roles.forEach((r) => form.append('roles[]', r));
+        }
         if (showStatusField && formData.status) {
             form.append('status', formData.status);
         }
-        form.append('phone', formData.phone);
-        form.append('cin', formData.cin);
+        // Only admin/super_admin receive cin/phone/has_handicap on the index DTO.
+        // Never POST empty values for missing keys — that would wipe student records.
+        if (canGrantStaffRoles || Object.prototype.hasOwnProperty.call(editedUser, 'phone')) {
+            form.append('phone', formData.phone ?? '');
+        }
+        if (canGrantStaffRoles || Object.prototype.hasOwnProperty.call(editedUser, 'cin')) {
+            form.append('cin', formData.cin ?? '');
+        }
         form.append('speciality', formData.speciality ?? '');
-        form.append('formation_id', formData.formation_id || '');
+        form.append('formation_id', formData.formation_id === NONE_TRAINING_VALUE || !formData.formation_id ? '' : String(formData.formation_id));
+
+        if (canEditOthers) {
+            form.append('gender', formData.gender === 'none' ? '' : formData.gender);
+            if (canEditHealthData) {
+                form.append('has_handicap', formData.has_handicap === 'none' ? '' : formData.has_handicap);
+            }
+            form.append('program_status', formData.program_status === 'all' ? '' : formData.program_status);
+        }
 
         form.append('access_studio', formData.access_studio === 'Yes' ? 1 : 0);
         form.append('access_cowork', formData.access_cowork === 'Yes' ? 1 : 0);
@@ -297,31 +363,64 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         <Label htmlFor="email">Email</Label>
                         <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
                     </div>
-                    {/* Left Column - Phone */}
-                    <div className={!showStatusField ? 'col-span-2' : 'col-span-1'}>
-                        <Label htmlFor="phone">Phone</Label>
-                        <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
-                    </div>
-                    {/* Right Column - CIN */}
-                    {isAdminOrStudioResponsable && (
+                    {/* Phone — only when index DTO includes it (admin/super_admin) */}
+                    {canGrantStaffRoles && (
                         <div className="col-span-1">
-                            <Label htmlFor="cin">CIN</Label>
-                            <Input id="cin" value={formData.cin || ''} onChange={(e) => setFormData({ ...formData, cin: e.target.value })} />
+                            <Label htmlFor="phone">Phone</Label>
+                            <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
                         </div>
                     )}
-                    <div className="lg:col-span-1 md:col-span-2">
-                        <Label htmlFor="speciality">Speciality</Label>
-                        <Input
-                            id="speciality"
-                            value={formData.speciality}
-                            onChange={(e) => setFormData({ ...formData, speciality: e.target.value })}
-                            placeholder="e.g. Full stack developer, Mobile developer"
-                        />
-                        {errors.speciality && (
-                            <p className="mt-1 text-xs text-red-500">{Array.isArray(errors.speciality) ? errors.speciality[0] : errors.speciality}</p>
-                        )}
-                    </div>
-                    {/* Left Column - Status */}
+                    {canEditOthers && (
+                        <div className="col-span-1">
+                            <Label>Gender</Label>
+                            <Select value={formData.gender} onValueChange={(v) => setFormData({ ...formData, gender: v })}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select gender" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">Not set</SelectItem>
+                                    {GENDER_OPTIONS.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                    {canEditOthers && (
+                        <div className="col-span-1">
+                            <Label>Program status</Label>
+                            <Select
+                                key={`program-status-${editedUser?.id}`}
+                                value={formData.program_status}
+                                onValueChange={(v) => setFormData({ ...formData, program_status: v })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select program status">
+                                        {programStatusLabel(formData.program_status) || 'Select program status'}
+                                    </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {programStatusOptions
+                                        .filter((option) => option.value === PROGRAM_STATUS.ACTIVE || option.value === PROGRAM_STATUS.LEFT)
+                                        .map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    <SelectGroup>
+                                        <SelectLabel>Certificate &amp; Not Certificate</SelectLabel>
+                                        {PROGRAM_STATUS_CERTIFICATE_OUTCOME_OPTIONS.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectGroup>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
                     {showStatusField && (
                         <div className="col-span-1">
                             <Label>Status</Label>
@@ -339,6 +438,42 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                             </Select>
                         </div>
                     )}
+                    {canGrantStaffRoles && (
+                        <div className="col-span-1">
+                            <Label htmlFor="cin">CIN</Label>
+                            <Input id="cin" value={formData.cin || ''} onChange={(e) => setFormData({ ...formData, cin: e.target.value })} />
+                        </div>
+                    )}
+                    {canEditHealthData && (
+                        <div className="col-span-1">
+                            <Label>Handicap</Label>
+                            <Select value={formData.has_handicap} onValueChange={(v) => setFormData({ ...formData, has_handicap: v })}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select handicap" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">Not set</SelectItem>
+                                    {HANDICAP_OPTIONS.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                    <div className="lg:col-span-1 md:col-span-2">
+                        <Label htmlFor="speciality">Speciality</Label>
+                        <Input
+                            id="speciality"
+                            value={formData.speciality}
+                            onChange={(e) => setFormData({ ...formData, speciality: e.target.value })}
+                            placeholder="e.g. Full stack developer, Mobile developer"
+                        />
+                        {errors.speciality && (
+                            <p className="mt-1 text-xs text-red-500">{Array.isArray(errors.speciality) ? errors.speciality[0] : errors.speciality}</p>
+                        )}
+                    </div>
                     <div className="col-span-1">
                         <Label htmlFor="resume" className="mb-2 flex items-center gap-2">
                             CV (PDF or Word)
@@ -376,6 +511,124 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         {formData.resumeFile && <p className="mt-1 text-sm text-beta/70 dark:text-light/70">Selected: {formData.resumeFile.name}</p>}
                     </div>
 
+
+                    {/* Left Column - Training */}
+                    {isAdminOrStudioResponsable && (
+                        <div className="col-span-2 md:col-span-1 lg:col-span-1">
+                            <Label>Training</Label>
+                            <Select
+                                key={`training-${editedUser?.id}`}
+                                value={resolveFormationSelectValue(formData.formation_id)}
+                                onValueChange={(v) => setFormData({ ...formData, formation_id: v })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select training">{currentTrainingLabel}</SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={NONE_TRAINING_VALUE}>No training</SelectItem>
+                                    {trainingOptions.map((t) => (
+                                        <SelectItem key={t.id} value={String(t.id)}>
+                                            {t.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                    {/* Left Column - Access Studio */}
+                    {isAdminOrStudioResponsable && (
+                        <div className="col-span-1">
+                            <Label htmlFor="access-studio">Access Studio</Label>
+                            <Select
+                                id="access-studio"
+                                value={formData.access_studio}
+                                onValueChange={(v) => setFormData({ ...formData, access_studio: v })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Access Studio" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={'Yes'}>Yes</SelectItem>
+                                    <SelectItem value={'No'}>No</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                    {/* Right Column - Access Cowork */}
+                    {isAdminOrStudioResponsable && (
+                        <div className="col-span-1">
+                            <Label htmlFor="access-cowork">Access Cowork</Label>
+                            <Select
+                                id="access-cowork"
+                                value={formData.access_cowork}
+                                onValueChange={(v) => setFormData({ ...formData, access_cowork: v })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Access Cowork" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={'Yes'}>Yes</SelectItem>
+                                    <SelectItem value={'No'}>No</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                    {isAdminOrStudioResponsable && (
+                        <div className="col-span-1">
+                            <Label htmlFor="access-scan">Access Scan</Label>
+                            <Select
+                                id="access-scan"
+                                value={formData.access_scan}
+                                onValueChange={(v) => setFormData({ ...formData, access_scan: v })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Access Scan" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={'Yes'}>Yes</SelectItem>
+                                    <SelectItem value={'No'}>No</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="mt-1 text-xs text-neutral-500">
+                                Mobile Scan tab (events and info sessions)
+                            </p>
+                        </div>
+                    )}
+                    {/* Right Column - Roles (never editable on your own account) */}
+                    <Rolegard authorized={['admin', 'super_admin']}>
+                        {canGrantStaffRoles && (
+                            <div className="col-span-1">
+                                <Label htmlFor="roles">Roles</Label>
+                                {isEditingSelf ? (
+                                    <div className="space-y-2">
+                                        <div className="flex flex-wrap gap-2 rounded-md border border-input px-3 py-2">
+                                            {(formData.roles || []).length === 0 ? (
+                                                <span className="text-sm text-muted-foreground">No roles</span>
+                                            ) : (
+                                                formData.roles.map((r) => (
+                                                    <span
+                                                        key={r}
+                                                        className="inline-flex items-center rounded-md bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+                                                    >
+                                                        {r === 'studio_responsable' ? 'Responsable Studio' : r}
+                                                    </span>
+                                                ))
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            You cannot change your own roles. Another admin must update them for you.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <RolesMultiSelect
+                                        roles={formData.roles}
+                                        onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })}
+                                        canGrantStaffRoles={canGrantStaffRoles}
+                                    />
+                                )}
+                            </div>
+                        )}
+                    </Rolegard>
                     {/* Socials Section */}
                     {canManageSocials && (
                         <div className="col-span-1 md:col-span-2">
@@ -465,95 +718,6 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                     })
                                 )}
                             </div>
-                        </div>
-                    )}
-                    {/* Right Column - Roles */}
-                    <Rolegard authorized={'admin'}>
-                        {isAdminOrStudioResponsable && (
-                            <div className="col-span-1">
-                                <Label htmlFor="roles">Roles</Label>
-                                <RolesMultiSelect roles={formData.roles} onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })} />
-                            </div>
-                        )}
-                    </Rolegard>
-                    {/* Left Column - Access Studio */}
-                    {isAdminOrStudioResponsable && (
-                        <div className="col-span-1">
-                            <Label htmlFor="access-studio">Access Studio</Label>
-                            <Select
-                                id="access-studio"
-                                value={formData.access_studio}
-                                onValueChange={(v) => setFormData({ ...formData, access_studio: v })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select Access Studio" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value={'Yes'}>Yes</SelectItem>
-                                    <SelectItem value={'No'}>No</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
-                    {/* Right Column - Access Cowork */}
-                    {isAdminOrStudioResponsable && (
-                        <div className="col-span-1">
-                            <Label htmlFor="access-cowork">Access Cowork</Label>
-                            <Select
-                                id="access-cowork"
-                                value={formData.access_cowork}
-                                onValueChange={(v) => setFormData({ ...formData, access_cowork: v })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select Access Cowork" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value={'Yes'}>Yes</SelectItem>
-                                    <SelectItem value={'No'}>No</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
-                    {isAdminOrStudioResponsable && (
-                        <div className="col-span-1">
-                            <Label htmlFor="access-scan">Access Scan</Label>
-                            <Select
-                                id="access-scan"
-                                value={formData.access_scan}
-                                onValueChange={(v) => setFormData({ ...formData, access_scan: v })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select Access Scan" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value={'Yes'}>Yes</SelectItem>
-                                    <SelectItem value={'No'}>No</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <p className="mt-1 text-xs text-neutral-500">
-                                Mobile Scan tab (events and info sessions)
-                            </p>
-                        </div>
-                    )}
-                    {/* Left Column - Training */}
-                    {isAdminOrStudioResponsable && (
-                        <div className="md:col-span-1 lg:col-span-1 col-span-2">
-                            <Label>Training</Label>
-                            <Select
-                                value={formData.formation_id ? String(formData.formation_id) : ''}
-                                onValueChange={(v) => setFormData({ ...formData, formation_id: Number(v) })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select training" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {trainings.map((t) => (
-                                        <SelectItem key={t.id} value={String(t.id)}>
-                                            {t.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
                         </div>
                     )}
 

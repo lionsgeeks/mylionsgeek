@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Models\AttendanceReminderNotification;
 use App\Models\DisciplineNotification;
 use App\Models\ExerciseReviewNotification;
 use App\Models\PostNotification;
+use App\Models\StoryNotification;
 use App\Models\FollowNotification;
 use App\Models\ProjectSubmissionNotification;
 use App\Models\ProjectStatusNotification;
@@ -19,8 +22,12 @@ use App\Models\TaskAssignmentNotification;
 use App\Models\ProjectMessageNotification;
 use App\Models\JobApplicationNotification;
 use App\Models\PostReportNotification;
+use App\Models\UserReportNotification;
+use App\Models\UserBlockNotification;
 use App\Models\AnnouncementNotification;
 use App\Models\Announcement;
+use App\Models\EventNotification;
+use App\Models\EventNotificationRead;
 use App\Models\Formation;
 use App\Models\User;
 use Ably\AblyRest;
@@ -43,10 +50,12 @@ class NotificationController extends Controller
         try {
             $roles = is_array($user->role) ? $user->role : [$user->role];
             $isAdmin = in_array('admin', $roles);
+            $isSuperAdmin = in_array('super_admin', $roles);
             $isModerator = in_array('moderateur', $roles);
             $isStudioResponsable = in_array('studio_responsable', $roles);
             $isCoach = in_array('coach', $roles);
             $isRecruiter = in_array('recruiter', $roles);
+            $isStaff = $isAdmin || $isSuperAdmin || $isModerator || $isCoach || $isStudioResponsable;
 
             //  1. DISCIPLINE CHANGE NOTIFICATIONS (Admin, Moderator, Coach)
             // Using new DisciplineNotification model
@@ -70,11 +79,12 @@ class NotificationController extends Controller
                         'sender_image' => $notif->user->image ?? null,
                         'message' => $notif->message_notification ?? '',
                         'link' => $notif->path ?? "/admin/users/{$notif->user_id}",
+                        'mobile_link' => '/profile/' . $notif->user_id,
                         'icon_type' => 'user',
                         'discipline_value' => $notif->discipline_change,
                         'change_type' => $notif->type, // 'increase' or 'decrease'
-                        'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                        'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                        'created_at' => $notif->created_at->toISOString(),
+                        'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                     ];
                 }
             } elseif ($isCoach) {
@@ -101,11 +111,12 @@ class NotificationController extends Controller
                         'sender_image' => $notif->user->image ?? null,
                         'message' => $notif->message_notification ?? '',
                         'link' => $notif->path ?? "/admin/users/{$notif->user_id}",
+                        'mobile_link' => '/profile/' . $notif->user_id,
                         'icon_type' => 'user',
                         'discipline_value' => $notif->discipline_change,
                         'change_type' => $notif->type,
-                        'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                        'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                        'created_at' => $notif->created_at->toISOString(),
+                        'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                     ];
                 }
             }
@@ -149,9 +160,10 @@ class NotificationController extends Controller
                                 'sender_image' => $notif->user->image ?? null,
                                 'message' => $notif->message_notification ?? 'Student asked you to review his exercise',
                                 'link' => $link,
+                                'mobile_link' => '/training',
                                 'icon_type' => 'file-text',
-                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                                'created_at' => $notif->created_at->toISOString(),
+                                'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                             ];
                         }
                     }
@@ -180,9 +192,10 @@ class NotificationController extends Controller
                                 'sender_image' => $notif->student->image ?? null,
                                 'message' => $notif->message_notification ?? 'A student submitted a new project',
                                 'link' => $link,
+                                'mobile_link' => '/projects',
                                 'icon_type' => 'folder',
-                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                                'created_at' => $notif->created_at->toISOString(),
+                                'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                             ];
                         }
                     }
@@ -216,11 +229,12 @@ class NotificationController extends Controller
                                 'sender_image' => $notif->user->image ?? null,
                                 'message' => $notif->message ?? "{$notif->user->name} requested {$accessTypeLabel} access",
                                 'link' => "/admin/users/{$notif->user_id}",
+                                'mobile_link' => '/reservations',
                                 'icon_type' => 'lock',
                                 'access_type' => $notif->requested_access_type,
                                 'notification_id' => $notif->id,
-                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                                'created_at' => $notif->created_at->toISOString(),
+                                'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                             ];
                         }
                     }
@@ -265,8 +279,14 @@ class NotificationController extends Controller
                         'sender_name' => $reservation->sender_name ?? 'Unknown',
                         'sender_image' => $reservation->sender_image,
                         'message' => $message,
-                        'created_at' => $reservation->created_at,
+                        'created_at' => $reservation->created_at
+                            ? \Illuminate\Support\Carbon::parse($reservation->created_at)->toISOString()
+                            : now()->toISOString(),
+                        'read_at' => $this->isSyntheticNotificationDismissed($user->id, 'reservation', (int) $reservation->id)
+                            ? now()->toISOString()
+                            : null,
                         'link' => '/admin/reservations/' . $reservation->id . '/details',
+                        'mobile_link' => '/admin/reservations/' . $reservation->id . '/details',
                         'icon_type' => 'calendar',
                     ];
                 }
@@ -305,8 +325,14 @@ class NotificationController extends Controller
                             'sender_name' => $appointment->requester_name ?? 'Unknown',
                             'sender_image' => $appointment->requester_image,
                             'message' => $message,
-                            'created_at' => $appointment->created_at,
+                            'created_at' => $appointment->created_at
+                                ? \Illuminate\Support\Carbon::parse($appointment->created_at)->toISOString()
+                                : now()->toISOString(),
+                            'read_at' => $this->isSyntheticNotificationDismissed($user->id, 'appointment', (int) $appointment->id)
+                                ? now()->toISOString()
+                                : null,
                             'link' => '/admin/appointments',
+                            'mobile_link' => '/admin/appointments',
                             'icon_type' => 'calendar',
                         ];
                     }
@@ -338,11 +364,12 @@ class NotificationController extends Controller
                             'sender_image' => $notif->reviewer ? $notif->reviewer->image : null,
                             'message' => $message,
                             'link' => $notif->path ?? '/student/spaces',
+                            'mobile_link' => '/reservations',
                             'icon_type' => $notif->status === 'approved' ? 'check-circle' : 'x-circle',
                             'status' => $notif->status,
                             'denial_reason' => $notif->denial_reason,
-                            'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                            'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                            'created_at' => $notif->created_at->toISOString(),
+                            'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                         ];
                     }
                 } catch (\Exception $e) {
@@ -388,14 +415,46 @@ class NotificationController extends Controller
                     'sender_image' => $senderImage,
                     'message' => $message,
                     'link' => '/students/feed#post-' . $notif->post_id,
+                    'mobile_link' => '/posts/' . $notif->post_id,
+                    'post_id' => $notif->post_id,
                     'icon_type' => 'user',
                     'created_at' => $notif->created_at->toISOString(),
                     'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                 ];
             }
 
+            if (Schema::hasTable('story_notifications')) {
+                try {
+                    $storyNotifs = StoryNotification::with(['sender', 'story'])
+                        ->where('user_id', $user->id)
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+                    foreach ($storyNotifs as $notif) {
+                        $senderName = $notif->sender ? $notif->sender->name : 'Someone';
+                        $senderImage = $notif->sender ? $notif->sender->image : null;
+                        $senderId = (int) $notif->sender_id;
+                        $notifications[] = [
+                            'id' => 'story-mention-'.$notif->id,
+                            'type' => 'story_mention',
+                            'sender_name' => $senderName,
+                            'sender_image' => $senderImage,
+                            'message' => "{$senderName} mentioned you in a story",
+                            'link' => '/students/feed',
+                            'mobile_link' => '/stories/viewer?startUserId='.$senderId,
+                            'story_id' => (int) $notif->story_id,
+                            'icon_type' => 'at',
+                            'created_at' => $notif->created_at?->toIso8601String() ?? now()->toIso8601String(),
+                            'read_at' => $notif->read_at ? $notif->read_at->toIso8601String() : null,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching story mention notifications: '.$e->getMessage());
+                }
+            }
+
             // 4.5. POST REPORT NOTIFICATIONS (Staff)
-            if (($isAdmin || $isModerator || $isCoach || $isStudioResponsable) && Schema::hasTable('post_report_notifications')) {
+            if ($isStaff && Schema::hasTable('post_report_notifications')) {
                 try {
                     $reportNotifs = PostReportNotification::query()
                         ->with([
@@ -435,6 +494,93 @@ class NotificationController extends Controller
                 }
             }
 
+            // 4.6. USER REPORT NOTIFICATIONS (Staff)
+            if ($isStaff && Schema::hasTable('user_report_notifications')) {
+                try {
+                    $userReportNotifs = UserReportNotification::query()
+                        ->with([
+                            'report',
+                            'report.reporter:id,name,image',
+                            'report.reportedUser:id,name',
+                        ])
+                        ->where('notified_user_id', $user->id)
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    foreach ($userReportNotifs as $rn) {
+                        $report = $rn->report;
+                        $reporter = $report?->reporter;
+                        $reported = $report?->reportedUser;
+                        if (! $report || ! $reporter) {
+                            continue;
+                        }
+
+                        $reportedName = $reported?->name ?? 'a user';
+                        $notifications[] = [
+                            'id' => 'user-report-'.$rn->id,
+                            'type' => 'user_report',
+                            'sender_name' => $reporter->name ?? 'User',
+                            'sender_image' => $reporter->image ?? null,
+                            'message' => ($reporter->name ?? 'Someone').' reported '.$reportedName,
+                            'link' => '/admin/users/'.((int) $report->reported_user_id),
+                            'mobile_link' => '/profile/'.((int) $report->reported_user_id),
+                            'icon_type' => 'flag',
+                            'created_at' => $rn->created_at?->toISOString() ?? now()->toISOString(),
+                            'read_at' => $rn->read_at ? $rn->read_at->toISOString() : null,
+                            'reported_user_id' => (int) $report->reported_user_id,
+                            'report_id' => (int) $report->id,
+                            'report_status' => (string) $report->status,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching user report notifications: '.$e->getMessage());
+                }
+            }
+
+            // 4.7. USER BLOCK NOTIFICATIONS (Staff)
+            if ($isStaff && Schema::hasTable('user_block_notifications')) {
+                try {
+                    $blockNotifs = UserBlockNotification::query()
+                        ->with([
+                            'block',
+                            'block.blocker:id,name,image',
+                            'block.blocked:id,name',
+                        ])
+                        ->where('notified_user_id', $user->id)
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    foreach ($blockNotifs as $bn) {
+                        $block = $bn->block;
+                        $blocker = $block?->blocker;
+                        $blocked = $block?->blocked;
+                        if (! $block || ! $blocker) {
+                            continue;
+                        }
+
+                        $blockedName = $blocked?->name ?? 'a user';
+                        $notifications[] = [
+                            'id' => 'user-block-'.$bn->id,
+                            'type' => 'user_block',
+                            'sender_name' => $blocker->name ?? 'User',
+                            'sender_image' => $blocker->image ?? null,
+                            'message' => ($blocker->name ?? 'Someone').' blocked '.$blockedName,
+                            'link' => '/admin/users/'.((int) $block->blocked_id),
+                            'mobile_link' => '/profile/'.((int) $block->blocked_id),
+                            'icon_type' => 'ban',
+                            'created_at' => $bn->created_at?->toISOString() ?? now()->toISOString(),
+                            'read_at' => $bn->read_at ? $bn->read_at->toISOString() : null,
+                            'blocked_user_id' => (int) $block->blocked_id,
+                            'block_id' => (int) $block->id,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching user block notifications: '.$e->getMessage());
+                }
+            }
+
             // 5. FOLLOW NOTIFICATIONS (All users)
             $followNotifications = FollowNotification::with('follower')
                 ->where('user_id', $user->id)
@@ -453,6 +599,7 @@ class NotificationController extends Controller
                     'sender_image' => $senderImage,
                     'message' => "{$senderName} started following you",
                     'link' => "/students/{$notif->follower_id}",
+                    'mobile_link' => '/profile/' . $notif->follower_id,
                     'icon_type' => 'user',
                     'created_at' => $notif->created_at->toISOString(),
                     'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
@@ -484,6 +631,7 @@ class NotificationController extends Controller
                             'sender_image' => $applicant?->image,
                             'message' => "{$applicantName} applied to {$jobTitle}",
                             'link' => $jobId ? "/recruiter/applications/jobs/{$jobId}" : '/recruiter/applications',
+                            'mobile_link' => '/home',
                             'icon_type' => 'briefcase',
                             'created_at' => $notif->created_at->toISOString(),
                             'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
@@ -518,9 +666,10 @@ class NotificationController extends Controller
                                 'sender_image' => $notif->reviewer ? $notif->reviewer->image : null,
                                 'message' => $notif->message_notification,
                                 'link' => $link,
+                                'mobile_link' => '/projects',
                                 'icon_type' => $iconType,
-                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                                'created_at' => $notif->created_at->toISOString(),
+                                'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                                 'status' => $notif->status,
                                 'rejection_reason' => $notif->rejection_reason,
                             ];
@@ -551,9 +700,10 @@ class NotificationController extends Controller
                                 'sender_image' => $notif->assignedByUser->image ?? null,
                                 'message' => $notif->message_notification,
                                 'link' => $link,
+                                'mobile_link' => '/projects',
                                 'icon_type' => 'briefcase',
-                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                                'created_at' => $notif->created_at->toISOString(),
+                                'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                             ];
                         }
                     }
@@ -582,9 +732,10 @@ class NotificationController extends Controller
                                 'sender_image' => $notif->sender->image ?? null,
                                 'message' => $notif->message_notification,
                                 'link' => $link,
+                                'mobile_link' => '/projects',
                                 'icon_type' => 'message-square',
-                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
-                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                                'created_at' => $notif->created_at->toISOString(),
+                                'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                             ];
                         }
                     }
@@ -617,13 +768,87 @@ class NotificationController extends Controller
                             'sender_image' => $announcement->creator?->image,
                             'message' => $announcement->message,
                             'link' => '/dashboard',
+                            'mobile_link' => '/home',
                             'icon_type' => 'megaphone',
-                            'created_at' => $announcement->created_at->format('Y-m-d H:i:s'),
-                            'read_at' => $readAt ? $readAt->format('Y-m-d H:i:s') : null,
+                            'created_at' => $announcement->created_at->toISOString(),
+                            'read_at' => $readAt ? $readAt->toISOString() : null,
                         ];
                     }
                 } catch (\Exception $e) {
                     Log::error('Error fetching announcement notifications: ' . $e->getMessage());
+                }
+            }
+
+            // Public events from lionsgeek.ma (stored when webhook fires)
+            if (Schema::hasTable('event_notifications')) {
+                try {
+                    $eventNotifications = EventNotification::latest()
+                        ->limit(20)
+                        ->get();
+
+                    $readStates = Schema::hasTable('event_notification_reads')
+                        ? EventNotificationRead::where('user_id', $user->id)
+                            ->whereIn('event_notification_id', $eventNotifications->pluck('id'))
+                            ->pluck('read_at', 'event_notification_id')
+                        : collect();
+
+                    foreach ($eventNotifications as $eventNotification) {
+                        $readAt = $readStates->get($eventNotification->id);
+
+                        $notifications[] = [
+                            'id' => 'event-' . $eventNotification->id,
+                            'type' => 'event',
+                            'event_id' => $eventNotification->lionsgeek_event_id,
+                            'sender_name' => $eventNotification->title,
+                            'message' => $eventNotification->message,
+                            'mobile_link' => '/events/' . $eventNotification->lionsgeek_event_id,
+                            'icon_type' => 'calendar',
+                            'created_at' => $eventNotification->created_at->toISOString(),
+                            'read_at' => $readAt ? $readAt->toISOString() : null,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching event notifications: ' . $e->getMessage());
+                }
+            }
+
+            // Attendance slot reminders — student-owned only (NOT staff-scoped like discipline)
+            if (Schema::hasTable('attendance_reminder_notifications')) {
+                try {
+                    $attendanceReminders = AttendanceReminderNotification::query()
+                        ->where('user_id', $user->id)
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    $slotLabels = [
+                        'morning' => 'Morning',
+                        'lunch' => 'Coffee break',
+                        'evening' => 'Lunch',
+                    ];
+
+                    foreach ($attendanceReminders as $notif) {
+                        $slotLabel = $slotLabels[$notif->slot] ?? $notif->slot;
+                        $message = $notif->message_notification
+                            ?: "Check in for {$slotLabel}";
+
+                        $notifications[] = [
+                            'id' => 'attendance_reminder-' . $notif->id,
+                            'type' => 'attendance_reminder',
+                            'sender_name' => 'Attendance',
+                            'sender_image' => null,
+                            'message' => $message,
+                            'link' => $notif->path ?? '/students/attendance',
+                            'mobile_link' => '/training/check-in',
+                            'icon_type' => 'clock',
+                            'slot' => $notif->slot,
+                            'date' => $notif->date?->format('Y-m-d'),
+                            'created_at' => $notif->created_at->toISOString(),
+                            'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching attendance reminder notifications: ' . $e->getMessage());
                 }
             }
 
@@ -671,6 +896,18 @@ class NotificationController extends Controller
                         $notification->save();
                     }
                     break;
+                case 'story-mention':
+                case 'story_mention':
+                    if (Schema::hasTable('story_notifications')) {
+                        $notification = StoryNotification::where('id', $id)
+                            ->where('user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
                 case 'exercise-review':
                     $notification = ExerciseReviewNotification::where('id', $id)
                         ->where('coach_id', $user->id)
@@ -702,28 +939,7 @@ class NotificationController extends Controller
                         }
                     }
                     break;
-                case 'access_request':
-                    $roles = is_array($user->role) ? $user->role : [$user->role];
-                    $isAdmin = in_array('admin', $roles);
-                    if ($isAdmin && Schema::hasTable('access_request_notifications')) {
-                        $notification = AccessRequestNotification::where('id', $id)->first();
-                        if ($notification) {
-                            $notification->read_at = now();
-                            $notification->save();
-                        }
-                    }
-                    break;
-                case 'access_request_response':
-                    if (Schema::hasTable('access_request_response_notifications')) {
-                        $notification = AccessRequestResponseNotification::where('id', $id)
-                            ->where('user_id', $user->id)
-                            ->first();
-                        if ($notification) {
-                            $notification->read_at = now();
-                            $notification->save();
-                        }
-                    }
-                    break;
+                case 'discipline':
                 case 'discipline_change':
                     $roles = is_array($user->role) ? $user->role : [$user->role];
                     $isAdmin = in_array('admin', $roles);
@@ -748,6 +964,30 @@ class NotificationController extends Controller
                     if ($notification) {
                         $notification->read_at = now();
                         $notification->save();
+                    }
+                    break;
+                case 'access-request':
+                case 'access_request':
+                    $roles = is_array($user->role) ? $user->role : [$user->role];
+                    $isAdmin = in_array('admin', $roles);
+                    if ($isAdmin && Schema::hasTable('access_request_notifications')) {
+                        $notification = AccessRequestNotification::where('id', $id)->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
+                case 'access-request-response':
+                case 'access_request_response':
+                    if (Schema::hasTable('access_request_response_notifications')) {
+                        $notification = AccessRequestResponseNotification::where('id', $id)
+                            ->where('user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
                     }
                     break;
                 case 'task-assignment':
@@ -786,6 +1026,30 @@ class NotificationController extends Controller
                         }
                     }
                     break;
+                case 'user-report':
+                case 'user_report':
+                    if (Schema::hasTable('user_report_notifications')) {
+                        $notification = UserReportNotification::where('id', $id)
+                            ->where('notified_user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
+                case 'user-block':
+                case 'user_block':
+                    if (Schema::hasTable('user_block_notifications')) {
+                        $notification = UserBlockNotification::where('id', $id)
+                            ->where('notified_user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
                 case 'job-application':
                 case 'job_application':
                     if (Schema::hasTable('job_application_notifications')) {
@@ -809,6 +1073,36 @@ class NotificationController extends Controller
                         $notification->read_at = now();
                         $notification->save();
                     }
+                    break;
+                case 'event':
+                    if (Schema::hasTable('event_notification_reads')) {
+                        $notification = EventNotificationRead::firstOrCreate(
+                            [
+                                'user_id' => $user->id,
+                                'event_notification_id' => $id,
+                            ]
+                        );
+                        $notification->read_at = now();
+                        $notification->save();
+                    }
+                    break;
+                case 'attendance_reminder':
+                case 'attendance-reminder':
+                    if (Schema::hasTable('attendance_reminder_notifications')) {
+                        $notification = AttendanceReminderNotification::where('id', $id)
+                            ->where('user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
+                case 'reservation':
+                case 'appointment':
+                    // Synthetic inbox items (pending reservations/appointments) have no
+                    // dedicated read table — persist a dismissal so mark-read sticks after refresh.
+                    $this->dismissSyntheticNotification((int) $user->id, $type === 'appointment' ? 'appointment' : 'reservation', (int) $id);
                     break;
                 default:
                     return response()->json(['error' => 'Invalid notification type'], 400);
@@ -842,6 +1136,12 @@ class NotificationController extends Controller
             PostNotification::where('user_id', $user->id)
                 ->whereNull('read_at')
                 ->update(['read_at' => now()]);
+
+            if (Schema::hasTable('story_notifications')) {
+                StoryNotification::where('user_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
 
             // Mark all exercise review notifications as read (for coaches)
             ExerciseReviewNotification::where('coach_id', $user->id)
@@ -883,6 +1183,18 @@ class NotificationController extends Controller
                     ->update(['read_at' => now()]);
             }
 
+            if (Schema::hasTable('user_report_notifications')) {
+                UserReportNotification::where('notified_user_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            if (Schema::hasTable('user_block_notifications')) {
+                UserBlockNotification::where('notified_user_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
             if (Schema::hasTable('job_application_notifications')) {
                 JobApplicationNotification::where('notified_user_id', $user->id)
                     ->whereNull('read_at')
@@ -903,6 +1215,20 @@ class NotificationController extends Controller
                 }
             }
 
+            if (Schema::hasTable('event_notification_reads') && Schema::hasTable('event_notifications')) {
+                $eventNotificationIds = EventNotification::latest()->limit(50)->pluck('id');
+
+                foreach ($eventNotificationIds as $eventNotificationId) {
+                    EventNotificationRead::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'event_notification_id' => $eventNotificationId,
+                        ],
+                        ['read_at' => now()]
+                    );
+                }
+            }
+
             // Mark all access request response notifications as read (for users)
             if (Schema::hasTable('access_request_response_notifications')) {
                 AccessRequestResponseNotification::where('user_id', $user->id)
@@ -910,15 +1236,18 @@ class NotificationController extends Controller
                     ->update(['read_at' => now()]);
             }
 
-            // Don't auto-mark access request notifications as read - they should only be marked when action is taken
-            // Access request notifications will be marked as read individually when approve/deny actions are performed
-
-            // Mark all discipline notifications as read
             $roles = is_array($user->role) ? $user->role : [$user->role];
             $isAdmin = in_array('admin', $roles);
             $isModerator = in_array('moderateur', $roles);
             $isCoach = in_array('coach', $roles);
-            
+
+            // Mark pending access-request notifications as read when user explicitly taps Mark all
+            if (Schema::hasTable('access_request_notifications') && ($isAdmin || $isModerator)) {
+                AccessRequestNotification::whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            // Mark all discipline notifications as read
             if ($isAdmin || $isModerator) {
                 // Admins/Moderators mark all discipline notifications as read
                 DisciplineNotification::whereNull('read_at')
@@ -937,11 +1266,64 @@ class NotificationController extends Controller
                     ->update(['read_at' => now()]);
             }
 
+            // Mark all attendance reminder notifications as read (owning student only)
+            if (Schema::hasTable('attendance_reminder_notifications')) {
+                AttendanceReminderNotification::where('user_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            // Dismiss synthetic pending reservation / appointment inbox items
+            if (Schema::hasTable('reservations')) {
+                $pendingReservationIds = DB::table('reservations')
+                    ->where('canceled', 0)
+                    ->where('approved', 0)
+                    ->orderByDesc('created_at')
+                    ->limit(50)
+                    ->pluck('id');
+                foreach ($pendingReservationIds as $reservationId) {
+                    $this->dismissSyntheticNotification((int) $user->id, 'reservation', (int) $reservationId);
+                }
+            }
+
+            if (Schema::hasTable('appointments')) {
+                $userEmail = strtolower($user->email ?? '');
+                if ($userEmail) {
+                    $pendingAppointmentIds = DB::table('appointments')
+                        ->whereRaw('LOWER(person_email) = ?', [$userEmail])
+                        ->where('status', 'pending')
+                        ->orderByDesc('created_at')
+                        ->limit(50)
+                        ->pluck('id');
+                    foreach ($pendingAppointmentIds as $appointmentId) {
+                        $this->dismissSyntheticNotification((int) $user->id, 'appointment', (int) $appointmentId);
+                    }
+                }
+            }
+
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
             Log::error('Failed to mark all notifications as read: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to mark all as read'], 500);
         }
+    }
+
+    private function syntheticNotificationDismissKey(int $userId, string $type, int $id): string
+    {
+        return "notif_dismissed:{$userId}:{$type}:{$id}";
+    }
+
+    private function dismissSyntheticNotification(int $userId, string $type, int $id): void
+    {
+        if ($id < 1) {
+            return;
+        }
+        Cache::put($this->syntheticNotificationDismissKey($userId, $type, $id), true, now()->addDays(60));
+    }
+
+    private function isSyntheticNotificationDismissed(int $userId, string $type, int $id): bool
+    {
+        return Cache::has($this->syntheticNotificationDismissKey($userId, $type, $id));
     }
 
     /**

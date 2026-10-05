@@ -40,6 +40,9 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
         }
     };
 
+    const deleteEnrolledCount = trainingToDelete?.users_count ?? 0;
+    const deleteHasStudents = deleteEnrolledCount > 0;
+
     const applyFilters = (trackValue = selectedTrack, coachValue = selectedCoach, promoValue = selectedPromo) => {
         const params = new URLSearchParams();
         if (coachValue) params.set('coach', coachValue);
@@ -253,12 +256,24 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                         </span>
                                     )}
 
-                                    {/* Status Badge */}
-                                    {getTrainingStatus(training) === 'active' && (
-                                        <span className="absolute top-3 right-3 animate-pulse rounded-full bg-green-500 px-4 py-1.5 text-xs font-bold text-white shadow-lg">
-                                            Active
+                                    {/* Date-window badge (heuristic only — not the reminders gate) */}
+                                    <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5">
+                                        {getTrainingStatus(training) === 'active' && (
+                                            <span className="animate-pulse rounded-full bg-green-500 px-4 py-1.5 text-xs font-bold text-white shadow-lg">
+                                                In session
+                                            </span>
+                                        )}
+                                        {/* Stored is_active — staff-controlled gate for attendance reminders */}
+                                        <span
+                                            className={`rounded-full px-4 py-1.5 text-xs font-bold shadow-lg ${
+                                                training.is_active
+                                                    ? 'bg-alpha text-black'
+                                                    : 'bg-black/70 text-white'
+                                            }`}
+                                        >
+                                            {training.is_active ? 'Reminders on' : 'Reminders off'}
                                         </span>
-                                    )}
+                                    </div>
                                 </div>
 
                                 {/* Card Content */}
@@ -367,13 +382,36 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 dark:bg-red-900/30">
                                     <Trash2 className="h-6 w-6 text-red-600" />
                                 </div>
-                                <h3 className="text-2xl font-black text-dark dark:text-light">Confirm Deletion</h3>
+                                <h3 className="text-2xl font-black text-dark dark:text-light">
+                                    {deleteHasStudents ? 'Training has students' : 'Confirm Deletion'}
+                                </h3>
                             </div>
-                            <p className="mb-8 text-dark/70 dark:text-light/70">
-                                Are you sure you want to delete{' '}
-                                <span className="font-bold text-yellow-600 dark:text-yellow-400">"{trainingToDelete?.name}"</span>? This action cannot
-                                be undone.
-                            </p>
+                            {deleteHasStudents ? (
+                                <div className="mb-8 space-y-3 text-dark/70 dark:text-light/70">
+                                    <p>
+                                        <span className="font-bold text-yellow-600 dark:text-yellow-400">
+                                            "{trainingToDelete?.name}"
+                                        </span>{' '}
+                                        has{' '}
+                                        <span className="font-bold text-red-600 dark:text-red-400">
+                                            {deleteEnrolledCount} enrolled student{deleteEnrolledCount === 1 ? '' : 's'}
+                                        </span>
+                                        .
+                                    </p>
+                                    <p>
+                                        Deleting it will unassign those students from this program. Attendance and related
+                                        data for this training may also be removed. This action cannot be undone.
+                                    </p>
+                                </div>
+                            ) : (
+                                <p className="mb-8 text-dark/70 dark:text-light/70">
+                                    Are you sure you want to delete{' '}
+                                    <span className="font-bold text-yellow-600 dark:text-yellow-400">
+                                        "{trainingToDelete?.name}"
+                                    </span>
+                                    ? This action cannot be undone.
+                                </p>
+                            )}
                             <div className="flex gap-3">
                                 <button
                                     onClick={closeDeleteModal}
@@ -385,7 +423,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                     onClick={confirmDelete}
                                     className="flex-1 rounded-xl bg-red-600 px-6 py-3 font-bold text-white shadow-lg transition-colors hover:bg-red-700 hover:shadow-xl"
                                 >
-                                    Delete
+                                    {deleteHasStudents ? 'Delete anyway' : 'Delete'}
                                 </button>
                             </div>
                         </div>

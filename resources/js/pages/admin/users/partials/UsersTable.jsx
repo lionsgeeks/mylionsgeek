@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useInitials } from '@/hooks/use-initials';
 import RoleBadge from '@/pages/admin/users/partials/RoleBadge';
 import Rolegard from '@/components/rolegard';
+import { genderLabel, programStatusLabel } from '@/components/helpers/userDemographics';
 import { router, usePage } from '@inertiajs/react';
 import { CameraIcon, ChevronsLeft, ChevronsRight, CircleCheckBig, Pencil, Trash, UsersRoundIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -89,9 +90,10 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                         <TableHead className="w-[100px]">Members</TableHead>
                         <TableHead>Access</TableHead>
                         <TableHead>Email</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>Gender</TableHead>
+                        <TableHead>Program status</TableHead>
                         <TableHead>Role</TableHead>
-                        <Rolegard authorized={['admin', 'super_admin', 'moderateur', 'coach']}>
+                        <Rolegard authorized={['admin', 'super_admin']}>
                             <TableHead>Menu</TableHead>
                         </Rolegard>
                     </TableRow>
@@ -112,11 +114,7 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                                     <h1 className="capitalize">{user.name}</h1>
                                     {(() => {
                                         const userRoles = Array.isArray(auth.user.role) ? auth.user.role : [auth.user.role];
-                                        if (
-                                            userRoles.includes('admin') ||
-                                            userRoles.includes('moderateur') ||
-                                            userRoles.includes('studio_responsable')
-                                        ) {
+                                        if (userRoles.includes('admin')) {
                                             return <span className="text-[0.8rem] font-medium text-dark/80 dark:text-light/80">{user.cin}</span>;
                                         }
                                         return null;
@@ -137,7 +135,8 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                                 </div>
                             </TableCell>
                             <TableCell className="font-medium">{user.email}</TableCell>
-                            <TableCell className="font-medium">{user.status}</TableCell>
+                            <TableCell className="font-medium">{genderLabel(user.gender) || '—'}</TableCell>
+                            <TableCell className="font-medium">{programStatusLabel(user.program_status) || '—'}</TableCell>
                             <TableCell>
                                 <div className="flex flex-wrap gap-2">
                                     {user.role ? (
@@ -148,7 +147,7 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                                 </div>
                             </TableCell>
 
-                            <Rolegard authorized={['admin', 'super_admin', 'moderateur', 'coach']}>
+                            <Rolegard authorized={['admin', 'super_admin']}>
                                 <TableCell className="flex items-center gap-2 font-medium">
                                     <Button
                                         className="bg-transparent p-2 duration-200 hover:bg-transparent"

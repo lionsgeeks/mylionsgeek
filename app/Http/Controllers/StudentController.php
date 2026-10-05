@@ -13,8 +13,25 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StudentController extends Controller
 {
+    private function authorizeFeedAccess(): void
+    {
+        $user = Auth::user();
+        $roles = is_array($user->role) ? $user->role : array_filter([$user->role]);
+
+        if (! in_array('recruiter', $roles, true)) {
+            return;
+        }
+
+        $rolesExcludingRecruiter = array_values(array_filter($roles, fn ($role) => $role !== 'recruiter'));
+
+        if ($rolesExcludingRecruiter === []) {
+            abort(403);
+        }
+    }
+
     public function index(Request $request)
     {
+        $this->authorizeFeedAccess();
         $userController = new UsersController;
         $cursor = $request->query('cursor');
         $paginated = $userController->getPostsPaginated(
@@ -87,11 +104,24 @@ class StudentController extends Controller
             ->get();
 
         $isOwner = Auth::id() === (int) $id;
+        $actor = Auth::user();
+        $actorRoles = is_array($actor?->role) ? $actor->role : array_filter([(string) ($actor?->role ?? '')]);
+        $actorRolesLower = array_map('strtolower', array_map('strval', $actorRoles));
+        $canViewContact = $isOwner || (bool) array_intersect($actorRolesLower, [
+            'admin',
+            'super_admin',
+            'moderateur',
+            'coach',
+            'studio_responsable',
+            'responsable_studio',
+            'recruiter',
+        ]);
+        $hasResume = (bool) $user->resumeViewUrl();
 
         return [
             'user' => [
                 'id' => $user->id,
-                'email' => $user->email,
+                'email' => $canViewContact ? $user->email : null,
                 'image' => $user->image,
                 'online' => $user->last_online,
                 'Gp' => $user->GP,
@@ -106,14 +136,15 @@ class StudentController extends Controller
                 'last_online' => $user->last_online,
                 'status' => $user->status,
                 'field' => $user->field,
-                'phone' => $user->phone,
-                'resume' => $user->resume,
-                'resume_url' => $user->resumePublicUrl(),
-                'resume_view_url' => $user->resumePublicUrl() ? $user->resumeViewUrl() : null,
+                'phone' => $isOwner ? $user->phone : null,
+                'resume' => $canViewContact ? $user->resume : null,
+                // Never expose the public /storage URL; use the gated stream route.
+                'resume_url' => null,
+                'resume_view_url' => ($canViewContact && $hasResume) ? $user->resumeViewUrl() : null,
                 'created_at' => $user->created_at->format('Y-m-d'),
-                'formation' => $user->formation_id != null ? $user->formation->name : '',
+                'formation' => $user->formation_id != null ? ($user->formation?->name ?? '') : '',
                 'formation_id' => $user->formation_id,
-                'cin' => $user->cin,
+                'cin' => $isOwner ? $user->cin : null,
                 'access_studio' => $user->access_studio,
                 'access_cowork' => $user->access_cowork,
                 'role' => $user->role,
@@ -170,7 +201,7 @@ class StudentController extends Controller
         if (Auth::user()->id == $user->id) {
             // code...
             $request->validate([
-                'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+                'image' => 'required|image|mimes:jpeg,jpg,png,webp,gif|max:2048',
             ]);
             if ($request->hasFile('image') && $request->file('image')->isValid()) {
                 $file = $request->file('image');
@@ -192,7 +223,7 @@ class StudentController extends Controller
         $user = User::find($id);
         if (Auth::user()->id == $user->id) {
             $request->validate([
-                'cover' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+                'cover' => 'required|image|mimes:jpeg,jpg,png,webp,gif|max:2048',
             ]);
             if ($request->hasFile('cover') && $request->file('cover')->isValid()) {
                 $path = $request->file('cover')->store('img/cover', 'public');

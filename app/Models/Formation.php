@@ -21,6 +21,11 @@ class Formation extends Model
         "end_time",
         "promo",
         "user_id",
+        "is_active",
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
 
     public function users()

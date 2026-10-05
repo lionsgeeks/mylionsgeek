@@ -8,7 +8,7 @@ use App\Http\Controllers\PostController;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,coach,pro'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,coach,pro,studio_responsable'])->prefix('admin')->group(function () {
 
     Route::get('/users', [UsersController::class, 'index']);
     Route::get('/users/export', [UsersController::class, 'export']);
@@ -27,6 +27,7 @@ Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,coach,
     Route::post('/users/{id}/reset-password', [CompleteProfileController::class, 'resetPassword']);
     Route::post('/users/{user}/certificate/download', [CertificateController::class, 'download'])->name('admin.users.certificate.download');
 });
-Route::post('/complete-profile/update/{token}', [CompleteProfileController::class, 'submitCompleteProfile']);
+Route::post('/complete-profile/update/{token}', [CompleteProfileController::class, 'submitCompleteProfile'])
+    ->name('user.complete-profile.update');
 Route::get('/complete-profile/{token}', [CompleteProfileController::class, 'goToCompleteProfile'])
     ->name('user.complete-profile');

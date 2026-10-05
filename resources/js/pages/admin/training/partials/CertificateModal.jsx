@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { programStatusLabel, PROGRAM_STATUS } from '@/components/helpers/userDemographics';
 import { saveAs } from 'file-saver';
 import {
     AlertTriangle,
@@ -12,10 +13,11 @@ import {
     ChevronRight,
     Download,
     Loader2,
+    Mail,
     Users,
     XCircle,
 } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 /* ─────────────────────────────────────────────
    Helpers
@@ -28,12 +30,44 @@ const resolveTrack = (field) => {
     return null;
 };
 
+const isGeekLabTraining = (training) =>
+    String(training?.name || '')
+        .toLowerCase()
+        .includes('geeklab');
+
 const trackMeta = (field) => {
     const t = resolveTrack(field);
     if (t === 'coding') return { label: 'Coding · Web Dev', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' };
     if (t === 'media') return { label: 'UGC · Digital Marketing', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' };
     return null;
 };
+
+/**
+ * Why a student cannot be certified, or null when they can be.
+ * Students who left the program are never eligible.
+ */
+const ineligibilityReason = (student) => {
+    if (student?.program_status === PROGRAM_STATUS.LEFT) {
+        return 'Left the program — cannot be certified';
+    }
+
+    if (
+        !student?.program_status &&
+        String(student?.status ?? '')
+            .trim()
+            .toLowerCase() === 'left'
+    ) {
+        return 'Left the program — cannot be certified';
+    }
+
+    if (!resolveTrack(student?.field)) {
+        return 'No valid track — will be skipped';
+    }
+
+    return null;
+};
+
+const isEligible = (student) => ineligibilityReason(student) === null;
 
 const attendanceColor = (pct) => {
     if (pct >= 80) return { bar: 'bg-green-500', text: 'text-green-600 dark:text-green-400' };
@@ -65,15 +99,18 @@ const AttendancePill = ({ score }) => {
 
 const StudentCard = ({ student, checked, onToggle }) => {
     const track = trackMeta(student.field);
-    const invalidTrack = !resolveTrack(student.field);
+    const blockedReason = ineligibilityReason(student);
+    const statusLabel = programStatusLabel(student.program_status);
 
     return (
         <label
             htmlFor={`cert-${student.id}`}
-            className={`group relative flex cursor-pointer items-center gap-3 rounded-xl border p-3.5 transition-all duration-150 select-none ${
+            className={`group relative flex items-center gap-3 rounded-xl border p-3.5 transition-all duration-150 select-none ${
+                blockedReason ? 'cursor-not-allowed' : 'cursor-pointer'
+            } ${
                 checked
                     ? 'border-alpha bg-alpha/8 shadow-sm shadow-alpha/15'
-                    : invalidTrack
+                    : blockedReason
                       ? 'border-dashed border-red-300/40 bg-red-500/5 opacity-70 dark:border-red-500/20'
                       : 'border-alpha/10 bg-light hover:border-alpha/30 hover:bg-alpha/5 dark:bg-dark dark:hover:border-alpha/25'
             }`}
@@ -82,7 +119,7 @@ const StudentCard = ({ student, checked, onToggle }) => {
                 id={`cert-${student.id}`}
                 checked={checked}
                 onCheckedChange={onToggle}
-                disabled={invalidTrack}
+                disabled={Boolean(blockedReason)}
                 className="h-4 w-4 flex-shrink-0 data-[state=checked]:border-alpha data-[state=checked]:bg-alpha"
             />
 
@@ -97,16 +134,22 @@ const StudentCard = ({ student, checked, onToggle }) => {
             <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold leading-tight text-dark dark:text-light">{student.name}</p>
 
-                {track && !invalidTrack && (
+                {track && !blockedReason && (
                     <span className={`mt-1 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${track.color}`}>
                         {track.label}
                     </span>
                 )}
 
-                {invalidTrack && (
+                {statusLabel && (
+                    <span className="mt-1 inline-block rounded-md bg-dark/8 px-1.5 py-0.5 text-[10px] font-semibold text-dark/70 dark:bg-light/10 dark:text-light/70">
+                        {statusLabel}
+                    </span>
+                )}
+
+                {blockedReason && (
                     <p className="mt-0.5 flex items-center gap-1 text-[10px] font-medium text-red-500">
                         <XCircle className="h-3 w-3" />
-                        No valid track — will be skipped
+                        {blockedReason}
                     </p>
                 )}
 
@@ -128,25 +171,46 @@ const StudentCard = ({ student, checked, onToggle }) => {
 ───────────────────────────────────────────── */
 export default function CertificateModal({ open, onOpenChange, training }) {
     const students = training?.users ?? training?.students ?? [];
-    const eligibleStudents = students.filter((s) => resolveTrack(s.field));
+    const eligibleStudents = useMemo(() => students.filter(isEligible), [students]);
+    const isGeekLab = isGeekLabTraining(training);
 
     const [selectedIds, setSelectedIds] = useState([]);
     const [issuedDate, setIssuedDate] = useState(todayIso);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [activeAction, setActiveAction] = useState(null); // 'email' | 'zip' | null
     const [warnings, setWarnings] = useState([]);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
 
     const allEligibleSelected =
         eligibleStudents.length > 0 && eligibleStudents.every((s) => selectedIds.includes(s.id));
 
-    const toggleSelectAll = useCallback(() => {
-        setSelectedIds(allEligibleSelected ? [] : eligibleStudents.map((s) => s.id));
-    }, [allEligibleSelected, eligibleStudents]);
+    const eligibleIds = useMemo(() => eligibleStudents.map((s) => s.id), [eligibleStudents]);
 
-    const toggleStudent = useCallback((id) => {
-        setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-    }, []);
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+
+        setSelectedIds((prev) => prev.filter((id) => eligibleIds.includes(id)));
+    }, [open, eligibleIds]);
+
+    const toggleSelectAll = useCallback(() => {
+        setSelectedIds(allEligibleSelected ? [] : eligibleIds);
+    }, [allEligibleSelected, eligibleIds]);
+
+    const toggleStudent = useCallback(
+        (id) => {
+            const student = students.find((s) => s.id === id);
+            if (student && !isEligible(student)) {
+                return;
+            }
+
+            setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+        },
+        [students],
+    );
 
     const resetForm = useCallback(() => {
         setSelectedIds([]);
@@ -154,29 +218,75 @@ export default function CertificateModal({ open, onOpenChange, training }) {
         setWarnings([]);
         setError('');
         setSuccess(false);
+        setSuccessMessage('');
+        setActiveAction(null);
     }, []);
 
-    const handleConfirm = async () => {
-        if (selectedIds.length === 0 || !issuedDate || isGenerating) return;
+    const handleConfirm = async (action = 'zip') => {
+        if (selectedIds.length === 0 || isGenerating) return;
+        if (!isGeekLab && !issuedDate) return;
+
+        const mode = isGeekLab ? action : 'zip';
 
         setIsGenerating(true);
+        setActiveAction(mode);
         setError('');
         setWarnings([]);
         setSuccess(false);
+        setSuccessMessage('');
+
+        const endpoint =
+            mode === 'email'
+                ? `/trainings/${training.id}/certificates/email`
+                : `/trainings/${training.id}/certificates/zip`;
 
         try {
-            const response = await fetch(`/trainings/${training.id}/certificates/zip`, {
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Accept: 'application/json, application/zip',
+                    Accept: mode === 'email' ? 'application/json' : 'application/json, application/zip',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
                     'X-Requested-With': 'XMLHttpRequest',
                 },
-                body: JSON.stringify({ user_ids: selectedIds, issued_date: issuedDate }),
+                body: JSON.stringify({
+                    user_ids: selectedIds,
+                    issued_date: isGeekLab ? todayIso() : issuedDate,
+                }),
             });
 
             let parsedWarnings = [];
+
+            if (mode === 'email') {
+                const data = await response.json().catch(() => ({}));
+
+                if (Array.isArray(data?.skipped) && data.skipped.length > 0) {
+                    parsedWarnings = data.skipped;
+                    setWarnings(data.skipped);
+                }
+
+                if (!response.ok) {
+                    throw new Error(data?.error || `Request failed (${response.status})`);
+                }
+
+                setSuccessMessage(
+                    data?.message ||
+                        `${data?.queued ?? selectedIds.length} certificat(s) généré(s) et e-mail(s) mis en file d’attente.`,
+                );
+
+                if (parsedWarnings.length === 0) {
+                    setSuccess(true);
+                    setTimeout(() => {
+                        resetForm();
+                        onOpenChange(false);
+                    }, 1600);
+                } else {
+                    setSuccess(true);
+                }
+
+                return;
+            }
+
             const warningsHeader = response.headers.get('X-Certificate-Warnings');
             if (warningsHeader) {
                 try {
@@ -206,6 +316,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
 
             const zipBlob = await response.blob();
             saveAs(zipBlob, `certificates-${training.id}.zip`);
+            setSuccessMessage('Certificates generated! Your download is starting…');
 
             if (parsedWarnings.length === 0) {
                 setSuccess(true);
@@ -213,12 +324,15 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                     resetForm();
                     onOpenChange(false);
                 }, 1400);
+            } else {
+                setSuccess(true);
             }
         } catch (err) {
             console.error('Certificate generation failed:', err);
             setError(err?.message || 'Certificate generation failed. Please try again.');
         } finally {
             setIsGenerating(false);
+            setActiveAction(null);
         }
     };
 
@@ -230,7 +344,13 @@ export default function CertificateModal({ open, onOpenChange, training }) {
     };
 
     const datePreview = formatPreviewDate(issuedDate);
-    const selectionPct = eligibleStudents.length > 0 ? (selectedIds.length / eligibleStudents.length) * 100 : 0;
+    const selectionPct = students.length > 0 ? (selectedIds.length / students.length) * 100 : 0;
+
+    // Printing marks every unselected student who is still active as Completed,
+    // so show that count up front — it is not reversible from this screen.
+    const willBeCompletedCount = students.filter(
+        (student) => student.program_status === PROGRAM_STATUS.ACTIVE && !selectedIds.includes(student.id),
+    ).length;
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -249,7 +369,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                                 </div>
                                 <div>
                                     <h2 className="text-lg font-bold leading-tight text-dark dark:text-light">
-                                        Print Certificates
+                                        {isGeekLab ? 'Send GeekLab Certificates' : 'Print Certificates'}
                                     </h2>
                                     {training?.name && (
                                         <p className="mt-0.5 flex items-center gap-1.5 text-xs text-dark/50 dark:text-light/50">
@@ -266,7 +386,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                                     <Users className="h-4 w-4 text-alpha" />
                                     <span className="text-alpha">{selectedIds.length}</span>
                                     <span className="text-dark/30 dark:text-light/30">/</span>
-                                    <span className="text-dark/60 dark:text-light/60">{eligibleStudents.length}</span>
+                                    <span className="text-dark/60 dark:text-light/60">{students.length}</span>
                                 </div>
                                 {/* progress bar */}
                                 <div className="h-1.5 w-28 overflow-hidden rounded-full bg-alpha/10">
@@ -280,27 +400,29 @@ export default function CertificateModal({ open, onOpenChange, training }) {
 
                         {/* Date + Select-all row */}
                         <div className="mt-5 flex flex-wrap items-end gap-4">
-                            <div className="min-w-[180px]">
-                                <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-dark/60 uppercase tracking-wider dark:text-light/60">
-                                    <Calendar className="h-3.5 w-3.5" />
-                                    Issue Date
-                                </label>
-                                <div className="relative">
-                                    <Input
-                                        type="date"
-                                        value={issuedDate}
-                                        onChange={(e) => setIssuedDate(e.target.value)}
-                                        disabled={isGenerating}
-                                        className="h-9 border-alpha/20 bg-light pr-3 text-sm focus-visible:ring-alpha dark:bg-dark"
-                                    />
+                            {!isGeekLab && (
+                                <div className="min-w-[180px]">
+                                    <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-dark/60 uppercase tracking-wider dark:text-light/60">
+                                        <Calendar className="h-3.5 w-3.5" />
+                                        Issue Date
+                                    </label>
+                                    <div className="relative">
+                                        <Input
+                                            type="date"
+                                            value={issuedDate}
+                                            onChange={(e) => setIssuedDate(e.target.value)}
+                                            disabled={isGenerating}
+                                            className="h-9 border-alpha/20 bg-light pr-3 text-sm focus-visible:ring-alpha dark:bg-dark"
+                                        />
+                                    </div>
+                                    {datePreview && (
+                                        <p className="mt-1.5 flex items-center gap-1 text-[11px] text-dark/45 dark:text-light/45">
+                                            <span className="font-medium text-alpha">On certificate:</span>
+                                            {datePreview}
+                                        </p>
+                                    )}
                                 </div>
-                                {datePreview && (
-                                    <p className="mt-1.5 flex items-center gap-1 text-[11px] text-dark/45 dark:text-light/45">
-                                        <span className="font-medium text-alpha">On certificate:</span>
-                                        {datePreview}
-                                    </p>
-                                )}
-                            </div>
+                            )}
 
                             <div className="flex flex-1 justify-end">
                                 <button
@@ -320,7 +442,10 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                 {success && (
                     <div className="flex items-center gap-2 border-b border-green-500/20 bg-green-500/10 px-6 py-3 text-sm font-medium text-green-700 dark:text-green-300">
                         <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-                        Certificates generated! Your download is starting…
+                        {successMessage ||
+                            (isGeekLab
+                                ? 'Certificates queued for email…'
+                                : 'Certificates generated! Your download is starting…')}
                     </div>
                 )}
 
@@ -328,6 +453,18 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                     <div className="flex items-start gap-2 border-b border-red-500/20 bg-red-500/8 px-6 py-3 text-sm text-red-700 dark:text-red-300">
                         <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                         <span>{error}</span>
+                    </div>
+                )}
+
+                {!success && willBeCompletedCount > 0 && (
+                    <div className="flex items-start gap-2 border-b border-amber-500/20 bg-amber-500/8 px-6 py-3 text-sm text-amber-800 dark:text-amber-200">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                        <span>
+                            <span className="font-semibold">{willBeCompletedCount}</span> unselected student
+                            {willBeCompletedCount > 1 ? 's' : ''} will be marked{' '}
+                            <span className="font-semibold">Completed</span> (finished without a certificate). Select
+                            them too if they are still training.
+                        </span>
                     </div>
                 )}
 
@@ -376,7 +513,9 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                 {/* ── Footer ── */}
                 <div className="flex items-center justify-between gap-3 border-t border-alpha/10 bg-light/60 px-6 py-4 backdrop-blur dark:bg-dark/60">
                     <p className="hidden text-xs text-dark/40 sm:block dark:text-light/40">
-                        Each selected student gets an individual PDF · packaged as a ZIP
+                        {isGeekLab
+                            ? 'Download ZIP or email PDFs · students certified immediately'
+                            : 'Each selected student gets an individual PDF · packaged as a ZIP'}
                     </p>
                     <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
                         <Button
@@ -388,21 +527,54 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                         >
                             Cancel
                         </Button>
+
+                        {isGeekLab && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => handleConfirm('zip')}
+                                disabled={selectedIds.length === 0 || isGenerating || success}
+                                className="min-w-[140px] gap-2 border-alpha/30 font-semibold text-alpha hover:bg-alpha/10 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {isGenerating && activeAction === 'zip' ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Generating…
+                                    </>
+                                ) : success && activeAction !== 'email' ? (
+                                    <>
+                                        <CheckCircle2 className="h-4 w-4" />
+                                        Done!
+                                    </>
+                                ) : (
+                                    <>
+                                        <Download className="h-4 w-4" />
+                                        Download ({selectedIds.length})
+                                    </>
+                                )}
+                            </Button>
+                        )}
+
                         <Button
                             type="button"
-                            onClick={handleConfirm}
-                            disabled={selectedIds.length === 0 || !issuedDate || isGenerating || success}
+                            onClick={() => handleConfirm(isGeekLab ? 'email' : 'zip')}
+                            disabled={selectedIds.length === 0 || (!isGeekLab && !issuedDate) || isGenerating || success}
                             className="min-w-[140px] gap-2 border border-alpha bg-alpha font-semibold text-beta transition hover:bg-transparent hover:text-alpha disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            {isGenerating ? (
+                            {isGenerating && (!isGeekLab || activeAction === 'email') ? (
                                 <>
                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                    Generating…
+                                    {isGeekLab ? 'Sending…' : 'Generating…'}
                                 </>
                             ) : success ? (
                                 <>
                                     <CheckCircle2 className="h-4 w-4" />
                                     Done!
+                                </>
+                            ) : isGeekLab ? (
+                                <>
+                                    <Mail className="h-4 w-4" />
+                                    Send ({selectedIds.length})
                                 </>
                             ) : (
                                 <>

@@ -9,7 +9,7 @@ use App\Http\Controllers\UsersController;
 use App\Http\Controllers\UserSocialLinkController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified', 'role:admin,coach,student,studio_responsable'])->prefix('students')->group(function () {
+Route::middleware(['auth', 'verified'])->prefix('students')->group(function () {
     Route::get('/feed', [StudentController::class, 'index'])->name('student.feed');
 });
 

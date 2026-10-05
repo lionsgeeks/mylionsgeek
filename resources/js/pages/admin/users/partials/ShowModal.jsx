@@ -8,6 +8,7 @@ import { useInitials } from '@/hooks/use-initials';
 import { router, usePage } from '@inertiajs/react';
 import React, { useEffect, useMemo, useState } from 'react';
 import DeleteModal from '../../../../components/DeleteModal';
+import Rolegard from '@/components/rolegard';
 import { timeAgo } from '../../../../lib/utils';
 import LineStatistic from './components/LineChart';
 const User = ({ user, trainings, close, open }) => {
@@ -291,31 +292,25 @@ const User = ({ user, trainings, close, open }) => {
                                     </div>
 
                                     {/* Quick Actions */}
-                                    <div className="mt-6 flex w-full flex-col gap-2 space-y-2">
-                                        {/* <Button
-                                            disabled={processing}
-                                            onClick={() => router.visit(`/admin/users/${user.id}`)}
-                                            className="w-full"
-                                            size="sm"
-                                        >
-                                            Open Full Profile
-                                        </Button> */}
-                                        <Button
-                                            disabled={processing}
-                                            onClick={() => setSusupendAccount(true)}
-                                            variant={user.account_state ? 'default' : 'danger'}
-                                            className="w-full hover:text-black"
-                                            size="sm"
-                                        >
-                                            {user.account_state ? 'Activate Account' : 'Suspend Account'}
-                                        </Button>
-                                        <Button
-                                            className="cursor-pointer border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
-                                            onClick={() => router.get(`/admin/users/${user.id}`)}
-                                        >
-                                            View Full Profile
-                                        </Button>
-                                    </div>
+                                    <Rolegard authorized={['admin', 'super_admin']}>
+                                        <div className="mt-6 flex w-full flex-col gap-2 space-y-2">
+                                            <Button
+                                                disabled={processing}
+                                                onClick={() => setSusupendAccount(true)}
+                                                variant={user.account_state ? 'default' : 'danger'}
+                                                className="w-full hover:text-black"
+                                                size="sm"
+                                            >
+                                                {user.account_state ? 'Activate Account' : 'Suspend Account'}
+                                            </Button>
+                                            <Button
+                                                className="cursor-pointer border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
+                                                onClick={() => router.get(`/admin/users/${user.id}`)}
+                                            >
+                                                View Full Profile
+                                            </Button>
+                                        </div>
+                                    </Rolegard>
                                 </div>
                             </div>
                         </div>

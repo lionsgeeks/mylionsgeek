@@ -1,11 +1,21 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    canAssignProgramStatusLeft,
+    canViewHealthData,
+    HANDICAP_OPTIONS,
+    handicapSelectValue,
+    PROGRAM_STATUS,
+    PROGRAM_STATUS_CERTIFICATE_OUTCOME_OPTIONS,
+    programStatusLabel,
+} from '@/components/helpers/userDemographics';
 import AppLayout from '@/layouts/app-layout';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import FullCalendar from '@fullcalendar/react';
+import { defaultUnresolvedSlotValue, SLOT_ORDER } from '@/lib/attendance-slots';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
     Award,
@@ -21,6 +31,7 @@ import {
     RefreshCw,
     Settings,
     User,
+    UserCheck,
     UserPlus,
     Users,
 } from 'lucide-react';
@@ -34,6 +45,9 @@ import RolesMultiSelect from '@/pages/admin/users/partials/RolesMultiSelect';
 import CertificateModal from './partials/CertificateModal';
 import TrainingProgrammeGrid from './components/TrainingProgrammeGrid';
 import GeekyWheel from './partials/geekyWheel';
+import TrainingStatsCards from './partials/TrainingStatsCards';
+
+const MIXED_SELECT_VALUE = '__mixed__';
 
 
 export default function Show({ training, usersNull, courses = [], coaches = [] }) {
@@ -43,8 +57,15 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
     const isTrainingCoach = auth?.user?.id && training?.coach?.id ? auth.user.id === training.coach.id : false;
     const isAdminRole = userRoles.some((r) => ['admin', 'super_admin'].includes(r));
     const canPrintCertificates = isAdminRole || (isCoachRole && isTrainingCoach);
-    const trainingStatus = String(training?.status || '').toLowerCase();
-    const isActiveTraining = !trainingStatus || trainingStatus === 'active';
+    const canAssignProgramStatusLeftOnTraining = canAssignProgramStatusLeft(userRoles, {
+        requireTrainingCoach: true,
+        isTrainingCoach,
+    });
+    // Admin always; coach only when assigned to this training.
+    const canManageTrainingUsers = isAdminRole || (isCoachRole && isTrainingCoach);
+    const canEditHealthData = canViewHealthData(userRoles) || (isCoachRole && isTrainingCoach);
+    // Staff-controlled gate (formations.is_active). Replaces the old nonexistent training.status field.
+    const isActiveTraining = !!training?.is_active;
     const [students, setStudents] = useState(training.users || []);
     const [availableUsers, setAvailableUsers] = useState(usersNull || []);
     const [filter, setFilter] = useState('');
@@ -75,7 +96,8 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
     const [showBulkUpdateModal, setShowBulkUpdateModal] = useState(false);
     const [selectedUserIds, setSelectedUserIds] = useState([]);
     const [bulkRoles, setBulkRoles] = useState([]);
-    const [bulkStatus, setBulkStatus] = useState('');
+    const [bulkProgramStatus, setBulkProgramStatus] = useState('');
+    const [bulkHasHandicap, setBulkHasHandicap] = useState('');
     const [qrCodeDate, setQrCodeDate] = useState(new Date().toISOString().split('T')[0]);
     const [showCertificateModal, setShowCertificateModal] = useState(false);
 
@@ -86,8 +108,36 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
         if (v === 'absent') return 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400';
         if (v === 'late') return 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-alpha';
         if (v === 'excused') return 'border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400';
+        if (v === 'pending') return 'border-gray-400/40 bg-gray-400/10 text-gray-600 dark:text-gray-400';
         return '';
     };
+
+    // Keep local roster in sync after Inertia reloads (bulk update, add/remove student).
+    useEffect(() => {
+        setStudents(training.users || []);
+    }, [training.users]);
+
+    // Prefill selects with the current value(s) of the selected students.
+    useEffect(() => {
+        const selected = students.filter((student) => selectedUserIds.includes(student.id));
+        if (selected.length === 0) {
+            setBulkProgramStatus('');
+            setBulkHasHandicap('');
+            return;
+        }
+
+        const programStatuses = selected.map((student) => student.program_status || PROGRAM_STATUS.ACTIVE);
+        const uniqueProgramStatuses = [...new Set(programStatuses)];
+        setBulkProgramStatus(uniqueProgramStatuses.length === 1 ? uniqueProgramStatuses[0] : MIXED_SELECT_VALUE);
+
+        if (canEditHealthData) {
+            const handicaps = selected.map((student) => handicapSelectValue(student.has_handicap));
+            const uniqueHandicaps = [...new Set(handicaps)];
+            setBulkHasHandicap(uniqueHandicaps.length === 1 ? uniqueHandicaps[0] : MIXED_SELECT_VALUE);
+        } else {
+            setBulkHasHandicap('');
+        }
+    }, [selectedUserIds, students, canEditHealthData]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -205,44 +255,20 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
             students.forEach((s) => {
                 const key = `${dateStr}-${s.id}`;
                 const saved = byUserId.get(s.id);
-                const base = getDefaultSlots(s);
+                const base = getDefaultSlots(s, dateStr);
+                const studentMarkedSlots = Array.isArray(saved?.student_marked_slots) ? saved.student_marked_slots : [];
 
                 initialized[key] = {
-                    morning: saved?.morning ?? base.morning,
-                    lunch: saved?.lunch ?? base.lunch,
-                    evening: saved?.evening ?? base.evening,
+                    morning: resolveSlotDisplayValue('morning', saved, base, studentMarkedSlots),
+                    lunch: resolveSlotDisplayValue('lunch', saved, base, studentMarkedSlots),
+                    evening: resolveSlotDisplayValue('evening', saved, base, studentMarkedSlots),
                     notes: saved?.note ? String(saved.note).split(' | ').filter(Boolean) : base.notes,
                     user_id: s.id,
+                    studentMarkedSlots,
                 };
             });
 
             setAttendanceData((prev) => ({ ...prev, ...initialized }));
-
-            if (existing.length === 0) {
-                const dataToSave = students.map((s) => {
-                    const base = getDefaultSlots(s);
-                    return {
-                        user_id: s.id,
-                        attendance_day: dateStr,
-                        attendance_id: Number(data.attendance_id),
-                        morning: base.morning,
-                        lunch: base.lunch,
-                        evening: base.evening,
-                        note: null,
-                    };
-                });
-
-                fetch('/admin/attendance/save', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrf,
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({ attendance: dataToSave }),
-                }).catch(() => { });
-            }
 
             setShowAttendanceList(true);
         } catch (err) { }
@@ -260,7 +286,7 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
             return {
                 user_id: studentId,
                 attendance_day: selectedDate,
-                attendance_id: Number(currentAttendanceId),
+                attendance_id: currentAttendanceId ? Number(currentAttendanceId) : null,
                 morning: value.morning,
                 lunch: value.lunch,
                 evening: value.evening,
@@ -269,7 +295,7 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
         });
 
         try {
-            if (!currentAttendanceId || !selectedDate) return;
+            if (!selectedDate) return;
             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
             const res = await fetch('/admin/attendance/save', {
                 method: 'POST',
@@ -279,9 +305,16 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 credentials: 'same-origin',
-                body: JSON.stringify({ attendance: dataToSave }),
+                body: JSON.stringify({
+                    formation_id: training.id,
+                    attendance: dataToSave,
+                }),
             });
             if (!res.ok) return;
+            const saveResult = await res.json().catch(() => ({}));
+            if (saveResult?.attendance_id) {
+                setCurrentAttendanceId(saveResult.attendance_id);
+            }
             setShowAttendanceList(false);
             try {
                 const evRes = await fetch(`/training/${training.id}/attendance-events`);
@@ -345,12 +378,75 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
         setShowWinnerModal(false);
     };
 
-    const getDefaultSlots = (student) => {
-        const status = String(student?.status || '').toLowerCase();
-        if (status === 'left') {
+    const getDefaultSlots = (student, dateStr = selectedDate) => {
+        const legacyLeft = String(student?.status || '').toLowerCase() === 'left';
+        const programLeft = student?.program_status === PROGRAM_STATUS.LEFT;
+
+        if (legacyLeft || programLeft) {
             return { morning: 'absent', lunch: 'absent', evening: 'absent', notes: [] };
         }
-        return { morning: 'present', lunch: 'present', evening: 'present', notes: [] };
+
+        const slots = { notes: [] };
+        for (const slot of SLOT_ORDER) {
+            slots[slot] = defaultUnresolvedSlotValue();
+        }
+        return slots;
+    };
+
+    const isStudentCheckInNote = (note) => /^Check-in at \d{2}:\d{2}$/.test(String(note ?? '').trim());
+
+    const resolveSlotDisplayValue = (slot, saved, base, studentMarkedSlots) => {
+        if (studentMarkedSlots.includes(slot)) {
+            return saved?.[slot] ?? base[slot];
+        }
+        const savedValue = saved?.[slot];
+        if (savedValue !== null && savedValue !== undefined && String(savedValue).trim() !== '') {
+            return savedValue;
+        }
+        return base[slot];
+    };
+
+    const isStudentMarkedSlot = (currentData, slot) => Array.isArray(currentData?.studentMarkedSlots) && currentData.studentMarkedSlots.includes(slot);
+
+    const renderSlotSelect = (studentKey, currentData, slot, placeholder) => {
+        const value = currentData[slot] ?? defaultUnresolvedSlotValue();
+        const studentMarked = isStudentMarkedSlot(currentData, slot);
+
+        return (
+            <div className="relative">
+                {studentMarked && (
+                    <span
+                        className="mb-1 inline-flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300"
+                        title="Student self check-in — preserved on save"
+                    >
+                        <UserCheck className="h-3 w-3" />
+                        Student
+                    </span>
+                )}
+                <Select
+                    value={value}
+                    disabled={studentMarked}
+                    onValueChange={(val) => {
+                        if (studentMarked) return;
+                        const newData = { ...currentData, [slot]: val };
+                        setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
+                    }}
+                >
+                    <SelectTrigger
+                        className={`h-10 rounded-xl border text-sm ${studentMarked ? 'cursor-not-allowed opacity-90' : ''} ${statusClass(value) || 'border-alpha/30'}`}
+                    >
+                        <SelectValue placeholder={placeholder} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="present">Present</SelectItem>
+                        <SelectItem value="absent">Absent</SelectItem>
+                        <SelectItem value="late">Late</SelectItem>
+                        <SelectItem value="excused">Excused</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+        );
     };
     // Notes helpers: add/remove chip-style notes per student
     const addNote = (studentKey, noteText) => {
@@ -385,6 +481,10 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
                 : prevForStudent.notes
                     ? [prevForStudent.notes]
                     : [];
+
+            if (isStudentCheckInNote(existingNotes[index])) {
+                return prev;
+            }
 
             existingNotes.splice(index, 1);
 
@@ -484,13 +584,15 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
                             <CalendarCheck size={16} />
                             <span>Attendance</span>
                         </Button>
-                        <Button
-                            onClick={() => setShowBulkUpdateModal(true)}
-                            className="flex-1 gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)] sm:flex-none"
-                        >
-                            <Settings size={16} />
-                            <span>Update Users</span>
-                        </Button>
+                        {canManageTrainingUsers && (
+                            <Button
+                                onClick={() => setShowBulkUpdateModal(true)}
+                                className="flex-1 gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)] sm:flex-none"
+                            >
+                                <Settings size={16} />
+                                <span>Update Users</span>
+                            </Button>
+                        )}
                         {canPrintCertificates && (
                             <Button
                                 onClick={() => setShowCertificateModal(true)}
@@ -569,6 +671,8 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
                     training={training}
                     coaches={coaches}
                 />
+
+                {students.length > 0 && <TrainingStatsCards students={students} />}
 
                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
                     {/* Left Side – Students List */}
@@ -719,14 +823,19 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
                             </div>
                         )}
 
-                        {/* Status */}
-                        {training.status && (
-                            <div className="rounded-2xl border border-alpha/20 bg-light p-4 text-center dark:bg-dark">
-                                <span className="rounded-full bg-alpha/10 px-4 py-2 text-sm font-bold text-alpha">
-                                    {training.status.toUpperCase()}
-                                </span>
-                            </div>
-                        )}
+                        {/* Active for attendance reminders */}
+                        <div className="rounded-2xl border border-alpha/20 bg-light p-4 text-center dark:bg-dark">
+                            <span
+                                className={`rounded-full px-4 py-2 text-sm font-bold ${
+                                    isActiveTraining ? 'bg-alpha/10 text-alpha' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                                }`}
+                            >
+                                {isActiveTraining ? 'REMINDERS ON' : 'REMINDERS OFF'}
+                            </span>
+                            <p className="mt-2 text-xs text-dark/50 dark:text-light/50">
+                                Toggle via Edit Training on the programs list
+                            </p>
+                        </div>
                     </div>
                 </div>
 
@@ -922,12 +1031,7 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
                                 <div className="block space-y-3 p-3 pr-4 md:hidden">
                                     {students.map((student) => {
                                         const studentKey = `${selectedDate}-${student.id}`;
-                                        const currentData = attendanceData[studentKey] || {
-                                            morning: 'present',
-                                            lunch: 'present',
-                                            evening: 'present',
-                                            notes: '',
-                                        };
+                                        const currentData = attendanceData[studentKey] || getDefaultSlots(student);
                                         return (
                                             <div key={student.id} className="rounded-lg border border-alpha/20 p-3">
                                                 <div className="mb-3 flex items-center gap-3">
@@ -940,65 +1044,9 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
                                                     </div>
                                                 </div>
                                                 <div className="grid grid-cols-1 gap-2">
-                                                    <Select
-                                                        value={currentData.morning ?? 'present'}
-                                                        onValueChange={(val) => {
-                                                            const newData = { ...currentData, morning: val };
-                                                            setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
-                                                        }}
-                                                    >
-                                                        <SelectTrigger
-                                                            className={`h-10 rounded-xl border text-sm ${statusClass(currentData.morning ?? 'present') || 'border-alpha/30'}`}
-                                                        >
-                                                            <SelectValue placeholder="9:30 - 11:00" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="present">Present</SelectItem>
-                                                            <SelectItem value="absent">Absent</SelectItem>
-                                                            <SelectItem value="late">Late</SelectItem>
-                                                            <SelectItem value="excused">Excused</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-
-                                                    <Select
-                                                        value={currentData.lunch ?? 'present'}
-                                                        onValueChange={(val) => {
-                                                            const newData = { ...currentData, lunch: val };
-                                                            setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
-                                                        }}
-                                                    >
-                                                        <SelectTrigger
-                                                            className={`h-10 rounded-xl border text-sm ${statusClass(currentData.lunch ?? 'present') || 'border-alpha/30'}`}
-                                                        >
-                                                            <SelectValue placeholder="11:30 - 13:00" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="present">Present</SelectItem>
-                                                            <SelectItem value="absent">Absent</SelectItem>
-                                                            <SelectItem value="late">Late</SelectItem>
-                                                            <SelectItem value="excused">Excused</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-
-                                                    <Select
-                                                        value={currentData.evening ?? 'present'}
-                                                        onValueChange={(val) => {
-                                                            const newData = { ...currentData, evening: val };
-                                                            setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
-                                                        }}
-                                                    >
-                                                        <SelectTrigger
-                                                            className={`h-10 rounded-xl border text-sm ${statusClass(currentData.evening ?? 'present') || 'border-alpha/30'}`}
-                                                        >
-                                                            <SelectValue placeholder="14:00 - 17:00" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="present">Present</SelectItem>
-                                                            <SelectItem value="absent">Absent</SelectItem>
-                                                            <SelectItem value="late">Late</SelectItem>
-                                                            <SelectItem value="excused">Excused</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
+                                                    {renderSlotSelect(studentKey, currentData, 'morning', '9:30 - 11:00')}
+                                                    {renderSlotSelect(studentKey, currentData, 'lunch', '11:30 - 13:00')}
+                                                    {renderSlotSelect(studentKey, currentData, 'evening', '14:00 - 17:00')}
 
                                                     <div className="flex flex-wrap items-center gap-2 rounded-xl border border-alpha/30 bg-light p-2 dark:bg-dark">
                                                         {Array.isArray(currentData.notes) &&
@@ -1008,13 +1056,15 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
                                                                     className="inline-flex items-center gap-2 rounded-full bg-secondary/50 px-3 py-1 text-xs"
                                                                 >
                                                                     {n}
-                                                                    <button
-                                                                        type="button"
-                                                                        className="text-red-500 hover:text-red-600"
-                                                                        onClick={() => removeNote(studentKey, idx)}
-                                                                    >
-                                                                        ×
-                                                                    </button>
+                                                                    {!isStudentCheckInNote(n) && (
+                                                                        <button
+                                                                            type="button"
+                                                                            className="text-red-500 hover:text-red-600"
+                                                                            onClick={() => removeNote(studentKey, idx)}
+                                                                        >
+                                                                            ×
+                                                                        </button>
+                                                                    )}
                                                                 </span>
                                                             ))}
                                                         <div className="flex w-full items-center gap-2 sm:w-auto">
@@ -1066,12 +1116,7 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
                                             <tbody className="divide-y divide-alpha/10">
                                                 {students.map((student) => {
                                                     const studentKey = `${selectedDate}-${student.id}`;
-                                                    const currentData = attendanceData[studentKey] || {
-                                                        morning: 'present',
-                                                        lunch: 'present',
-                                                        evening: 'present',
-                                                        notes: '',
-                                                    };
+                                                    const currentData = attendanceData[studentKey] || getDefaultSlots(student);
                                                     return (
                                                         <tr key={student.id} className="transition-colors hover:bg-accent/30">
                                                             <td className="px-4 py-3">
@@ -1091,71 +1136,17 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
                                                             </td>
                                                             <td className="px-4 py-3 text-center">
                                                                 <div className="inline-block min-w-[150px]">
-                                                                    <Select
-                                                                        value={currentData.morning ?? 'present'}
-                                                                        onValueChange={(val) => {
-                                                                            const newData = { ...currentData, morning: val };
-                                                                            setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
-                                                                        }}
-                                                                    >
-                                                                        <SelectTrigger
-                                                                            className={`h-10 rounded-xl border text-sm focus:ring-[var(--color-alpha)]/40 ${statusClass(currentData.morning ?? 'present') || 'border-alpha/30'}`}
-                                                                        >
-                                                                            <SelectValue placeholder="Morning" />
-                                                                        </SelectTrigger>
-                                                                        <SelectContent>
-                                                                            <SelectItem value="present">Present</SelectItem>
-                                                                            <SelectItem value="absent">Absent</SelectItem>
-                                                                            <SelectItem value="late">Late</SelectItem>
-                                                                            <SelectItem value="excused">Excused</SelectItem>
-                                                                        </SelectContent>
-                                                                    </Select>
+                                                                    {renderSlotSelect(studentKey, currentData, 'morning', 'Morning')}
                                                                 </div>
                                                             </td>
                                                             <td className="px-4 py-3 text-center">
                                                                 <div className="inline-block min-w-[150px]">
-                                                                    <Select
-                                                                        value={currentData.lunch ?? 'present'}
-                                                                        onValueChange={(val) => {
-                                                                            const newData = { ...currentData, lunch: val };
-                                                                            setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
-                                                                        }}
-                                                                    >
-                                                                        <SelectTrigger
-                                                                            className={`h-10 rounded-xl border text-sm focus:ring-[var(--color-alpha)]/40 ${statusClass(currentData.lunch ?? 'present') || 'border-alpha/30'}`}
-                                                                        >
-                                                                            <SelectValue placeholder="11:30 - 13:00" />
-                                                                        </SelectTrigger>
-                                                                        <SelectContent>
-                                                                            <SelectItem value="present">Present</SelectItem>
-                                                                            <SelectItem value="absent">Absent</SelectItem>
-                                                                            <SelectItem value="late">Late</SelectItem>
-                                                                            <SelectItem value="excused">Excused</SelectItem>
-                                                                        </SelectContent>
-                                                                    </Select>
+                                                                    {renderSlotSelect(studentKey, currentData, 'lunch', '11:30 - 13:00')}
                                                                 </div>
                                                             </td>
                                                             <td className="px-4 py-3 text-center">
                                                                 <div className="inline-block min-w-[150px]">
-                                                                    <Select
-                                                                        value={currentData.evening ?? 'present'}
-                                                                        onValueChange={(val) => {
-                                                                            const newData = { ...currentData, evening: val };
-                                                                            setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
-                                                                        }}
-                                                                    >
-                                                                        <SelectTrigger
-                                                                            className={`h-10 rounded-xl border text-sm focus:ring-[var(--color-alpha)]/40 ${statusClass(currentData.evening ?? 'present') || 'border-alpha/30'}`}
-                                                                        >
-                                                                            <SelectValue placeholder="14:00 - 17:00" />
-                                                                        </SelectTrigger>
-                                                                        <SelectContent>
-                                                                            <SelectItem value="present">Present</SelectItem>
-                                                                            <SelectItem value="absent">Absent</SelectItem>
-                                                                            <SelectItem value="late">Late</SelectItem>
-                                                                            <SelectItem value="excused">Excused</SelectItem>
-                                                                        </SelectContent>
-                                                                    </Select>
+                                                                    {renderSlotSelect(studentKey, currentData, 'evening', '14:00 - 17:00')}
                                                                 </div>
                                                             </td>
 
@@ -1269,11 +1260,15 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
                 )}
 
                 {/* Bulk Update Users Modal */}
+                {canManageTrainingUsers && (
                 <Dialog open={showBulkUpdateModal} onOpenChange={setShowBulkUpdateModal}>
                     <DialogContent className="max-h-[80vh] w-full max-w-2xl overflow-y-auto border border-alpha/20 bg-light text-dark dark:bg-dark dark:text-light">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-semibold">Update Users - {training.name}</DialogTitle>
-                            <p className="text-sm text-dark/70 dark:text-light/70">Select users and update their roles and/or status</p>
+                            <p className="text-sm text-dark/70 dark:text-light/70">
+                                Select users and update their{isAdminRole ? ' roles,' : ''} program status
+                                {canEditHealthData ? ', and/or handicap' : ''}
+                            </p>
                         </DialogHeader>
 
                         <div className="mt-4 space-y-6">
@@ -1321,8 +1316,23 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
                                                 <p className="font-semibold text-dark dark:text-light">{student.name}</p>
                                                 <p className="text-xs text-dark/70 dark:text-light/70">{student.email}</p>
                                                 <div className="mt-1 text-xs text-dark/60 dark:text-light/60">
-                                                    Role: {Array.isArray(student.role) ? student.role.join(', ') : student.role || 'N/A'} | Status:{' '}
-                                                    {student.status || 'N/A'}
+                                                    Role: {Array.isArray(student.role) ? student.role.join(', ') : student.role || 'N/A'} | Program status:{' '}
+                                                    {programStatusLabel(student.program_status) || 'N/A'}
+                                                    {canEditHealthData && (
+                                                        <>
+                                                            {' '}
+                                                            | Handicap:{' '}
+                                                            {student.has_handicap === true ||
+                                                            student.has_handicap === 1 ||
+                                                            student.has_handicap === '1'
+                                                                ? 'Oui'
+                                                                : student.has_handicap === false ||
+                                                                    student.has_handicap === 0 ||
+                                                                    student.has_handicap === '0'
+                                                                  ? 'Non'
+                                                                  : 'N/A'}
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -1333,31 +1343,72 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
                             {/* Update Options */}
                             {selectedUserIds.length > 0 && (
                                 <div className="space-y-4 border-t border-alpha/20 pt-4">
-                                    <div>
-                                        <label className="mb-2 block text-sm font-medium">Update Roles (optional)</label>
-                                        <RolesMultiSelect roles={bulkRoles} onChange={setBulkRoles} />
-                                        <p className="mt-1 text-xs text-dark/60 dark:text-light/60">Leave empty to keep existing roles</p>
-                                    </div>
+                                    {isAdminRole && (
+                                        <div>
+                                            <label className="mb-2 block text-sm font-medium">Update Roles (optional)</label>
+                                            <RolesMultiSelect roles={bulkRoles} onChange={setBulkRoles} />
+                                            <p className="mt-1 text-xs text-dark/60 dark:text-light/60">Leave empty to keep existing roles</p>
+                                        </div>
+                                    )}
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium">Update Status (optional)</label>
+                                        <label className="mb-2 block text-sm font-medium">Program status</label>
                                         <Select
-                                            value={bulkStatus || undefined}
-                                            onValueChange={(value) => setBulkStatus(value === 'keep-existing' ? '' : value)}
+                                            value={bulkProgramStatus || undefined}
+                                            onValueChange={(value) => setBulkProgramStatus(value)}
                                         >
                                             <SelectTrigger className="w-full">
-                                                <SelectValue placeholder="Select status (optional)" />
+                                                <SelectValue placeholder="Select program status" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="keep-existing">Keep existing status</SelectItem>
-                                                <SelectItem value="Working">Working</SelectItem>
-                                                <SelectItem value="Studying">Studying</SelectItem>
-                                                <SelectItem value="Internship">Internship</SelectItem>
-                                                <SelectItem value="Unemployed">Unemployed</SelectItem>
-                                                <SelectItem value="Freelancing">Freelancing</SelectItem>
+                                                {bulkProgramStatus === MIXED_SELECT_VALUE && (
+                                                    <SelectItem value={MIXED_SELECT_VALUE} disabled>
+                                                        Multiple values — pick one to apply to all
+                                                    </SelectItem>
+                                                )}
+                                                <SelectItem value={PROGRAM_STATUS.ACTIVE}>Active</SelectItem>
+                                                {(canAssignProgramStatusLeftOnTraining ||
+                                                    bulkProgramStatus === PROGRAM_STATUS.LEFT) && (
+                                                    <SelectItem value={PROGRAM_STATUS.LEFT}>Left</SelectItem>
+                                                )}
+                                                <SelectGroup>
+                                                    <SelectLabel>Certificate &amp; Not Certificate</SelectLabel>
+                                                    {PROGRAM_STATUS_CERTIFICATE_OUTCOME_OPTIONS.map((option) => (
+                                                        <SelectItem key={option.value} value={option.value}>
+                                                            {option.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectGroup>
                                             </SelectContent>
                                         </Select>
                                     </div>
+
+                                    {canEditHealthData && (
+                                        <div>
+                                            <label className="mb-2 block text-sm font-medium">Handicap</label>
+                                            <Select
+                                                value={bulkHasHandicap || undefined}
+                                                onValueChange={(value) => setBulkHasHandicap(value)}
+                                            >
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="Select handicap" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {bulkHasHandicap === MIXED_SELECT_VALUE && (
+                                                        <SelectItem value={MIXED_SELECT_VALUE} disabled>
+                                                            Multiple values — pick one to apply to all
+                                                        </SelectItem>
+                                                    )}
+                                                    <SelectItem value="none">Not set</SelectItem>
+                                                    {HANDICAP_OPTIONS.map((option) => (
+                                                        <SelectItem key={option.value} value={option.value}>
+                                                            {option.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -1369,7 +1420,8 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
                                     setShowBulkUpdateModal(false);
                                     setSelectedUserIds([]);
                                     setBulkRoles([]);
-                                    setBulkStatus('');
+                                    setBulkProgramStatus('');
+                                    setBulkHasHandicap('');
                                 }}
                             >
                                 Cancel
@@ -1384,12 +1436,33 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
                                         user_ids: selectedUserIds,
                                     };
 
-                                    if (bulkRoles.length > 0) {
+                                    if (isAdminRole && bulkRoles.length > 0) {
                                         formData.roles = bulkRoles;
                                     }
 
-                                    if (bulkStatus && bulkStatus !== 'keep-existing') {
-                                        formData.status = bulkStatus;
+                                    const hasConcreteProgramStatus =
+                                        bulkProgramStatus &&
+                                        bulkProgramStatus !== MIXED_SELECT_VALUE &&
+                                        bulkProgramStatus !== 'keep-existing';
+                                    if (hasConcreteProgramStatus) {
+                                        formData.program_status = bulkProgramStatus;
+                                    }
+
+                                    const hasConcreteHandicap =
+                                        canEditHealthData &&
+                                        bulkHasHandicap &&
+                                        bulkHasHandicap !== MIXED_SELECT_VALUE &&
+                                        bulkHasHandicap !== 'keep-existing';
+                                    if (hasConcreteHandicap) {
+                                        formData.has_handicap = bulkHasHandicap === 'none' ? '' : bulkHasHandicap;
+                                    }
+
+                                    const willUpdate =
+                                        (isAdminRole && bulkRoles.length > 0) ||
+                                        hasConcreteProgramStatus ||
+                                        hasConcreteHandicap;
+                                    if (!willUpdate) {
+                                        return;
                                     }
 
                                     router.post(`/trainings/${training.id}/bulk-update-users`, formData, {
@@ -1397,14 +1470,25 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
                                             setShowBulkUpdateModal(false);
                                             setSelectedUserIds([]);
                                             setBulkRoles([]);
-                                            setBulkStatus('');
+                                            setBulkProgramStatus('');
+                                            setBulkHasHandicap('');
                                         },
                                         onError: (errors) => {
                                             console.error('Update error:', errors);
                                         },
                                     });
                                 }}
-                                disabled={selectedUserIds.length === 0 || (bulkRoles.length === 0 && (!bulkStatus || bulkStatus === 'keep-existing'))}
+                                disabled={
+                                    selectedUserIds.length === 0 ||
+                                    (!(isAdminRole && bulkRoles.length > 0) &&
+                                        (!bulkProgramStatus ||
+                                            bulkProgramStatus === MIXED_SELECT_VALUE ||
+                                            bulkProgramStatus === 'keep-existing') &&
+                                        (!canEditHealthData ||
+                                            !bulkHasHandicap ||
+                                            bulkHasHandicap === MIXED_SELECT_VALUE ||
+                                            bulkHasHandicap === 'keep-existing'))
+                                }
                                 className="border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)] disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 Update {selectedUserIds.length} User{selectedUserIds.length !== 1 ? 's' : ''}
@@ -1412,6 +1496,7 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
                         </div>
                     </DialogContent>
                 </Dialog>
+                )}
 
                 {/* <Dialog
           open={reminderModal.open}

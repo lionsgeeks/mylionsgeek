@@ -2,23 +2,31 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\SendGeekLabCertificateEmail;
 use App\Models\Attendance;
 use App\Models\AttendanceListe;
 use App\Models\Formation;
 use App\Models\Note;
+use App\Models\User;
 use App\Models\TrainingSession;
 use App\Models\TrainingWeek;
-use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+use App\Services\AttendanceLegacyIdService;
 use App\Services\AttendanceNoteService;
 use App\Services\CertificatePdfGenerator;
 use App\Services\CertificateTrackResolver;
+use App\Services\CoachAttendanceSaveService;
 use App\Services\DisciplineService;
+use App\Services\GeekLabCertificateCodeAllocator;
+use App\Services\ProgramStatusService;
+use App\Services\StudentCheckInSlotService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -97,8 +105,15 @@ class FormationController extends Controller
         // Attach the discipline score to every enrolled user so the frontend
         // can display the attendance percentage without extra API calls.
         $disciplineService = new \App\Services\DisciplineService;
-        $training->users->each(function (User $user) use ($disciplineService) {
+        $actor = Auth::user();
+        $canViewHealthData = $this->actorCanViewHealthData($actor)
+            || $this->actorIsAssignedCoach($actor, $training);
+        $training->users->each(function (User $user) use ($disciplineService, $canViewHealthData) {
             $user->discipline = $disciplineService->calculateDisciplineScore($user);
+
+            if (! $canViewHealthData) {
+                $user->makeHidden(['has_handicap']);
+            }
         });
 
         return inertia('admin/training/[id]', [
@@ -336,7 +351,7 @@ class FormationController extends Controller
     }
 
     // ///////////////////
-    public function addStudent(Formation $training, Request $request)
+    public function addStudent(Formation $training, Request $request, ProgramStatusService $programStatusService)
     {
         $validated = $request->validate([
             'student_id' => 'required|exists:users,id',
@@ -345,6 +360,7 @@ class FormationController extends Controller
         $user = User::find($validated['student_id']);
         if ($user) {
             $user->formation_id = $training->id;
+            $programStatusService->applyEnrollmentStatus($user);
             $user->save();
         }
 
@@ -361,44 +377,29 @@ class FormationController extends Controller
         return back()->with('success', 'Student removed');
     }
 
-    // attendance
-    public function attendance(Request $request)
+    // attendance — read-only load for calendar open (no rows created until explicit Save)
+    public function attendance(Request $request, StudentCheckInSlotService $studentCheckInSlotService, AttendanceLegacyIdService $legacyIdService)
     {
         $request->validate([
             'formation_id' => 'required|integer|exists:formations,id',
             'attendance_day' => 'required|date',
         ]);
-        // Find existing attendance for formation + day or create one
+
         $attendance = Attendance::where('formation_id', $request->formation_id)
             ->whereDate('attendance_day', $request->attendance_day)
             ->first();
 
         if (! $attendance) {
-            $attendance = Attendance::create([
-                'formation_id' => $request->formation_id,
-                'attendance_day' => $request->attendance_day,
-                'staff_name' => Auth::user()->name,
+            return response()->json([
+                'attendance_id' => null,
+                'lists' => [],
+                'staff_name' => null,
             ]);
         }
 
-        // If a legacy record was created earlier with a UUID string as id, replace it with a fresh integer id record
         // Normalize legacy IDs: if non-numeric, migrate to fresh numeric id
-        if ($attendance && ! is_numeric($attendance->id)) {
-            $new = Attendance::create([
-                'formation_id' => $request->formation_id,
-                'attendance_day' => $request->attendance_day,
-                'staff_name' => Auth::user()->name,
-            ]);
-            // migrate any list rows
-            AttendanceListe::where('attendance_id', $attendance->id)
-                ->update(['attendance_id' => $new->id]);
-            // optional: migrate notes
-            Note::where('attendance_id', $attendance->id)
-                ->update(['attendance_id' => $new->id]);
-            $attendance = $new;
-        }
+        $attendance = $legacyIdService->ensureNumericId($attendance, Auth::user()->name ?? 'Staff');
 
-        // Load existing list entries and attach notes per user (joined as one string)
         $lists = AttendanceListe::where('attendance_id', $attendance->id)
             ->get(['user_id', 'attendance_day', 'morning', 'lunch', 'evening']);
 
@@ -411,8 +412,20 @@ class FormationController extends Controller
                 return $group->pluck('note')->implode(' | ');
             });
 
-        $lists = $lists->map(function ($row) use ($notesByUser) {
-            $row->note = $notesByUser[$row->user_id] ?? null;
+        $attendanceDay = $request->attendance_day;
+
+        $lists = $lists->map(function ($row) use ($notesByUser, $studentCheckInSlotService, $attendanceDay) {
+            $note = $notesByUser[$row->user_id] ?? null;
+            $row->note = $note;
+            $row->student_marked_slots = $studentCheckInSlotService->studentMarkedSlots(
+                $attendanceDay,
+                $note,
+                [
+                    'morning' => $row->morning,
+                    'lunch' => $row->lunch,
+                    'evening' => $row->evening,
+                ],
+            );
 
             return $row;
         });
@@ -442,48 +455,125 @@ class FormationController extends Controller
     }
 
     // attendance list
-    public function save(Request $request)
+    public function save(Request $request, CoachAttendanceSaveService $coachAttendanceSaveService, AttendanceLegacyIdService $legacyIdService)
     {
         $request->validate([
             'attendance' => 'required|array|min:1',
-            'attendance.*.attendance_id' => 'required|integer|exists:attendances,id',
+            'formation_id' => 'nullable|integer|exists:formations,id',
+            'attendance.*.attendance_id' => 'nullable|integer|exists:attendances,id',
             'attendance.*.user_id' => 'required|exists:users,id',
             'attendance.*.attendance_day' => 'required|date',
-            'attendance.*.morning' => 'nullable|string|in:present,absent,late,excused',
-            'attendance.*.lunch' => 'nullable|string|in:present,absent,late,excused',
-            'attendance.*.evening' => 'nullable|string|in:present,absent,late,excused',
+            'attendance.*.morning' => 'nullable|string|in:present,absent,late,excused,pending',
+            'attendance.*.lunch' => 'nullable|string|in:present,absent,late,excused,pending',
+            'attendance.*.evening' => 'nullable|string|in:present,absent,late,excused,pending',
             'attendance.*.note' => 'nullable|string',
         ]);
 
         $lastAttendanceId = null;
         $disciplineService = new DisciplineService;
         $attendanceNoteService = new AttendanceNoteService;
+        $staffName = Auth::user()->name ?? 'Staff';
+
+        $userIds = collect($request->attendance)
+            ->pluck('user_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $sharedAttendanceId = null;
+        foreach ($request->attendance as $row) {
+            if (isset($row['attendance_id']) && is_numeric($row['attendance_id'])) {
+                $sharedAttendanceId = (int) $row['attendance_id'];
+                break;
+            }
+        }
+
+        if ($sharedAttendanceId !== null) {
+            $attendance = Attendance::find($sharedAttendanceId);
+            if ($attendance) {
+                $sharedAttendanceId = (int) $legacyIdService->ensureNumericId($attendance, $staffName)->id;
+            }
+        } else {
+            $formationId = $request->input('formation_id');
+            $batchDay = $request->attendance[0]['attendance_day'] ?? null;
+            if ($formationId && $batchDay) {
+                $attendance = Attendance::firstOrCreate(
+                    [
+                        'formation_id' => (int) $formationId,
+                        'attendance_day' => $batchDay,
+                    ],
+                    ['staff_name' => $staffName],
+                );
+                $sharedAttendanceId = (int) $legacyIdService->ensureNumericId($attendance, $staffName)->id;
+            }
+        }
+
+        $saveContextsByAttendanceId = [];
+        if ($sharedAttendanceId !== null) {
+            $saveContextsByAttendanceId[$sharedAttendanceId] = $coachAttendanceSaveService->preloadSaveContext(
+                $sharedAttendanceId,
+                $userIds,
+            );
+        }
 
         foreach ($request->attendance as $data) {
             $attendanceId = isset($data['attendance_id']) && is_numeric($data['attendance_id'])
                 ? (int) $data['attendance_id']
-                : null;
+                : $sharedAttendanceId;
 
             if ($attendanceId === null) {
-                continue;
+                $formationId = $request->input('formation_id');
+                if (! $formationId) {
+                    continue;
+                }
+
+                $attendance = Attendance::firstOrCreate(
+                    [
+                        'formation_id' => (int) $formationId,
+                        'attendance_day' => $data['attendance_day'],
+                    ],
+                    ['staff_name' => $staffName],
+                );
+                $attendanceId = (int) $legacyIdService->ensureNumericId($attendance, $staffName)->id;
+            } elseif ($attendanceId !== $sharedAttendanceId) {
+                $attendance = Attendance::find($attendanceId);
+                if ($attendance) {
+                    $attendanceId = (int) $legacyIdService->ensureNumericId($attendance, $staffName)->id;
+                }
+            }
+
+            if (! isset($saveContextsByAttendanceId[$attendanceId])) {
+                $saveContextsByAttendanceId[$attendanceId] = $coachAttendanceSaveService->preloadSaveContext(
+                    $attendanceId,
+                    $userIds,
+                );
             }
 
             $lastAttendanceId = $attendanceId;
 
-            //  GET OLD DISCIPLINE BEFORE UPDATE
             $user = User::find($data['user_id']);
             if (! $user) {
                 continue;
             }
 
-            // Calculate discipline BEFORE updating attendance
             $oldDiscipline = $disciplineService->calculateDisciplineScore($user);
+
+            $coachSlots = [
+                'morning' => $data['morning'] ?? 'absent',
+                'lunch' => $data['lunch'] ?? 'absent',
+                'evening' => $data['evening'] ?? 'absent',
+            ];
 
             $payload = [
                 'attendance_day' => $data['attendance_day'],
-                'morning' => $data['morning'] ?? 'present',
-                'lunch' => $data['lunch'] ?? 'present',
-                'evening' => $data['evening'] ?? 'present',
+                ...$coachAttendanceSaveService->resolveSlotsForSave(
+                    $attendanceId,
+                    (int) $data['user_id'],
+                    $data['attendance_day'],
+                    $coachSlots,
+                    $saveContextsByAttendanceId[$attendanceId],
+                ),
             ];
 
             AttendanceListe::updateOrCreate(
@@ -494,8 +584,6 @@ class FormationController extends Controller
                 $payload
             );
 
-            //  Process discipline change and create notification if threshold crossed
-            // Only notifies on 5% threshold changes (100, 95, 90, 85, ...)
             $disciplineService->processDisciplineChange($user, $oldDiscipline);
 
             $attendanceNoteService->syncNotes(
@@ -506,12 +594,11 @@ class FormationController extends Controller
             );
         }
 
-        // Tag latest editor name on attendance row
         if (! empty($lastAttendanceId)) {
             Attendance::where('id', $lastAttendanceId)->update(['staff_name' => Auth::user()->name]);
         }
 
-        return response()->json(['status' => 'ok']);
+        return response()->json(['status' => 'ok', 'attendance_id' => $lastAttendanceId]);
     }
 
     // Update formation
@@ -526,6 +613,7 @@ class FormationController extends Controller
             'end_time' => 'nullable|date',
             'user_id' => 'nullable|exists:users,id',
             'promo' => 'nullable|string|max:50',
+            'is_active' => 'sometimes|boolean',
         ]);
 
         $formation = Formation::findOrFail($id);
@@ -549,30 +637,68 @@ class FormationController extends Controller
             unset($validated['certificate_template']);
         }
 
+        // FormData may send "0"/"1"; always normalize when the field is present
+        if ($request->has('is_active')) {
+            $validated['is_active'] = $request->boolean('is_active');
+        }
+
         $formation->update($validated);
 
-        return back()->with('success', 'Formation deleted successfully!');
+        return back()->with('success', 'Formation updated successfully!');
     }
 
-    // Delete formation
+    // Delete formation — unassign enrolled students first (users.formation_id FK is ON DELETE NO ACTION)
     public function destroy($id)
     {
         $formation = Formation::findOrFail($id);
-        $formation->delete();
+
+        DB::transaction(function () use ($formation) {
+            User::where('formation_id', $formation->id)->update(['formation_id' => null]);
+
+            if (Schema::hasTable('formation_user')) {
+                DB::table('formation_user')->where('formation_id', $formation->id)->delete();
+            }
+
+            $formation->delete();
+        });
 
         return back()->with('success', 'Formation deleted successfully!');
     }
 
-    // Bulk update users roles and status
-    public function bulkUpdateUsers(Formation $training, Request $request)
+    // Bulk update users roles, program status, and handicap
+    public function bulkUpdateUsers(Formation $training, Request $request, ProgramStatusService $programStatusService)
     {
+        $actor = Auth::user();
+        if (! $this->canManageTrainingUsers($training, $actor)) {
+            abort(403, 'Only admins or the assigned coach can update users for this training.');
+        }
+
         $validated = $request->validate([
             'user_ids' => 'required|array|min:1',
             'user_ids.*' => 'required|exists:users,id',
             'roles' => 'nullable|array',
-            'roles.*' => 'nullable|string',
-            'status' => 'nullable|string|in:Working,Studying,Internship,Unemployed,Freelancing,Certified',
+            'roles.*' => 'nullable|string|in:student,coach,admin,super_admin,moderateur,studio_responsable,responsable_studio,coworker,pro,recruiter',
+            'program_status' => 'nullable|in:active,certified,not_certified,left',
+            'has_handicap' => 'nullable|in:0,1',
         ]);
+
+        $isAdmin = $this->actorCanViewHealthData($actor);
+        $isAssignedCoach = $this->actorIsAssignedCoach($actor, $training);
+
+        if ($request->exists('program_status')) {
+            $programStatus = $request->input('program_status');
+            if ($programStatus !== null && $programStatus !== '') {
+                $programStatusService->assertCanAssignLeft($actor, $programStatus, $training);
+            }
+        }
+
+        if ($request->exists('has_handicap') && ! $isAdmin && ! $isAssignedCoach) {
+            abort(403, 'Only admins or the assigned coach can update handicap data for this training.');
+        }
+
+        if ($request->has('roles') && ! empty($validated['roles']) && ! $isAdmin) {
+            abort(403, 'Only admins can update user roles.');
+        }
 
         $users = User::whereIn('id', $validated['user_ids'])
             ->where('formation_id', $training->id)
@@ -582,22 +708,36 @@ class FormationController extends Controller
             return back()->with('error', 'No valid users found for this training.');
         }
 
+        if ($request->has('roles') && ! empty($validated['roles'])) {
+            Auth::user()->assertMayAssignRoles($validated['roles']);
+        }
+
         $updated = 0;
         foreach ($users as $user) {
             $updateData = [];
 
-            if ($request->has('roles') && ! empty($validated['roles'])) {
+            if ($isAdmin && $request->has('roles') && ! empty($validated['roles'])) {
                 $updateData['role'] = array_values(array_map(function ($r) {
                     return strtolower((string) $r);
                 }, array_filter($validated['roles'])));
             }
 
-            if ($request->has('status') && ! empty($validated['status'])) {
-                $updateData['status'] = $validated['status'];
+            if ($request->exists('program_status')) {
+                $programStatus = $request->input('program_status');
+                $updateData['program_status'] = ($programStatus === null || $programStatus === '') ? null : $programStatus;
+            }
+
+            if ($request->exists('has_handicap')) {
+                $handicap = $request->input('has_handicap');
+                if ($handicap === null || $handicap === '') {
+                    $updateData['has_handicap'] = null;
+                } else {
+                    $updateData['has_handicap'] = (int) $handicap === 1;
+                }
             }
 
             if (! empty($updateData)) {
-                $user->update($updateData);
+                $user->forceFill($updateData)->save();
                 $updated++;
             }
         }
@@ -606,38 +746,86 @@ class FormationController extends Controller
     }
 
     /**
+     * Split selected students into those eligible for a certificate and warnings
+     * for those who are not.
+     *
+     * A student marked as having left the program can never be certified, even if
+     * they were somehow selected — the modal disables them, but a stale page or a
+     * hand-crafted request must not get past this.
+     *
+     * @param  Collection<int, User>  $selected
+     * @return array{0: Collection<int, User>, 1: list<array{id: mixed, name: string, reason: string}>}
+     */
+    private function excludeStudentsWhoLeft(Collection $selected): array
+    {
+        $hasLeft = fn (User $user) => $user->program_status === User::PROGRAM_STATUS_LEFT
+            || (blank($user->program_status) && strtolower(trim((string) $user->status)) === 'left');
+
+        $warnings = $selected
+            ->filter($hasLeft)
+            ->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => (string) $user->name,
+                'reason' => 'A quitté le programme : aucun certificat possible.',
+            ])
+            ->values()
+            ->all();
+
+        return [$selected->reject($hasLeft)->values(), $warnings];
+    }
+
+    /**
      * Admin or assigned coach only.
      */
     private function canPrintCertificates(Formation $training): bool
     {
-        $user = Auth::user();
-        if (! $user) {
-            return false;
-        }
-
-        $roles = is_array($user->role) ? $user->role : [(string) $user->role];
-        $roles = array_filter(array_map('strval', $roles));
-
-        if (count(array_intersect($roles, ['admin', 'super_admin'])) > 0) {
-            return true;
-        }
-
-        if (in_array('coach', $roles, true) && (int) $training->user_id === (int) $user->id) {
-            return true;
-        }
-
-        return false;
+        return $this->canManageTrainingUsers($training, Auth::user());
     }
 
     /**
-     * Generate or reuse certificates (PDF), store per student, return ZIP download.
-     * Stores: storage/app/public/certificates/{trainingId}/{userId}.pdf
+     * Admins can manage any training; coaches only their assigned class.
+     */
+    private function canManageTrainingUsers(Formation $training, ?User $actor): bool
+    {
+        if (! $actor) {
+            return false;
+        }
+
+        if ($this->actorCanViewHealthData($actor)) {
+            return true;
+        }
+
+        return $this->actorIsAssignedCoach($actor, $training);
+    }
+
+    private function actorIsAssignedCoach(?User $actor, Formation $training): bool
+    {
+        if (! $actor) {
+            return false;
+        }
+
+        $roles = is_array($actor->role) ? $actor->role : array_filter([(string) $actor->role]);
+        $rolesLower = array_map('strtolower', array_map('strval', $roles));
+
+        if (! in_array('coach', $rolesLower, true)) {
+            return false;
+        }
+
+        return (int) $training->user_id === (int) $actor->id;
+    }
+
+    /**
+     * Generate certificates (PDF), store per student, return ZIP download.
+     * Stores: storage/app/public/certificates/{name-slug}.pdf (e.g. yahya-moussair.pdf)
+     * Supports standard and GeekLab templates (GeekLab also assigns C-ID codes).
      */
     public function downloadCertificatesZip(
         Formation $training,
         Request $request,
         CertificateTrackResolver $trackResolver,
         CertificatePdfGenerator $pdfGenerator,
+        GeekLabCertificateCodeAllocator $codeAllocator,
+        ProgramStatusService $programStatusService,
     ) {
         if (! $this->canPrintCertificates($training)) {
             abort(403, 'You are not allowed to print certificates for this training.');
@@ -651,13 +839,26 @@ class FormationController extends Controller
 
         $issuedCarbon = Carbon::parse($validated['issued_date'])->startOfDay();
         $issuedDateFormatted = $issuedCarbon->format('d/m/Y');
+        $isGeekLab = $trackResolver->isGeekLabTraining($training->name);
+        $trainingName = (string) $training->name;
 
-        $users = User::whereIn('id', $validated['user_ids'])
+        $selected = User::whereIn('id', $validated['user_ids'])
             ->where('formation_id', $training->id)
             ->get();
 
-        if ($users->isEmpty()) {
+        if ($selected->isEmpty()) {
             return $this->certificateZipErrorResponse($request, 'No valid users found for this training.', 422);
+        }
+
+        [$users, $leftWarnings] = $this->excludeStudentsWhoLeft($selected);
+
+        if ($users->isEmpty()) {
+            return $this->certificateZipErrorResponse(
+                $request,
+                'Aucun certificat généré.',
+                422,
+                ['skipped' => $leftWarnings],
+            );
         }
 
         $tmpZipPath = storage_path('app/tmp/certificates-'.$training->id.'-'.now()->format('YmdHis').'-'.Str::random(8).'.zip');
@@ -671,10 +872,25 @@ class FormationController extends Controller
         }
 
         $savedCount = 0;
-        $skipped = [];
+        $skipped = $leftWarnings;
+        $usedZipNames = [];
+        $certifiedUserIds = [];
 
         foreach ($users as $user) {
-            $track = $trackResolver->resolve($user->field ?? null);
+            if ($programStatusService->isLeft($user->program_status, $user->status)) {
+                $skipped[] = [
+                    'id' => $user->id,
+                    'name' => (string) $user->name,
+                    'reason' => 'Left the program — cannot be certified.',
+                ];
+
+                continue;
+            }
+
+            $track = $isGeekLab
+                ? $trackResolver->resolveForTraining($user->field ?? null, $trainingName)
+                : $trackResolver->resolve($user->field ?? null);
+
             if ($track === null) {
                 $skipped[] = [
                     'id' => $user->id,
@@ -685,16 +901,21 @@ class FormationController extends Controller
                 continue;
             }
 
-            // Flat path: one file per student, regardless of training.
-            // put() overwrites automatically, so regeneration is always safe.
-            $pdfStoragePath = 'certificates/'.$user->id.'.pdf';
-            $zipEntryName = 'certificat-'.preg_replace('/[^a-zA-Z0-9_\- ]/u', '', (string) $user->name).'.pdf';
+            // Stored + ZIP entry as yahya-moussair.pdf
+            $pdfFileName = $this->certificatePdfFileName($user);
+            $pdfStoragePath = 'certificates/'.$pdfFileName;
+            $zipEntryName = $this->uniqueZipEntryName($pdfFileName, $usedZipNames, $user);
 
             try {
+                $certificateCode = $isGeekLab
+                    ? $codeAllocator->resolveForUser($user->certificate_code ?? null)
+                    : null;
+
                 $pdfBytes = $pdfGenerator->generate(
                     $track,
                     (string) ($user->name ?? ''),
                     $issuedDateFormatted,
+                    $certificateCode,
                 );
 
                 if ($pdfBytes === null || $pdfBytes === '') {
@@ -707,18 +928,23 @@ class FormationController extends Controller
                     continue;
                 }
 
-                Storage::disk('public')->put($pdfStoragePath, $pdfBytes);
+                $this->storeCertificatePdf($user, $pdfStoragePath, $pdfBytes);
 
-                $user->forceFill([
-                    'status' => 'Certified',
+                $certFields = [
+                    'program_status' => ProgramStatusService::CERTIFIED,
                     'certified_at' => $issuedCarbon,
                     'certified_training_id' => (int) $training->id,
-                    'certificate_share_token' => $user->certificate_share_token ?: Str::random(48),
                     'certificate_pdf_path' => $pdfStoragePath,
-                ])->save();
+                ];
+                if ($isGeekLab && $certificateCode !== null) {
+                    $certFields['certificate_code'] = $certificateCode;
+                }
+
+                $user->forceFill($certFields)->save();
 
                 $zip->addFromString($zipEntryName, $pdfBytes);
                 $savedCount++;
+                $certifiedUserIds[] = (int) $user->id;
             } catch (\Throwable $e) {
                 Log::error('Failed to generate certificate', [
                     'training_id' => $training->id,
@@ -747,12 +973,273 @@ class FormationController extends Controller
             );
         }
 
+        $this->recordCertificatePrint($training, $certifiedUserIds, $programStatusService);
+
         return response()
             ->download($tmpZipPath, 'certificats-'.$training->id.'.zip', [
                 'Content-Type' => 'application/zip',
                 'X-Certificate-Warnings' => json_encode($skipped, JSON_UNESCAPED_UNICODE),
             ])
             ->deleteFileAfterSend(true);
+    }
+
+    /**
+     * GeekLab: generate PDFs, store them, update program_status, queue email jobs.
+     */
+    public function emailGeekLabCertificates(
+        Formation $training,
+        Request $request,
+        CertificateTrackResolver $trackResolver,
+        CertificatePdfGenerator $pdfGenerator,
+        GeekLabCertificateCodeAllocator $codeAllocator,
+        ProgramStatusService $programStatusService,
+    ) {
+        if (! $this->canPrintCertificates($training)) {
+            abort(403, 'You are not allowed to print certificates for this training.');
+        }
+
+        if (! $trackResolver->isGeekLabTraining($training->name)) {
+            return $this->certificateZipErrorResponse(
+                $request,
+                'Cet endpoint est réservé aux formations GeekLab.',
+                422,
+            );
+        }
+
+        $validated = $request->validate([
+            'user_ids' => 'required|array|min:1',
+            'user_ids.*' => 'required|exists:users,id',
+            'issued_date' => 'required|date',
+        ]);
+
+        $issuedCarbon = Carbon::parse($validated['issued_date'])->startOfDay();
+        $issuedDateFormatted = $issuedCarbon->format('d/m/Y');
+
+        $selected = User::whereIn('id', $validated['user_ids'])
+            ->where('formation_id', $training->id)
+            ->get();
+
+        if ($selected->isEmpty()) {
+            return $this->certificateZipErrorResponse($request, 'No valid users found for this training.', 422);
+        }
+
+        [$users, $leftWarnings] = $this->excludeStudentsWhoLeft($selected);
+
+        if ($users->isEmpty()) {
+            return $this->certificateZipErrorResponse(
+                $request,
+                'Aucun certificat généré.',
+                422,
+                ['skipped' => $leftWarnings],
+            );
+        }
+
+        $queuedCount = 0;
+        $skipped = $leftWarnings;
+        $trainingName = (string) $training->name;
+        $certifiedUserIds = [];
+
+        foreach ($users as $user) {
+            if ($programStatusService->isLeft($user->program_status, $user->status)) {
+                $skipped[] = [
+                    'id' => $user->id,
+                    'name' => (string) $user->name,
+                    'reason' => 'Left the program — cannot be certified.',
+                ];
+
+                continue;
+            }
+
+            $track = $trackResolver->resolveForTraining($user->field ?? null, $trainingName);
+            if ($track === null) {
+                $skipped[] = [
+                    'id' => $user->id,
+                    'name' => (string) $user->name,
+                    'reason' => 'Le champ doit être « coding » ou « media ».',
+                ];
+
+                continue;
+            }
+
+            $email = trim((string) ($user->email ?? ''));
+            if ($email === '') {
+                $skipped[] = [
+                    'id' => $user->id,
+                    'name' => (string) $user->name,
+                    'reason' => 'Aucune adresse e-mail.',
+                ];
+
+                continue;
+            }
+
+            $pdfFileName = $this->certificatePdfFileName($user);
+            $pdfStoragePath = 'certificates/'.$pdfFileName;
+
+            try {
+                $certificateCode = $codeAllocator->resolveForUser($user->certificate_code ?? null);
+
+                $pdfBytes = $pdfGenerator->generate(
+                    $track,
+                    (string) ($user->name ?? ''),
+                    $issuedDateFormatted,
+                    $certificateCode,
+                );
+
+                if ($pdfBytes === null || $pdfBytes === '') {
+                    $skipped[] = [
+                        'id' => $user->id,
+                        'name' => (string) $user->name,
+                        'reason' => 'Échec de génération du PDF.',
+                    ];
+
+                    continue;
+                }
+
+                $this->storeCertificatePdf($user, $pdfStoragePath, $pdfBytes);
+
+                // Certify immediately when PDF is stored and the email job is queued.
+                $certFields = [
+                    'program_status' => ProgramStatusService::CERTIFIED,
+                    'certified_at' => $issuedCarbon,
+                    'certified_training_id' => (int) $training->id,
+                    'certificate_pdf_path' => $pdfStoragePath,
+                    'certificate_code' => $certificateCode,
+                ];
+
+                $user->forceFill($certFields)->save();
+
+                SendGeekLabCertificateEmail::dispatch($user, $pdfStoragePath, $trainingName);
+                $queuedCount++;
+                $certifiedUserIds[] = (int) $user->id;
+            } catch (\Throwable $e) {
+                Log::error('Failed to generate/queue GeekLab certificate', [
+                    'training_id' => $training->id,
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $skipped[] = [
+                    'id' => $user->id,
+                    'name' => (string) $user->name,
+                    'reason' => 'Erreur serveur lors de la génération.',
+                ];
+            }
+        }
+
+        if ($queuedCount === 0) {
+            return $this->certificateZipErrorResponse(
+                $request,
+                'Aucun certificat envoyé.',
+                422,
+                ['skipped' => $skipped],
+            );
+        }
+
+        $this->recordCertificatePrint($training, $certifiedUserIds, $programStatusService);
+
+        return response()->json([
+            'success' => true,
+            'queued' => $queuedCount,
+            'skipped' => $skipped,
+            'message' => $queuedCount.' certificat(s) généré(s) et e-mail(s) mis en file d’attente.',
+        ]);
+    }
+
+    /**
+     * Advance the program lifecycle after at least one certificate was generated.
+     *
+     * Certified recipients and the not_certified sweep share one transaction so a
+     * cohort is never left half-updated. Both writes are logged for audit.
+     *
+     * @param  list<int>  $certifiedUserIds  Students who successfully received a certificate.
+     */
+    private function recordCertificatePrint(
+        Formation $training,
+        array $certifiedUserIds,
+        ProgramStatusService $programStatusService,
+    ): void {
+        $certifiedUserIds = array_values(array_unique(array_map('intval', $certifiedUserIds)));
+
+        if ($certifiedUserIds === []) {
+            return;
+        }
+
+        [$certified, $notCertified] = DB::transaction(fn () => [
+            $programStatusService->markCertified($certifiedUserIds),
+            $programStatusService->markUnselectedActiveStudentsAsNotCertified($training, $certifiedUserIds),
+        ]);
+
+        Log::info('Certificate print advanced program status', [
+            'training_id' => $training->id,
+            'actor_id' => Auth::id(),
+            'certified' => $certified,
+            'certified_user_ids' => $certifiedUserIds,
+            'not_certified' => $notCertified,
+        ]);
+    }
+
+    /**
+     * Filename like yahya-moussair.pdf (fallback certificat-{id}.pdf).
+     * Appends -{id} when another user already owns the same slug path.
+     */
+    private function certificatePdfFileName(User $user): string
+    {
+        $slug = Str::slug((string) ($user->name ?? ''), '-');
+        if ($slug === '') {
+            $slug = 'certificat-'.$user->id;
+        }
+
+        $fileName = $slug.'.pdf';
+        $path = 'certificates/'.$fileName;
+
+        $takenByOther = User::query()
+            ->where('certificate_pdf_path', $path)
+            ->where('id', '!=', $user->id)
+            ->exists();
+
+        if ($takenByOther) {
+            $fileName = $slug.'-'.$user->id.'.pdf';
+        }
+
+        return $fileName;
+    }
+
+    /**
+     * Ensure ZIP entry names stay unique within one archive.
+     *
+     * @param  array<string, true>  $usedNames
+     */
+    private function uniqueZipEntryName(string $fileName, array &$usedNames, User $user): string
+    {
+        if (! isset($usedNames[$fileName])) {
+            $usedNames[$fileName] = true;
+
+            return $fileName;
+        }
+
+        $slug = pathinfo($fileName, PATHINFO_FILENAME);
+        $unique = $slug.'-'.$user->id.'.pdf';
+        $usedNames[$unique] = true;
+
+        return $unique;
+    }
+
+    /**
+     * Store PDF under the name-based path and remove any previous certificate file.
+     */
+    private function storeCertificatePdf(User $user, string $pdfStoragePath, string $pdfBytes): void
+    {
+        $disk = Storage::disk('public');
+        $previous = $user->certificate_pdf_path;
+        $legacyIdPath = 'certificates/'.$user->id.'.pdf';
+
+        $disk->put($pdfStoragePath, $pdfBytes);
+
+        foreach (array_unique(array_filter([$previous, $legacyIdPath])) as $oldPath) {
+            if ($oldPath !== $pdfStoragePath && $disk->exists($oldPath)) {
+                $disk->delete($oldPath);
+            }
+        }
     }
 
     private function certificateZipErrorResponse(Request $request, string $message, int $status, array $extra = [])
@@ -763,4 +1250,15 @@ class FormationController extends Controller
 
         return back()->with('error', $message);
     }
-}
+
+    private function actorCanViewHealthData(?User $actor): bool
+    {
+        if (! $actor) {
+            return false;
+        }
+
+        $roles = is_array($actor->role) ? $actor->role : array_filter([(string) $actor->role]);
+
+        return count(array_intersect($roles, ['admin', 'super_admin'])) > 0;
+    }
+}

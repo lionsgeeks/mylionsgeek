@@ -29,7 +29,7 @@ export default function NotificationForm() {
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <Bell className="h-5 w-5 text-alpha" />
-                    Compose announcement
+                    Compose app notification
                 </CardTitle>
                 <CardDescription className="text-dark/60 dark:text-light/60">
                     Shown in the web notification bell and sent as a mobile push to users who allowed notifications in the app.
@@ -65,7 +65,7 @@ export default function NotificationForm() {
                             className={`min-h-[140px] resize-y ${fieldClass}`}
                             value={data.message}
                             onChange={(e) => setData('message', e.target.value)}
-                            placeholder="Write the announcement message..."
+                            placeholder="Write the notification message..."
                             maxLength={500}
                         />
                         <div className="mt-1 flex justify-between text-xs text-dark/60 dark:text-light/60">
@@ -84,7 +84,7 @@ export default function NotificationForm() {
                         ) : (
                             <>
                                 <Send className="h-4 w-4" />
-                                Send announcement
+                                Send app notification
                             </>
                         )}
                     </Button>

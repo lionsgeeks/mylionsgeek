@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\API;
 
+use Ably\AblyRest;
 use App\Http\Controllers\Controller;
 use App\Models\Comment;
 use App\Models\CommentLike;
 use App\Models\Like;
-use App\Models\Project;
-use App\Models\Reservation;
 use App\Models\Post;
+use App\Models\PostNotification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -32,18 +32,19 @@ class PostController extends Controller
 
         if (is_array($images) && count($images) > 0) {
             foreach ($images as $image) {
-                if (!$image) {
+                if (! $image) {
                     continue;
                 }
                 if (strpos($image, 'http') === 0) {
                     $imageUrls[] = $image;
+
                     continue;
                 }
                 $imagePath = ltrim((string) $image, '/');
                 if (strpos($imagePath, 'img/posts/') !== false) {
-                    $imageUrls[] = url('storage/' . $imagePath);
+                    $imageUrls[] = url('storage/'.$imagePath);
                 } else {
-                    $imageUrls[] = url('storage/img/posts/' . $imagePath);
+                    $imageUrls[] = url('storage/img/posts/'.$imagePath);
                 }
             }
         }
@@ -72,12 +73,13 @@ class PostController extends Controller
             'user' => [
                 'id' => $postUser->id ?? null,
                 'name' => $postUser->name ?? 'User',
-                'avatar' => ($postUser && $postUser->image) ? (function() use ($postUser) {
-                    $imagePath = ltrim((string)$postUser->image, '/');
+                'avatar' => ($postUser && $postUser->image) ? (function () use ($postUser) {
+                    $imagePath = ltrim((string) $postUser->image, '/');
                     if (strpos($imagePath, 'img/profile/') !== false) {
-                        return url('storage/' . $imagePath);
+                        return url('storage/'.$imagePath);
                     }
-                    return url('storage/img/profile/' . $imagePath);
+
+                    return url('storage/img/profile/'.$imagePath);
                 })() : null,
                 'image' => $postUser->image ?? null,
             ],
@@ -98,13 +100,116 @@ class PostController extends Controller
         return $post;
     }
 
+    /**
+     * Broadcast post notification via Ably for real-time updates.
+     */
+    private function broadcastNotification($notification, $sender, $post, $type): void
+    {
+        try {
+            $ablyKey = config('services.ably.key');
+            if (! $ablyKey) {
+                return;
+            }
+
+            $ably = new AblyRest($ablyKey);
+            $channel = $ably->channels->get("notifications:{$notification->user_id}");
+
+            $message = match ($type) {
+                'like' => "{$sender->name} liked your post",
+                'comment' => "{$sender->name} commented on your post",
+                'comment_like' => "{$sender->name} liked your comment",
+                'mention' => "{$sender->name} mentioned you in a post",
+                'repost' => "{$sender->name} reposted your post",
+                'share' => "{$sender->name} shared a post with you",
+                'repost_like' => "{$sender->name} liked the post you reposted",
+                'repost_comment' => "{$sender->name} commented on the post you reposted",
+                default => "{$sender->name} interacted with your post"
+            };
+
+            $channel->publish('new_notification', [
+                'id' => 'post-'.$notification->id,
+                'type' => 'post_interaction',
+                'sender_name' => $sender->name,
+                'sender_image' => $sender->image,
+                'message' => $message,
+                'link' => '/students/feed#post-'.$post->id,
+                'icon_type' => 'user',
+                'created_at' => $notification->created_at->toISOString(),
+                'post_id' => $post->id,
+                'interaction_type' => $type,
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Failed to broadcast notification via Ably: '.$e->getMessage());
+        }
+    }
+
+    private function broadcastPostStats(Post $post): void
+    {
+        try {
+            $ablyKey = config('services.ably.key');
+            if (! $ablyKey) {
+                return;
+            }
+
+            $post->loadCount(['likes', 'comments', 'reposts']);
+
+            $ably = new AblyRest($ablyKey);
+            $channel = $ably->channels->get('feed:global');
+            $channel->publish('post-stats-updated', [
+                'post_id' => (int) $post->id,
+                'likes_count' => (int) $post->likes_count,
+                'comments_count' => (int) $post->comments_count,
+                'reposts_count' => (int) $post->reposts_count,
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Failed to broadcast feed event via Ably: '.$e->getMessage());
+        }
+    }
+
+    private function notifyRepostersForInteraction(Post $originalPost, User $actor, string $type): void
+    {
+        $reposterIds = DB::table('reposts_posts')
+            ->where('post_id', $originalPost->id)
+            ->pluck('user_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($reposterIds->isEmpty()) {
+            return;
+        }
+
+        foreach ($reposterIds as $reposterId) {
+            $reposterId = (int) $reposterId;
+
+            if ($reposterId === (int) $actor->id) {
+                continue;
+            }
+
+            if ($reposterId === (int) $originalPost->user_id) {
+                continue;
+            }
+
+            $notification = PostNotification::createNotification(
+                $reposterId,
+                $actor->id,
+                $originalPost->id,
+                $type
+            );
+
+            if ($notification) {
+                $this->broadcastNotification($notification, $actor, $originalPost, $type);
+            }
+        }
+    }
+
     private function mapRepostForMobileFeed(object $repostRow, Post $originalPost, ?User $reposter, $authUser, array $savedInteractionPostIds = []): array
     {
         $originalPost->loadMissing(['user', 'likes', 'comments']);
         $original = $this->mapPostForMobileFeed($originalPost, $authUser, $savedInteractionPostIds);
 
         $createdAt = null;
-        if (!empty($repostRow->created_at)) {
+        if (! empty($repostRow->created_at)) {
             $createdAt = is_string($repostRow->created_at) ? $repostRow->created_at : (string) $repostRow->created_at;
         }
 
@@ -112,8 +217,8 @@ class PostController extends Controller
         if ($reposter?->image) {
             $imagePath = ltrim((string) $reposter->image, '/');
             $reposterAvatar = str_contains($imagePath, 'img/profile/')
-                ? url('storage/' . $imagePath)
-                : url('storage/img/profile/' . $imagePath);
+                ? url('storage/'.$imagePath)
+                : url('storage/img/profile/'.$imagePath);
         }
 
         return [
@@ -150,8 +255,8 @@ class PostController extends Controller
     {
         try {
             $user = Auth::guard('sanctum')->user();
-            
-            if (!$user) {
+
+            if (! $user) {
                 return response()->json(['message' => 'Unauthenticated'], 401);
             }
 
@@ -167,19 +272,39 @@ class PostController extends Controller
 
             // Get recent posts + recent reposts (pivot), then merge into one feed.
             try {
-                $recentPostsModels = Post::with(['user', 'likes', 'comments'])
+                $blockedIds = $user->blockedUserIds();
+
+                $recentPostsQuery = Post::with(['user', 'likes', 'comments'])
                     ->withCount(['reposts'])
                     ->where(function ($q) {
                         $q->whereNull('is_hidden')->orWhere('is_hidden', false);
                     })
-                    ->whereNotNull('created_at')
+                    ->whereNotNull('created_at');
+
+                if ($blockedIds !== []) {
+                    $recentPostsQuery->whereNotIn('user_id', $blockedIds);
+                }
+
+                $recentPostsModels = $recentPostsQuery
                     ->orderBy('created_at', 'desc')
                     ->limit($windowSize)
                     ->get()
                     ->filter();
 
-                $recentRepostRows = DB::table('reposts_posts')
-                    ->orderByDesc('created_at')
+                $recentRepostQuery = DB::table('reposts_posts')
+                    ->orderByDesc('created_at');
+
+                if ($blockedIds !== []) {
+                    $recentRepostQuery
+                        ->whereNotIn('user_id', $blockedIds)
+                        ->whereNotIn('post_id', function ($q) use ($blockedIds) {
+                            $q->select('id')
+                                ->from('posts')
+                                ->whereIn('user_id', $blockedIds);
+                        });
+                }
+
+                $recentRepostRows = $recentRepostQuery
                     ->limit($windowSize)
                     ->get();
 
@@ -192,7 +317,7 @@ class PostController extends Controller
                     ->all();
 
                 $savedInteractionIds = [];
-                if (!empty($interactionIds)) {
+                if (! empty($interactionIds)) {
                     $savedInteractionIds = DB::table('post_saves')
                         ->where('user_id', $user->id)
                         ->whereIn('post_id', $interactionIds)
@@ -225,11 +350,12 @@ class PostController extends Controller
                 $recentReposts = $recentRepostRows
                     ->map(function ($row) use ($originalPostsById, $repostersById, $user, $savedInteractionIds) {
                         $original = $originalPostsById[(int) $row->post_id] ?? null;
-                        if (!$original) {
+                        if (! $original) {
                             return null;
                         }
 
                         $reposter = $repostersById[(int) $row->user_id] ?? null;
+
                         return $this->mapRepostForMobileFeed($row, $original, $reposter, $user, $savedInteractionIds);
                     })
                     ->filter()
@@ -237,8 +363,8 @@ class PostController extends Controller
 
                 $recentPosts = $recentPosts->concat($recentReposts)->values();
             } catch (\Exception $e) {
-                Log::error('Error fetching posts for feed: ' . $e->getMessage());
-                Log::error('Stack trace: ' . $e->getTraceAsString());
+                Log::error('Error fetching posts for feed: '.$e->getMessage());
+                Log::error('Stack trace: '.$e->getTraceAsString());
                 $recentPosts = collect([]);
             }
 
@@ -259,12 +385,12 @@ class PostController extends Controller
                 'feed' => $feed,
                 'next_offset' => $hasMore ? $offset + $limit : null,
             ]);
-        } catch (\Throwable $e) {
-            Log::error('Error in feed endpoint: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
-            Log::error('File: ' . $e->getFile() . ' Line: ' . $e->getLine());
-            Log::error('Exception class: ' . get_class($e));
-            
+        } catch (Throwable $e) {
+            Log::error('Error in feed endpoint: '.$e->getMessage());
+            Log::error('Stack trace: '.$e->getTraceAsString());
+            Log::error('File: '.$e->getFile().' Line: '.$e->getLine());
+            Log::error('Exception class: '.get_class($e));
+
             // Return empty feed instead of error to prevent app crash
             return response()->json([
                 'feed' => [],
@@ -281,14 +407,14 @@ class PostController extends Controller
     public function store(Request $request)
     {
         $user = Auth::guard('sanctum')->user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
         $request->validate([
             'description' => 'nullable|string|max:5000',
-            'images' => 'array|max:' . Post::MAX_IMAGES,
+            'images' => 'array|max:'.Post::MAX_IMAGES,
             'images.*' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:10240',
         ]);
 
@@ -301,7 +427,7 @@ class PostController extends Controller
 
         $post = Post::create([
             'user_id' => $user->id,
-            'description' => (string) ($request->input('description') ?? ''),
+            'description' => $request->description ?? '',
             'images' => $imagesArray,
         ]);
 
@@ -314,7 +440,7 @@ class PostController extends Controller
     public function showPost(int $id)
     {
         $user = Auth::guard('sanctum')->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -332,7 +458,7 @@ class PostController extends Controller
     public function updatePost(Request $request, int $id)
     {
         $user = Auth::guard('sanctum')->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -377,7 +503,7 @@ class PostController extends Controller
 
         $this->deleteStoredImages($removedImages->toArray());
 
-        $post->description = (string) ($request->input('description') ?? '');
+        $post->description = $request->description ?? '';
         $post->images = $nextImages;
         $post->save();
 
@@ -390,7 +516,7 @@ class PostController extends Controller
     public function deletePost(int $id)
     {
         $user = Auth::guard('sanctum')->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -415,7 +541,7 @@ class PostController extends Controller
         $images = $post->images ?? [];
         if (is_array($images) && count($images) > 0) {
             foreach ($images as $image) {
-                if (!$image) {
+                if (! $image) {
                     continue;
                 }
                 if (strpos($image, 'http') === 0) {
@@ -423,9 +549,9 @@ class PostController extends Controller
                 } else {
                     $imagePath = ltrim((string) $image, '/');
                     if (strpos($imagePath, 'img/posts/') !== false) {
-                        $imageUrls[] = url('storage/' . $imagePath);
+                        $imageUrls[] = url('storage/'.$imagePath);
                     } else {
-                        $imageUrls[] = url('storage/img/posts/' . $imagePath);
+                        $imageUrls[] = url('storage/img/posts/'.$imagePath);
                     }
                 }
             }
@@ -445,9 +571,10 @@ class PostController extends Controller
                 'avatar' => ($postUser && $postUser->image) ? (function () use ($postUser) {
                     $imagePath = ltrim((string) $postUser->image, '/');
                     if (strpos($imagePath, 'img/profile/') !== false) {
-                        return url('storage/' . $imagePath);
+                        return url('storage/'.$imagePath);
                     }
-                    return url('storage/img/profile/' . $imagePath);
+
+                    return url('storage/img/profile/'.$imagePath);
                 })() : null,
                 'image' => $postUser?->image ?? null,
             ],
@@ -469,7 +596,7 @@ class PostController extends Controller
 
         try {
             $storage = Storage::disk($disk);
-            if (!$storage->exists(self::POST_IMAGES_DIR)) {
+            if (! $storage->exists(self::POST_IMAGES_DIR)) {
                 $storage->makeDirectory(self::POST_IMAGES_DIR, 0755, true);
             }
         } catch (Throwable $e) {
@@ -477,7 +604,7 @@ class PostController extends Controller
         }
 
         foreach ($files as $image) {
-            if (!$image || !$image->isValid()) {
+            if (! $image || ! $image->isValid()) {
                 continue;
             }
 
@@ -487,7 +614,7 @@ class PostController extends Controller
                     $stored[] = basename($path);
                 }
             } catch (Throwable $e) {
-                Log::error('Failed to store post image: ' . $e->getMessage());
+                Log::error('Failed to store post image: '.$e->getMessage());
                 report($e);
             }
         }
@@ -501,13 +628,13 @@ class PostController extends Controller
         $storage = Storage::disk($disk);
 
         foreach ($filenames as $fileName) {
-            if (!$fileName) {
+            if (! $fileName) {
                 continue;
             }
 
             $value = ltrim((string) $fileName, '/');
-            if (!str_contains($value, self::POST_IMAGES_DIR . '/')) {
-                $value = self::POST_IMAGES_DIR . '/' . basename($value);
+            if (! str_contains($value, self::POST_IMAGES_DIR.'/')) {
+                $value = self::POST_IMAGES_DIR.'/'.basename($value);
             }
 
             try {
@@ -528,7 +655,7 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -557,7 +684,7 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -579,12 +706,12 @@ class PostController extends Controller
         if ($avatarValue) {
             $imagePath = ltrim((string) $avatarValue, '/');
             $avatar = str_contains($imagePath, 'img/profile/')
-                ? url('storage/' . $imagePath)
-                : url('storage/img/profile/' . $imagePath);
+                ? url('storage/'.$imagePath)
+                : url('storage/img/profile/'.$imagePath);
         }
 
-        $likeCount     = $comment->likes?->count() ?? 0;
-        $isLiked       = $comment->likes?->contains('user_id', $authUserId) ?? false;
+        $likeCount = $comment->likes?->count() ?? 0;
+        $isLiked = $comment->likes?->contains('user_id', $authUserId) ?? false;
 
         $replies = $comment->replies
             ? $comment->replies
@@ -595,16 +722,16 @@ class PostController extends Controller
             : [];
 
         return [
-            'id'         => $comment->id,
-            'parent_id'  => $comment->parent_id,
-            'body'       => $comment->comment,
+            'id' => $comment->id,
+            'parent_id' => $comment->parent_id,
+            'body' => $comment->comment,
             'created_at' => $comment->created_at?->toDateTimeString(),
-            'likes_count'       => $likeCount,
-            'is_liked_by_user'  => $isLiked,
-            'replies'    => $replies,
-            'user'       => [
-                'id'     => $comment->user?->id,
-                'name'   => $comment->user?->name ?? 'User',
+            'likes_count' => $likeCount,
+            'is_liked_by_user' => $isLiked,
+            'replies' => $replies,
+            'user' => [
+                'id' => $comment->user?->id,
+                'name' => $comment->user?->name ?? 'User',
                 'avatar' => $avatar,
             ],
         ];
@@ -618,20 +745,20 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
         $request->validate([
-            'comment'   => 'required|string|max:2000',
+            'comment' => 'required|string|max:2000',
             'parent_id' => 'nullable|integer|exists:comments,id',
         ]);
 
         $post = Post::findOrFail($id);
 
         $comment = $post->comments()->create([
-            'user_id'   => $user->id,
-            'comment'   => $request->comment,
+            'user_id' => $user->id,
+            'comment' => $request->comment,
             'parent_id' => $request->parent_id ?? null,
         ]);
 
@@ -649,7 +776,7 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -671,7 +798,7 @@ class PostController extends Controller
         $count = CommentLike::query()->where('comment_id', $commentId)->count('*');
 
         return response()->json([
-            'liked'       => $liked,
+            'liked' => $liked,
             'likes_count' => $count,
         ]);
     }
@@ -683,7 +810,7 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -716,7 +843,7 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -734,32 +861,52 @@ class PostController extends Controller
     /**
      * Toggle a like on a post for the authenticated mobile user.
      * Returns the new liked state and updated like count.
+     * On a new like, notifies the post owner (DB + Expo push + Ably), matching web AddLike.
      */
     public function toggleLike(int $id)
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
         $post = Post::findOrFail($id);
+        $interactionPost = $this->resolveInteractionPost($post);
 
-        $existingLike = $post->likes()->where('user_id', $user->id)->first();
+        $existingLike = $interactionPost->likes()->where('user_id', $user->id)->first();
 
         if ($existingLike) {
             $existingLike->delete();
             $liked = false;
         } else {
-            $post->likes()->create(['user_id' => $user->id]);
+            $interactionPost->likes()->create(['user_id' => $user->id]);
             $liked = true;
+
+            $notification = PostNotification::createNotification(
+                $interactionPost->user_id,
+                $user->id,
+                $interactionPost->id,
+                'like'
+            );
+
+            if ($notification) {
+                $this->broadcastNotification($notification, $user, $interactionPost, 'like');
+            }
+
+            $this->notifyRepostersForInteraction(
+                $interactionPost,
+                $user,
+                PostNotification::TYPE_REPOST_LIKE
+            );
         }
 
-        $post->loadCount('likes');
+        $interactionPost->loadCount('likes');
+        $this->broadcastPostStats($interactionPost);
 
         return response()->json([
-            'liked'       => $liked,
-            'likes_count' => $post->likes_count,
+            'liked' => $liked,
+            'likes_count' => $interactionPost->likes_count,
         ]);
     }
 
@@ -767,7 +914,7 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -806,13 +953,21 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        $saved = $user->savedPosts()
+        $blockedIds = $user->blockedUserIds();
+
+        $savedQuery = $user->savedPosts()
             ->with(['user', 'likes', 'comments'])
-            ->withCount(['reposts'])
+            ->withCount(['reposts']);
+
+        if ($blockedIds !== []) {
+            $savedQuery->whereNotIn('posts.user_id', $blockedIds);
+        }
+
+        $saved = $savedQuery
             ->orderByPivot('created_at', 'desc')
             ->limit(60)
             ->get();
@@ -842,7 +997,7 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -863,8 +1018,8 @@ class PostController extends Controller
                 if ($imageValue) {
                     $imagePath = ltrim((string) $imageValue, '/');
                     $avatar = str_contains($imagePath, 'img/profile/')
-                        ? url('storage/' . $imagePath)
-                        : url('storage/img/profile/' . $imagePath);
+                        ? url('storage/'.$imagePath)
+                        : url('storage/img/profile/'.$imagePath);
                 }
 
                 $likedUserId = (int) ($likedUser?->id ?? 0);
@@ -885,8 +1040,8 @@ class PostController extends Controller
     public function repost(Request $request)
     {
         $user = Auth::guard('sanctum')->user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -963,7 +1118,7 @@ class PostController extends Controller
     {
         $user = Auth::guard('sanctum')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
@@ -979,8 +1134,9 @@ class PostController extends Controller
             ->where('post_id', $interactionPost->id)
             ->first();
 
-        if (!$repostPivot) {
+        if (! $repostPivot) {
             $repostsCount = (int) $interactionPost->reposts()->count();
+
             return response()->json([
                 'message' => 'Not reposted',
                 'reposted' => false,
@@ -1004,4 +1160,3 @@ class PostController extends Controller
         ], 200);
     }
 }
-

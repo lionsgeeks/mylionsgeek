@@ -8,10 +8,10 @@ export default function NotificationHistory({ announcements = [] }) {
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <History className="h-5 w-5 text-alpha" />
-                    Sent announcements
+                    Sent app notifications
                 </CardTitle>
                 <CardDescription className="text-dark/60 dark:text-light/60">
-                    History of announcements sent to web and mobile users.
+                    History of app notifications sent to web and mobile users.
                 </CardDescription>
             </CardHeader>
 
@@ -19,7 +19,7 @@ export default function NotificationHistory({ announcements = [] }) {
                 {announcements.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center text-dark/60 dark:text-light/60">
                         <Bell className="mb-3 h-10 w-10 opacity-50" />
-                        <p className="text-sm">No announcements sent yet.</p>
+                        <p className="text-sm">No app notifications sent yet.</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto rounded-lg border border-alpha/20">

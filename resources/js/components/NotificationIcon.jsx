@@ -155,7 +155,8 @@ export default function NotificationIcon() {
                         senderImage: message.data.sender_image,
                         message: message.data.message,
                         link: message.data.link,
-                        iconType: message.data.icon_type,
+                        iconType:
+                            message.data.icon_type || (message.data.type === 'post_report' ? 'flag' : 'user'),
                         timestamp: new Date(message.data.created_at),
                         readAt: message.data.read_at ? new Date(message.data.read_at) : null,
                     };
@@ -278,9 +279,22 @@ export default function NotificationIcon() {
                 // Handle "job-application-123"
                 type = `${parts[0]}-${parts[1]}`;
                 id = parts[2];
+            } else if (parts.length === 3 && parts[0] === 'attendance' && parts[1] === 'reminder') {
+                // Handle "attendance-reminder-123" (Ably may use hyphen like task-assignment)
+                type = 'attendance_reminder';
+                id = parts[2];
+            } else if (parts.length === 3 && parts[0] === 'exercise' && parts[1] === 'review') {
+                type = 'exercise-review';
+                id = parts[2];
+            } else if (parts.length === 3 && parts[0] === 'user' && parts[1] === 'report') {
+                type = 'user-report';
+                id = parts[2];
+            } else if (parts.length === 3 && parts[0] === 'user' && parts[1] === 'block') {
+                type = 'user-block';
+                id = parts[2];
             } else {
-                // Handle simple types like "follow-123"
-                type = parts[0];
+                // Handle simple types like "follow-123", "post-123", "discipline-123"
+                type = parts[0] === 'discipline' ? 'discipline_change' : parts[0];
                 id = parts.slice(1).join('-');
             }
 

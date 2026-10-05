@@ -104,21 +104,21 @@ class PostController extends Controller
 
     private function notifyAdminsAboutReport(PostReport $report, User $reporter): void
     {
-        try {
-            $admins = User::query()
-                ->select(['id', 'name', 'image', 'role'])
-                ->get()
-                ->filter(fn (User $u) => $this->isStaff($u))
-                ->values();
+        $admins = User::query()
+            ->select(['id', 'name', 'image', 'role'])
+            ->get()
+            ->filter(fn (User $u) => $this->isStaff($u))
+            ->values();
 
-            if ($admins->isEmpty()) {
-                return;
-            }
+        if ($admins->isEmpty()) {
+            return;
+        }
 
-            $ablyKey = config('services.ably.key');
-            $ably = $ablyKey ? new AblyRest($ablyKey) : null;
+        $ablyKey = config('services.ably.key');
+        $ably = $ablyKey ? new AblyRest($ablyKey) : null;
 
-            foreach ($admins as $admin) {
+        foreach ($admins as $admin) {
+            try {
                 $notif = PostReportNotification::query()->create([
                     'notified_user_id' => (int) $admin->id,
                     'post_report_id' => (int) $report->id,
@@ -128,24 +128,29 @@ class PostController extends Controller
                     continue;
                 }
 
-                $channel = $ably->channels->get("notifications:{$admin->id}");
-                $channel->publish('new_notification', [
-                    'id' => 'post-report-' . $notif->id,
-                    'type' => 'post_report',
-                    'sender_name' => $reporter->name,
-                    'sender_image' => $reporter->image,
-                    'message' => "{$reporter->name} reported a post",
-                    'link' => "/admin/post-reports/{$report->id}",
-                    'mobile_link' => "/posts/{$report->post_id}?reportId={$report->id}",
-                    'created_at' => $notif->created_at->toISOString(),
-                    'read_at' => null,
-                    'post_id' => (int) $report->post_id,
-                    'report_id' => (int) $report->id,
-                ]);
+                try {
+                    $channel = $ably->channels->get("notifications:{$admin->id}");
+                    $channel->publish('new_notification', [
+                        'id' => 'post-report-' . $notif->id,
+                        'type' => 'post_report',
+                        'sender_name' => $reporter->name,
+                        'sender_image' => $reporter->image,
+                        'message' => "{$reporter->name} reported a post",
+                        'link' => "/admin/post-reports/{$report->id}",
+                        'mobile_link' => "/posts/{$report->post_id}?reportId={$report->id}",
+                        'icon_type' => 'flag',
+                        'created_at' => $notif->created_at->toISOString(),
+                        'read_at' => null,
+                        'post_id' => (int) $report->post_id,
+                        'report_id' => (int) $report->id,
+                    ]);
+                } catch (Throwable $e) {
+                    Log::warning('Failed to publish post report notification via Ably for admin ' . $admin->id . ': ' . $e->getMessage());
+                }
+            } catch (Throwable $e) {
+                Log::error('Failed to create post report notification for admin ' . $admin->id . ': ' . $e->getMessage());
+                report($e);
             }
-        } catch (Throwable $e) {
-            Log::error('Failed to notify admins about post report via Ably: ' . $e->getMessage());
-            report($e);
         }
     }
 
@@ -178,15 +183,20 @@ class PostController extends Controller
                 ]
             );
 
+            $shouldNotify = $report->wasRecentlyCreated;
+
             if ($report->wasRecentlyCreated === false && $report->status === PostReport::STATUS_PENDING) {
                 $incoming = (string) ($validated['reason'] ?? '');
                 if ($incoming !== '' && $incoming !== (string) ($report->reason ?? '')) {
                     $report->reason = $incoming;
                     $report->save();
+                    $shouldNotify = true;
                 }
             }
 
-            $this->notifyAdminsAboutReport($report, $user);
+            if ($shouldNotify) {
+                $this->notifyAdminsAboutReport($report, $user);
+            }
 
             return $this->respondWithMessage($request, 'Report submitted');
         } catch (Throwable $e) {
@@ -292,11 +302,11 @@ class PostController extends Controller
 
         $this->broadcastPostStats($original);
 
-        $posts = Post::withCount(['likes', 'comments', 'reposts'])->latest()->get();
+        $original->loadCount(['likes', 'comments', 'reposts']);
 
         return back()->with([
             'success' => $already ? 'Repost updated successfully' : 'Reposted successfully',
-            'posts' => $posts,
+            'post' => $original,
         ]);
     }
 
@@ -564,10 +574,23 @@ class PostController extends Controller
 
     public function deleteComment($id)
     {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
         $comment = Comment::find($id);
-        $postId = $comment?->post_id;
-        $commentId = $comment?->id;
-        $comment?->delete();
+        if (!$comment) {
+            return response()->json(['error' => 'Comment not found'], 404);
+        }
+
+        if ((int) $comment->user_id !== (int) $user->id) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        $postId = $comment->post_id;
+        $commentId = $comment->id;
+        $comment->delete();
 
         if ($postId && $commentId) {
             $this->publishFeedEvent("feed:post:{$postId}", 'comment-deleted', [
@@ -584,6 +607,11 @@ class PostController extends Controller
 
     public function updateComment(Request $request, $id)
     {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
         $request->validate([
             'comment' => 'required|string|max:2000',
             'image' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:5120',
@@ -591,6 +619,10 @@ class PostController extends Controller
         ]);
 
         $comment = Comment::findOrFail($id);
+
+        if ((int) $comment->user_id !== (int) $user->id) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
 
         $disk = $this->postImagesDisk();
         $removeImage = (bool) $request->boolean('remove_image');
@@ -872,7 +904,7 @@ class PostController extends Controller
         );
 
         $post->update([
-            'description' => $request->input('description', $post->description),
+            'description' => $request->description ?? '',
             'images' => $finalImages,
         ]);
 
@@ -898,7 +930,7 @@ class PostController extends Controller
 
         $post = Post::create([
             'user_id' => Auth::id(),
-            'description' => $request->description,
+            'description' => $request->description ?? '',
             'images' => $imagesArray,
         ]);
 
@@ -924,11 +956,11 @@ class PostController extends Controller
             }
         }
 
-        $posts = Post::withCount(['likes', 'comments'])->latest()->get();
+        $post->loadCount(['likes', 'comments']);
 
         return back()->with([
             'success' => 'Post Created Successfully',
-            'posts' => $posts
+            'post' => $post,
         ]);
     }
 

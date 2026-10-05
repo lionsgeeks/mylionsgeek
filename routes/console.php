@@ -14,3 +14,36 @@ Schedule::command('reservations:check-end-times')
     ->runInBackground();
 
 Schedule::command('jobs:close-expired')->daily();
+
+Schedule::command('stories:purge-expired')
+    ->hourly()
+    ->withoutOverlapping();
+
+Schedule::command('calls:mark-missed')
+    ->everyMinute()
+    ->withoutOverlapping();
+
+$scheduleTimezone = config('app.timezone', 'Africa/Casablanca');
+
+// Same command at each slot open — job resolves morning|lunch|evening via currentSlot()
+Schedule::command('attendance:send-slot-reminder')
+    ->weekdays()
+    ->dailyAt('09:30')
+    ->timezone($scheduleTimezone);
+
+Schedule::command('attendance:send-slot-reminder')
+    ->weekdays()
+    ->dailyAt('11:30')
+    ->timezone($scheduleTimezone);
+
+Schedule::command('attendance:send-slot-reminder')
+    ->weekdays()
+    ->dailyAt('14:00')
+    ->timezone($scheduleTimezone);
+
+// Once after the last slot closes — finalizes all unresolved slots through evening (sync)
+Schedule::command('attendance:finalize-closed-slots')
+    ->weekdays()
+    ->dailyAt('17:05')
+    ->timezone($scheduleTimezone)
+    ->withoutOverlapping();

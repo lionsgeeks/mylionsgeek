@@ -38,6 +38,33 @@ class CertificateTrackResolver
         return null;
     }
 
+    /**
+     * GeekLab trainings are identified by "geeklab" in the formation name (no DB column).
+     */
+    public function isGeekLabTraining(?string $trainingName): bool
+    {
+        return str_contains(strtolower(trim((string) $trainingName)), 'geeklab');
+    }
+
+    /**
+     * Resolve the concrete template track for a student in a given training.
+     *
+     * @return 'coding'|'media'|'geeklab_coding'|'geeklab_media'|null
+     */
+    public function resolveForTraining(?string $field, ?string $trainingName): ?string
+    {
+        $base = $this->resolve($field);
+        if ($base === null) {
+            return null;
+        }
+
+        if ($this->isGeekLabTraining($trainingName)) {
+            return 'geeklab_'.$base;
+        }
+
+        return $base;
+    }
+
     public function label(?string $field): ?string
     {
         return match ($this->resolve($field)) {

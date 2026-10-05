@@ -10,7 +10,7 @@ export default function Announcements({ announcements }) {
 
     return (
         <div className="flex flex-col gap-8 p-6">
-            <Head title="Announcements" />
+            <Head title="App Notification" />
 
             {flash?.success && (
                 <div className="rounded-lg border border-good/30 bg-good/10 px-4 py-3 text-sm text-good">
@@ -27,7 +27,7 @@ export default function Announcements({ announcements }) {
             <Banner
                 illustration={students}
                 userName={auth?.user?.name ?? ''}
-                title="Announcements"
+                title="App Notification"
                 description="Publish for web and mobile. Web users see it in the notification bell; mobile users with the app get a push notification."
             />
 

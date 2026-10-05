@@ -106,7 +106,7 @@ export default function PostReportsIndex({ reports, filters }) {
         </div>
 
         {reports?.links?.length ? (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center justify-center pt-10 gap-2">
             {reports.links.map((l) => (
               <Link
                 key={l.url ?? l.label}

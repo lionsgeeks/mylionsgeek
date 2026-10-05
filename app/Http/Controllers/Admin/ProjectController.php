@@ -15,6 +15,7 @@ use App\Models\ProjectRepositoryEvent;
 use App\Models\ProjectUser;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\GitHubWebhookVerifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -106,7 +107,7 @@ class ProjectController extends Controller
             $request->validate([
                 'name' => 'required|string|max:255',
                 'description' => 'nullable|string',
-                'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif',
+                'photo' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:2048',
                 'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date|after:start_date',
                 'status' => 'nullable|in:active,completed,on_hold,cancelled',
@@ -266,17 +267,15 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function recordGitHubRepositoryEvent(Request $request, Project $project)
+    public function recordGitHubRepositoryEvent(Request $request, Project $project, GitHubWebhookVerifier $verifier)
     {
-        $secret = config('services.github.webhook_secret');
+        $secret = $verifier->configuredSecret();
+        if ($secret === null) {
+            return response()->json(['error' => 'GitHub webhook is not configured.'], 503);
+        }
 
-        if ($secret) {
-            $signature = $request->header('X-Hub-Signature-256');
-            $expected = 'sha256='.hash_hmac('sha256', $request->getContent(), $secret);
-
-            if (! $signature || ! hash_equals($expected, $signature)) {
-                return response()->json(['error' => 'Invalid signature'], 403);
-            }
+        if (! $verifier->signatureIsValid($request, $secret)) {
+            return response()->json(['error' => 'Invalid signature'], 403);
         }
 
         $eventName = $request->header('X-GitHub-Event', 'repository');
@@ -360,7 +359,7 @@ class ProjectController extends Controller
             $request->validate([
                 'name' => 'required|string|max:255',
                 'description' => 'nullable|string',
-                // 'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'photo' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:2048',
                 'status' => 'required|in:active,completed,on_hold,cancelled',
                 'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date|after:start_date',
@@ -369,14 +368,6 @@ class ProjectController extends Controller
             $data = $request->only(['name', 'description', 'status', 'start_date', 'end_date']);
             $data['is_updated'] = true;
             $data['last_activity'] = now();
-
-            // Debug: Log what we're receiving
-            Log::info('Update request data:', [
-                'all' => $request->all(),
-                'hasFile' => $request->hasFile('photo'),
-                'file' => $request->file('photo'),
-                'data' => $data,
-            ]);
 
             // Only update photo if a new one is uploaded
             if ($request->hasFile('photo')) {
@@ -872,7 +863,7 @@ class ProjectController extends Controller
     public function uploadAttachment(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|max:10240', // 10MB max
+            'file' => 'required|file|max:10240|mimes:jpeg,jpg,png,webp,gif,pdf,doc,docx,xls,xlsx,ppt,pptx,mp3,mp4,webm',
             'project_id' => 'required|exists:projects,id',
         ]);
 
@@ -891,7 +882,7 @@ class ProjectController extends Controller
 
             // Generate unique filename
             $filename = time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
-            $path = $file->storeAs('attachments', $filename, 'public');
+            $path = $file->storeAs('attachments', $filename, 'attachments');
 
             // Create attachment record
             $attachment = $project->attachments()->create([
@@ -923,8 +914,9 @@ class ProjectController extends Controller
                 return redirect()->back()->with('error', 'You do not have permission to delete this file.');
             }
 
-            // Delete file from storage
-            if ($attachment->path && Storage::disk('public')->exists($attachment->path)) {
+            // Delete file from storage (private disk first; legacy public fallback)
+            if ($attachment->path) {
+                Storage::disk('attachments')->delete($attachment->path);
                 Storage::disk('public')->delete($attachment->path);
             }
 

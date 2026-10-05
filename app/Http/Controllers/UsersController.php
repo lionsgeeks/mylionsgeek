@@ -2,16 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\EnsureAttendanceStaffRole;
+use App\Models\FaceEnrollment;
 use App\Models\Formation;
 use Inertia\Inertia;
 use App\Http\Controllers\Controller;
 use App\Mail\CompleteUserProfile;
 use App\Mail\UserWelcomeMail;
-use App\Mail\NewsletterMail;
 use App\Jobs\SendNewsletterEmail;
 use App\Models\AttendanceListe;
 use App\Models\Computer;
+use App\Models\NewsletterEmail;
 use App\Models\User;
+use App\Services\ProgramStatusService;
+use App\Services\UserLifeStatusService;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -44,21 +48,53 @@ use App\Services\UserProfileStatsService;
 
 class UsersController extends Controller
 {
+    /**
+     * Columns removed from an export when the requester is not an admin or super_admin.
+     * `has_handicap` is health data, so it is restricted at least as tightly as `cin`.
+     */
+    private const RESTRICTED_EXPORT_FIELDS = ['cin', 'phone', 'role', 'has_handicap'];
+
     public function index()
     {
+        $actor = Auth::user();
+        $actorRoles = is_array($actor?->role) ? $actor->role : array_filter([(string) ($actor?->role ?? '')]);
+        $actorRolesLower = array_map('strtolower', array_map('strval', $actorRoles));
+        $canSeeSensitive = (bool) array_intersect($actorRolesLower, ['admin', 'super_admin']);
+
+        // Privileged actors (admin / super_admin) must see other admins so they can
+        // manage their roles. Non-privileged staff still cannot browse elevated accounts.
         $allUsers = User::query()
-            ->where('role', '!=', 'admin')
             ->orderByDesc('created_at')
             ->get()
-            ->filter(fn (User $user) => ! $user->isRecruiter())
+            ->filter(function (User $user) use ($actor) {
+                if ($user->isRecruiter()) {
+                    return false;
+                }
+
+                if ($actor instanceof User && $actor->mayAssignPrivilegedRoles()) {
+                    return true;
+                }
+
+                return empty(array_intersect($user->normalizedRoles(), User::PRIVILEGED_ROLES));
+            })
             ->values();
 
         $allFormation = Formation::with(['coach:id,name'])->orderBy('created_at', 'desc')->get();
 
+        $canViewHealthData = $this->actorCanViewHealthData(Auth::user());
+
         return Inertia::render('admin/users/index', [
-            'users' => $allUsers->map(fn (User $user) => array_merge($user->toArray(), [
-                'resume_view_url' => $user->resumeViewUrl(),
-            ])),
+            'users' => $allUsers->map(function (User $user) use ($canViewHealthData) {
+                $payload = array_merge($user->toArray(), [
+                    'resume_view_url' => $user->resumeViewUrl(),
+                ]);
+
+                if (! $canViewHealthData) {
+                    unset($payload['has_handicap']);
+                }
+
+                return $payload;
+            }),
             'trainings' => $allFormation,
         ]);
     }
@@ -68,13 +104,23 @@ class UsersController extends Controller
     {
         $requestedFields = array_filter(array_map('trim', explode(',', (string) $request->query('fields', 'name,email,cin'))));
 
+        $user = $request->user();
+        $roles = is_array($user->role) ? $user->role : [$user->role];
+
+        if (! in_array('admin', $roles, true) && ! in_array('super_admin', $roles, true)) {
+            $requestedFields = array_values(array_diff($requestedFields, self::RESTRICTED_EXPORT_FIELDS));
+        }
+
         $fieldMap = [
             'id' => 'id',
             'name' => 'name',
             'email' => 'email',
             'cin' => 'cin',
             'phone' => 'phone',
+            'gender' => 'gender',
+            'has_handicap' => 'has_handicap',
             'status' => 'status',
+            'program_status' => 'program_status',
             'role' => 'role',
             'formation' => 'formation',
             'access_studio' => 'access_studio',
@@ -101,6 +147,23 @@ class UsersController extends Controller
             'transformers' => [
                 'formation' => function ($user) {
                     return optional($user->formation)->name ?? '';
+                },
+                'gender' => function ($user) {
+                    return match ($user->gender) {
+                        'male' => 'Male',
+                        'female' => 'Female',
+                        default => '',
+                    };
+                },
+                'has_handicap' => function ($user) {
+                    if ($user->has_handicap === null) {
+                        return '';
+                    }
+
+                    return $user->has_handicap ? 'Yes' : 'No';
+                },
+                'program_status' => function ($user) {
+                    return User::PROGRAM_STATUS_LABELS[$user->program_status] ?? '';
                 },
                 'access_studio' => function ($user) {
                     return (string) $user->access_studio === '1' || $user->access_studio === 1 ? 'Yes' : 'No';
@@ -155,11 +218,24 @@ class UsersController extends Controller
             'recruiter',
             'coworker'
         ];
+        $viewer = $request->user();
         $profileStats = app(UserProfileStatsService::class)->getStats($user);
+        $canViewHealthData = $this->actorCanViewHealthData($viewer);
         $userPayload = array_merge(
-            $this->formatUserPayload($user, $isOnline),
+            $this->formatUserPayload($user, $isOnline, $canViewHealthData),
             $profileStats
         );
+
+        $canEnrollFace = $viewer instanceof User && EnsureAttendanceStaffRole::allows($viewer);
+        $faceEnrollment = null;
+        if (Schema::hasTable('face_enrollments')) {
+            $enrollment = FaceEnrollment::query()->where('user_id', $user->id)->first();
+            if ($enrollment) {
+                $faceEnrollment = [
+                    'enrolled_at' => $enrollment->enrolled_at?->toIso8601String(),
+                ];
+            }
+        }
 
         return Inertia::render('admin/users/[id]', [
             'user' => $userPayload,
@@ -171,6 +247,8 @@ class UsersController extends Controller
             'discipline' => $discipline,
             'absences' => $absences['paginated'],
             'recentAbsences' => $absences['recent'],
+            'canEnrollFace' => $canEnrollFace,
+            'faceEnrollment' => $faceEnrollment,
         ]);
     }
 
@@ -690,7 +768,7 @@ class UsersController extends Controller
 
     // Discipline calculation is now handled by DisciplineService
 
-    private function formatUserPayload(User $user, bool $isOnline)
+    private function formatUserPayload(User $user, bool $isOnline, bool $includeHealthData = true)
     {
         $payload = [
             'id' => $user->id,
@@ -698,7 +776,9 @@ class UsersController extends Controller
             'email' => $user->email,
             'phone' => $user->phone,
             'cin' => $user->cin,
+            'gender' => $user->gender,
             'status' => $user->status,
+            'program_status' => $user->program_status,
             'formation_id' => $user->formation_id,
             'image' => $user->image,
             'cover' => $user->cover,
@@ -713,6 +793,10 @@ class UsersController extends Controller
             'role' => $user->role,
         ];
 
+        if ($includeHealthData) {
+            $payload['has_handicap'] = $user->has_handicap;
+        }
+
         // Debug logging
         Log::info('User payload for user ' . $user->id, [
             'phone' => $user->phone,
@@ -721,6 +805,17 @@ class UsersController extends Controller
         ]);
 
         return $payload;
+    }
+
+    private function actorCanViewHealthData(?User $actor): bool
+    {
+        if (! $actor) {
+            return false;
+        }
+
+        $roles = is_array($actor->role) ? $actor->role : array_filter([(string) $actor->role]);
+
+        return count(array_intersect($roles, ['admin', 'super_admin'])) > 0;
     }
 
     private function formatComputer($computer)
@@ -789,38 +884,20 @@ class UsersController extends Controller
     // Documents API
     public function documents(User $user)
     {
-        $toUrl = function ($path) {
-            $p = (string) $path;
-            if ($p === '') {
-                return null;
-            }
-            if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://')) {
-                return $p;
-            }
-            // If already a web path like "/storage/...", return as-is (legacy rows)
-            if (str_starts_with($p, '/storage/')) {
-                return $p;
-            }
-            // Default: map storage path to public URL
-            return Storage::url($p);
-        };
-
         $contracts = Contract::query()
             ->where('user_id', $user->id)
             ->orderByDesc('created_at')
             ->get(['id', 'contract', 'type', 'created_at'])
-            ->map(function ($c) {
+            ->map(function ($c) use ($user) {
                 return [
                     'id' => (int) $c->id,
                     'name' => (string) ($c->type ?: 'Contract'),
-                    // Always attempt to generate a URL; legacy rows may already store '/storage/...'
-                    'url' => (function ($path) {
-                        $p = (string) $path;
-                        if ($p === '') return null;
-                        if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://')) return $p;
-                        if (str_starts_with($p, '/storage/')) return $p;
-                        return Storage::url($p);
-                    })($c->contract),
+                    // Auth-gated view route only — never emit public /storage URLs (H5).
+                    'url' => route('admin.users.documents.view', [
+                        'user' => $user->id,
+                        'kind' => 'contract',
+                        'doc' => $c->id,
+                    ]),
                     'kind' => 'contract',
                     'created_at' => (string) $c->created_at,
                 ];
@@ -830,17 +907,15 @@ class UsersController extends Controller
             ->where('user_id', $user->id)
             ->orderByDesc('created_at')
             ->get(['id', 'mc_document', 'description', 'created_at'])
-            ->map(function ($m) {
+            ->map(function ($m) use ($user) {
                 return [
                     'id' => (int) $m->id,
                     'name' => (string) ($m->description ?: 'Medical certificate'),
-                    'url' => (function ($path) {
-                        $p = (string) $path;
-                        if ($p === '') return null;
-                        if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://')) return $p;
-                        if (str_starts_with($p, '/storage/')) return $p;
-                        return Storage::url($p);
-                    })($m->mc_document),
+                    'url' => route('admin.users.documents.view', [
+                        'user' => $user->id,
+                        'kind' => 'medical',
+                        'doc' => $m->id,
+                    ]),
                     'kind' => 'medical',
                     'created_at' => (string) $m->created_at,
                 ];
@@ -856,12 +931,12 @@ class UsersController extends Controller
     {
         $validated = $request->validate([
             'kind' => 'required|string|in:contract,medical',
-            'file' => 'required|file|max:10240',
+            'file' => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png,webp|max:10240',
             'name' => 'nullable|string|max:255',
             'type' => 'nullable|string|max:100',
         ]);
 
-        $path = $request->file('file')->store('documents', 'public');
+        $path = $request->file('file')->store('documents', 'documents');
 
         if ($validated['kind'] === 'contract') {
             Contract::create([
@@ -882,10 +957,9 @@ class UsersController extends Controller
         return response()->json(['status' => 'ok']);
     }
 
-    // Stream a stored document via controller to avoid direct /storage access issues
+    // Stream a stored document via controller (private disk + legacy public fallback).
     public function viewDocument(Request $request, User $user, string $kind, int $doc)
     {
-        // Fetch by document id only to handle legacy rows with mismatched user_id types
         if ($kind === 'contract') {
             $row = Contract::query()->whereKey($doc)->firstOrFail();
             $path = (string) $row->contract;
@@ -894,19 +968,21 @@ class UsersController extends Controller
             $path = (string) $row->mc_document;
         }
 
-        // Normalize possible stored paths and resolve to an actual file on public disk
+        if ((int) $row->user_id !== (int) $user->id) {
+            abort(Response::HTTP_NOT_FOUND);
+        }
+
+        if (preg_match('/^https?:\/\//i', $path)) {
+            abort(Response::HTTP_NOT_FOUND);
+        }
+
         if (str_starts_with($path, '/storage/')) {
             $path = ltrim(substr($path, strlen('/storage/')), '/');
-        }
-        if (preg_match('/^https?:\/\//i', $path)) {
-            return redirect()->away($path);
         }
 
         $candidates = [];
         $base = ltrim($path, '/');
-        // as-is
         $candidates[] = $base;
-        // try common directories for legacy rows that only stored filename
         $candidates[] = 'documents/' . basename($base);
         if ($kind === 'contract') {
             $candidates[] = 'contracts/' . basename($base);
@@ -914,24 +990,22 @@ class UsersController extends Controller
             $candidates[] = 'medicals/' . basename($base);
         }
 
-        $resolved = null;
         foreach ($candidates as $candidate) {
-            if (Storage::disk('public')->exists($candidate)) {
-                $resolved = $candidate;
-                break;
+            if (Storage::disk('documents')->exists($candidate)) {
+                return response()->file(Storage::disk('documents')->path($candidate));
             }
         }
 
-        if ($resolved === null) {
-            abort(Response::HTTP_NOT_FOUND);
+        foreach ($candidates as $candidate) {
+            if (Storage::disk('public')->exists($candidate)) {
+                $fullPath = storage_path('app/public/' . ltrim($candidate, '/'));
+                if (is_file($fullPath)) {
+                    return response()->file($fullPath);
+                }
+            }
         }
 
-        $fullPath = storage_path('app/public/' . ltrim($resolved, '/'));
-        if (!is_file($fullPath)) {
-            abort(Response::HTTP_NOT_FOUND);
-        }
-
-        return response()->file($fullPath);
+        abort(Response::HTTP_NOT_FOUND);
     }
 
     /**
@@ -1010,6 +1084,7 @@ class UsersController extends Controller
             'studio_responsable',
             'responsable_studio',
         ]));
+        $canViewHealthData = $this->actorCanViewHealthData($actor);
 
         if (! $canEditOthers && (int) $actor->id !== (int) $user->id) {
             abort(403, 'You can only update your own profile.');
@@ -1019,24 +1094,55 @@ class UsersController extends Controller
             'name' => 'nullable|string',
             'email' => 'nullable|email|unique:users,email,' . $user->id,
             'roles' => 'nullable|array',
-            'roles.*' => 'string',
-            'status' => 'nullable|string',
+            'roles.*' => 'string|in:student,coach,admin,super_admin,moderateur,studio_responsable,responsable_studio,coworker,pro,recruiter',
+            'status' => 'nullable|string|in:'.implode(',', UserLifeStatusService::ALLOWED_VALUES),
             'formation_id' => 'nullable|integer|exists:formations,id',
             'phone' => 'nullable|string',
             'cin' => 'nullable|string',
+            'gender' => 'nullable|in:male,female',
+            'has_handicap' => 'nullable|in:0,1',
+            'program_status' => 'nullable|in:active,certified,not_certified,left',
             'speciality' => 'nullable|string|max:255',
-            'image' => 'nullable|image',
-            'cover' => 'nullable|image', // <-- allow cover image
+            'image' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif',
+            'cover' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif', // <-- allow cover image
             'resume' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
             'access_cowork' => 'nullable|integer|in:0,1',
             'access_studio' => 'nullable|integer|in:0,1',
             'access_scan' => 'nullable|integer|in:0,1',
         ]);
 
-            if ($request->has('formation_id')) {
-            $formation = Formation::query()->whereKey($request->formation_id)->first();
-            // dd($formation->category);
-            $user->field = $formation->category;
+        // Gender / handicap / program_status: staff-only; handicap is admin-only health data.
+        if (! $canEditOthers) {
+            unset($validated['gender'], $validated['has_handicap'], $validated['program_status']);
+        } else {
+            if ($request->exists('gender')) {
+                $gender = $request->input('gender');
+                $validated['gender'] = ($gender === null || $gender === '') ? null : $gender;
+            }
+
+            if ($canViewHealthData && $request->exists('has_handicap')) {
+                $handicap = $request->input('has_handicap');
+                if ($handicap === null || $handicap === '') {
+                    $validated['has_handicap'] = null;
+                } else {
+                    $validated['has_handicap'] = (int) $handicap === 1;
+                }
+            } else {
+                unset($validated['has_handicap']);
+            }
+
+            if ($request->exists('program_status')) {
+                $programStatus = $request->input('program_status');
+                $validated['program_status'] = ($programStatus === null || $programStatus === '') ? null : $programStatus;
+                app(ProgramStatusService::class)->assertCanAssignLeft($actor, $validated['program_status']);
+            }
+        }
+
+        if ($request->exists('formation_id')) {
+            $formationId = $request->input('formation_id');
+            $user->field = $formationId
+                ? Formation::query()->whereKey($formationId)->value('category')
+                : null;
             $user->save();
         }
         if ($request->hasFile('image')) {
@@ -1062,21 +1168,28 @@ class UsersController extends Controller
             $validated['resume'] = $user->storeResumeFromUpload($request->file('resume'));
         }
 
-        // Map roles (array) to 'role' JSON column, lowercased
-        if ($request->has('roles')) {
+        // Map roles (array) to 'role' JSON column, lowercased.
+        // SECURITY: only staff who can edit others may change roles, and never on
+        // themselves (an admin cannot demote/lock themselves out — another admin must).
+        // Students must never escalate via mass-assignment on self-update.
+        unset($validated['roles'], $validated['role']);
+        $isSelfUpdate = (int) $actor->id === (int) $user->id;
+        if ($canEditOthers && $request->exists('roles')) {
+            if ($isSelfUpdate) {
+                abort(403, 'You are not allowed to change your own role.');
+            }
             $roles = $request->input('roles');
             if (is_array($roles)) {
+                $actor->assertMayAssignRoles($roles);
                 $validated['role'] = array_values(array_map(function ($r) {
                     return strtolower((string) $r);
                 }, $roles));
             }
-            unset($validated['roles']);
         }
-
-        $isSelfUpdate = (int) $actor->id === (int) $user->id;
         $currentStatusNormalized = strtolower(trim((string) $user->status));
 
         if ($isSelfUpdate && ! $canEditOthers) {
+            unset($validated['formation_id']);
             if ($currentStatusNormalized === 'studying') {
                 unset($validated['status']);
             } elseif (isset($validated['status'])) {
@@ -1084,7 +1197,7 @@ class UsersController extends Controller
                 if ($requestedStatus === 'studying') {
                     unset($validated['status']);
                 } else {
-                    $studentAllowed = ['working', 'internship', 'unemployed', 'freelancing', 'certified', 'left'];
+                    $studentAllowed = ['working', 'internship', 'unemployed', 'freelancing'];
                     if (! in_array($requestedStatus, $studentAllowed, true)) {
                         unset($validated['status']);
                     }
@@ -1092,20 +1205,29 @@ class UsersController extends Controller
             }
         }
 
-        $previousStatus = $user->status;
+        $previousProgramStatus = $user->program_status;
+
+        $privileged = [];
+        foreach (['role', 'access_cowork', 'access_studio', 'access_scan', 'formation_id'] as $field) {
+            if (array_key_exists($field, $validated)) {
+                $privileged[$field] = $validated[$field];
+                unset($validated[$field]);
+            }
+        }
 
         $user->update($validated);
 
-        // When an admin manually certifies a user, reset the LinkedIn modal gate fields
-        // so the share prompt appears on their next login, and ensure a share token exists.
-        // Uses forceFill() because these fields are not in $fillable.
-        if (isset($validated['status']) && $validated['status'] === 'Certified' && $previousStatus !== 'Certified') {
+        if ($canEditOthers && $privileged !== []) {
+            $user->forceFill($privileged)->save();
+        }
+
+        if (
+            isset($validated['program_status'])
+            && $validated['program_status'] === User::PROGRAM_STATUS_CERTIFIED
+            && $previousProgramStatus !== User::PROGRAM_STATUS_CERTIFIED
+        ) {
             $user->forceFill([
-                'linkedin_share_prompted_at' => null,
-                'linkedin_share_dismissed_at' => null,
-                'linkedin_shared_at' => null,
                 'certified_at' => $user->certified_at ?? now(),
-                'certificate_share_token' => $user->certificate_share_token ?: Str::random(48),
             ])->save();
         }
 
@@ -1117,16 +1239,16 @@ class UsersController extends Controller
             'account_state' => 'required|integer|in:0,1'
         ]);
 
-        $user->update([
+        $user->forceFill([
             'account_state' => $validated['account_state'],
-        ]);
+        ])->save();
         // dd($user->account_state , $request->account_state);
 
         return redirect()->back()->with('success', 'User account status updated successfully');
     }
 
     //! store function
-    public function store(Request $request)
+    public function store(Request $request, ProgramStatusService $programStatusService)
     {
         $validated = $request->validate([
             'name' => 'required|string',
@@ -1134,13 +1256,13 @@ class UsersController extends Controller
             'password' => 'nullable|string|confirmed', // expects password_confirmation
             'phone' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg', // Or 'nullable|string' if not a file
-            'status' => 'nullable|string', // adjust allowed values as needed
+            'status' => 'nullable|string|in:'.implode(',', UserLifeStatusService::ALLOWED_VALUES),
             'cin' => 'nullable|string', // National ID, if applicable
             'formation_id' => 'required|exists:formations,id', // Assumes foreign key to formations table
             'access_studio' => 'required|integer|in:0,1', // Assumes foreign key to formations table
             'access_cowork' => 'required|integer|in:0,1', // Assumes foreign key to formations table
             'roles' => 'required|array|min:1',
-            'roles.*' => 'required|string',
+            'roles.*' => 'required|string|in:'.implode(',', User::ASSIGNABLE_ROLES),
             'entreprise' => 'nullable|string', // Assumes foreign key to formations table
         ]);
         $existing = User::query()->where('email', $validated['email'])->first();
@@ -1162,33 +1284,36 @@ class UsersController extends Controller
             $validated['image'] = $filename;
         }
         $plainPassword = Str::random(12);
-        $token = (string) Str::uuid();
         $lastUser = User::orderBy('id', 'desc')->first();
-        // dd($lastUser->id);
+
+        $defaultStatus = app(UserLifeStatusService::class)->defaultForRoles($validated['roles']);
+
         $user = User::create([
             'id' => $lastUser->id + 1,
             'name' => $validated['name'],
             'email' => $validated['email'],
-            'activation_token' => $token,
             'password' => Hash::make($plainPassword),
             'phone' => $validated['phone'] ?? null,
             'image' => $validated['image'] ?? null,
-            'status' => $validated['status'] ?? null,
+            'status' => $validated['status'] ?? $defaultStatus,
             'cin' => $validated['cin'] ?? null,
             'formation_id' => $validated['formation_id'],
+            'program_status' => $programStatusService->initialProgramStatusFor($validated['formation_id'] ?? null),
             'account_state' => $validated['account_state'] ?? 'active',
             'access_studio' => $validated['access_studio'],
             'access_cowork' => $validated['access_cowork'],
             'role' => $validated['roles'],
             'entreprise' => $validated['entreprise'] ?? null,
+            'invite_source' => 'admin',
             'remember_token' => null,
             'email_verified_at' => null,
-        ]);
+        ])->save();
 
+        $plainToken = $user->issueActivationToken();
         $link = URL::temporarySignedRoute(
             'user.complete-profile',
-            now()->addHour(24),
-            ['token' => $token]
+            now()->addHours(User::ACTIVATION_TTL_HOURS),
+            ['token' => $plainToken]
         );
         Mail::to($user->email)->send(new UserWelcomeMail($user, $link));
 
@@ -1294,7 +1419,25 @@ class UsersController extends Controller
      */
     public function sendEmail(Request $request)
     {
+        $user = $request->user();
+        $roles = is_array($user->role) ? $user->role : [$user->role];
+
+        if (! in_array('admin', $roles, true) && ! in_array('coach', $roles, true)) {
+            abort(403);
+        }
+
+        $isAdmin = in_array('admin', $roles, true);
+        $isCoachOnly = ! $isAdmin && in_array('coach', $roles, true);
+
+        $coachTrainingIds = collect();
+        if ($isCoachOnly) {
+            $coachTrainingIds = Formation::query()
+                ->where('user_id', $user->id)
+                ->pluck('id');
+        }
+
         $validated = $request->validate([
+            'mode' => 'nullable|string|in:training,role,users',
             'training_ids' => 'nullable|array',
             'training_ids.*' => 'integer|exists:formations,id',
             'role_ids' => 'nullable|array',
@@ -1315,59 +1458,91 @@ class UsersController extends Controller
             ], 400);
         }
 
+        $mode = $validated['mode'] ?? null;
+        if (! $mode) {
+            // Backward-compatible inference when mode is omitted.
+            if (! empty($validated['user_ids'])) {
+                $mode = 'users';
+            } elseif (array_key_exists('role_ids', $validated) && (is_null($validated['role_ids']) || count($validated['role_ids']) > 0)
+                && empty($validated['training_ids'])) {
+                $mode = 'role';
+            } else {
+                $mode = 'training';
+            }
+        }
+
+        // Coaches can only target their assigned trainings / students (no role broadcast).
+        if ($isCoachOnly) {
+            if ($mode === 'role') {
+                return response()->json([
+                    'error' => 'Coaches cannot send newsletters by role.',
+                ], 403);
+            }
+
+            if ($coachTrainingIds->isEmpty()) {
+                return response()->json([
+                    'error' => 'You have no trainings assigned.',
+                ], 400);
+            }
+        }
+
         $users = collect();
 
-        // Check if "All Users" is selected (training_ids is null and role_ids is null)
-        $isAllUsers = is_null($validated['training_ids']) && is_null($validated['role_ids']);
+        if ($mode === 'training') {
+            if (is_null($validated['training_ids'] ?? null)) {
+                $query = User::query()->whereNotNull('email');
+                if ($isCoachOnly) {
+                    $query->whereIn('formation_id', $coachTrainingIds);
+                }
+                $users = $query->get();
+            } elseif (! empty($validated['training_ids'])) {
+                $trainingIds = array_values($validated['training_ids']);
+                if ($isCoachOnly) {
+                    $trainingIds = array_values(array_intersect($trainingIds, $coachTrainingIds->all()));
+                    if (empty($trainingIds)) {
+                        return response()->json([
+                            'error' => 'You can only send to your assigned trainings.',
+                        ], 403);
+                    }
+                }
 
-        if ($isAllUsers) {
-            // Send to all users (including those with and without training)
-            $users = User::query()->whereNotNull('email', 'and')->get();
-        } else {
-            $hasTrainingFilter = isset($validated['training_ids']) && count($validated['training_ids']) > 0;
-            $hasRoleFilter = isset($validated['role_ids']) && count($validated['role_ids']) > 0;
-
-            // Start with training filter if provided
-            if ($hasTrainingFilter) {
                 $users = User::query()
-                    ->whereIn('formation_id', array_values($validated['training_ids']), 'and', false)
-                    ->whereNotNull('email', 'and')
+                    ->whereIn('formation_id', $trainingIds)
+                    ->whereNotNull('email')
                     ->get();
             }
+        } elseif ($mode === 'role') {
+            if (! $isAdmin) {
+                return response()->json([
+                    'error' => 'Only admins can send newsletters by role.',
+                ], 403);
+            }
 
-            // Apply role filter: if both filters exist, use intersection (AND logic)
-            // If only roles are selected, use role users
-            if ($hasRoleFilter) {
-                $roleUsers = User::query()->whereNotNull('email', 'and')->get()->filter(function ($user) use ($validated) {
-                    $userRoles = is_array($user->role) ? $user->role : ($user->role ? [$user->role] : []);
-                    return collect($userRoles)->map(fn($r) => strtolower($r ?? ''))->intersect(
-                        collect($validated['role_ids'])->map(fn($r) => strtolower($r))
+            if (is_null($validated['role_ids'] ?? null)) {
+                $users = User::query()->whereNotNull('email')->get();
+            } elseif (! empty($validated['role_ids'])) {
+                $users = User::query()->whereNotNull('email')->get()->filter(function ($candidate) use ($validated) {
+                    $userRoles = is_array($candidate->role) ? $candidate->role : ($candidate->role ? [$candidate->role] : []);
+
+                    return collect($userRoles)->map(fn ($r) => strtolower($r ?? ''))->intersect(
+                        collect($validated['role_ids'])->map(fn ($r) => strtolower($r))
                     )->isNotEmpty();
-                });
+                })->values();
+            }
+        } elseif ($mode === 'users') {
+            if (! empty($validated['user_ids'])) {
+                $query = User::query()
+                    ->whereIn('id', array_values($validated['user_ids']))
+                    ->whereNotNull('email');
 
-                // If we have training filter, intersect; otherwise use role users
-                if ($hasTrainingFilter && $users->isNotEmpty()) {
-                    $roleUserIds = $roleUsers->pluck('id')->toArray();
-                    $users = $users->filter(function ($user) use ($roleUserIds) {
-                        return in_array($user->id, $roleUserIds);
-                    });
-                } else {
-                    $users = $roleUsers;
+                if ($isCoachOnly) {
+                    $query->whereIn('formation_id', $coachTrainingIds);
                 }
+
+                $users = $query->get();
             }
         }
 
-        // Add users from user_ids (users without training or specific users)
-        // This works even if "All Users" is selected (they'll be deduplicated)
-        if (isset($validated['user_ids']) && count($validated['user_ids']) > 0) {
-            $specificUsers = User::query()
-                ->whereIn('id', array_values($validated['user_ids']), 'and', false)
-                ->whereNotNull('email', 'and')
-                ->get();
-            $users = $users->merge($specificUsers);
-        }
-
-        // Remove duplicates
         $users = $users->unique('id');
 
         if ($users->isEmpty()) {
@@ -1378,10 +1553,11 @@ class UsersController extends Controller
 
         // Dispatch jobs for each user
         $totalUsers = $users->count();
+        $senderId = $request->user()->id;
 
-        foreach ($users as $user) {
+        foreach ($users as $recipient) {
             SendNewsletterEmail::dispatch(
-                $user,
+                $recipient,
                 $validated['subject'],
                 $validated['body'] ?? null,
                 $validated['body_fr'] ?? null,
@@ -1390,9 +1566,19 @@ class UsersController extends Controller
             );
         }
 
+        NewsletterEmail::create([
+            'subject' => $validated['subject'],
+            'body' => $validated['body'] ?? null,
+            'body_fr' => $validated['body_fr'] ?? null,
+            'body_ar' => $validated['body_ar'] ?? null,
+            'body_en' => $validated['body_en'] ?? null,
+            'recipients_count' => $totalUsers,
+            'sent_by' => $senderId,
+        ]);
+
         // Send notification email to admins after jobs are queued
         try {
-            $notificationEmails = ['forkanimahdi@gmail.com', 'boujjarr@gmail.com'];
+            $notificationEmails = ['forkanimahdi@gmail.com', 'boujjarr@gmail.com', 'yahyamoussair05@gmail.com'];
             $notificationSubject = 'Newsletter Jobs Queued';
             $notificationBody = "Newsletter emails have been queued for processing.\n\n";
             $notificationBody .= "Subject: {$validated['subject']}\n";

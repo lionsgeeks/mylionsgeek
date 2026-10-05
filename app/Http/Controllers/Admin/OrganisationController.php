@@ -31,7 +31,6 @@ class OrganisationController extends Controller
                 'sector' => $org->sector,
                 'location' => $org->location,
                 'phone' => $org->phone,
-                'linkedin_url' => $org->linkedin_url,
                 'account_state' => (int) $org->account_state,
                 'onboarding_completed' => $org->hasCompletedOnboarding(),
                 'onboarding_completed_at' => $org->onboarding_completed_at?->toIso8601String(),
@@ -100,7 +99,6 @@ class OrganisationController extends Controller
                 'sector' => $organization->sector,
                 'location' => $organization->location,
                 'phone' => $organization->phone,
-                'linkedin_url' => $organization->linkedin_url,
                 'account_state' => (int) $organization->account_state,
                 'onboarding_completed' => $organization->hasCompletedOnboarding(),
                 'display_name' => $organization->displayName(),
@@ -130,7 +128,8 @@ class OrganisationController extends Controller
             $lastUser = User::query()->orderByDesc('id')->first();
             $nextId = $lastUser ? ((int) $lastUser->id) + 1 : 1;
 
-            $accountUser = User::create([
+            $accountUser = new User();
+            $accountUser->forceFill([
                 'id' => $nextId,
                 'name' => $displayName,
                 'email' => $email,
@@ -147,7 +146,7 @@ class OrganisationController extends Controller
                 'role' => ['recruiter'],
                 'email_verified_at' => now(),
                 'activation_token' => null,
-            ]);
+            ])->save();
 
             $organization->update(['account_user_id' => $accountUser->id]);
 
