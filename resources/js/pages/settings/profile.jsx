@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useInitials } from '@/hooks/use-initials';
+import { resolveUserAvatarSrc } from '@/lib/userAvatar';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { edit } from '@/routes/profile';
@@ -71,6 +72,8 @@ export default function Profile({ mustVerifyEmail, status }) {
     const [deletingSocial, setDeletingSocial] = useState(null);
     const links = auth?.user?.social_links || [];
     const visibleLinks = links.slice(0, 2);
+    const avatarSrc = resolveUserAvatarSrc(auth?.user);
+    const profileDisplayName = auth?.user?.name || auth?.user?.email || 'User';
 
     // Filter out platforms that are already added
     const availablePlatforms = platforms.filter((platform) => !links.some((link) => link.title === platform.value));
@@ -98,8 +101,8 @@ export default function Profile({ mustVerifyEmail, status }) {
                                         <div className="flex flex-col items-center gap-3 rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
                                             <Avatar
                                                 className="h-24 w-24 overflow-hidden rounded-full"
-                                                image={auth.user.image}
-                                                name={auth.user.name}
+                                                src={avatarSrc}
+                                                name={profileDisplayName}
                                                 lastActivity={auth.user.last_login ?? auth.user.last_online ?? auth.user.last_activity ?? null}
                                                 onlineCircleClass="w-6 h-6"
                                             />
