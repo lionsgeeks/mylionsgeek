@@ -91,6 +91,7 @@ class OrganisationMemberController extends Controller
                 'access_studio' => 0,
                 'access_cowork' => 0,
                 'role' => ['recruiter'],
+                'invite_source' => 'organisation',
                 'email_verified_at' => now(),
                 'activation_token' => null,
             ])->save();

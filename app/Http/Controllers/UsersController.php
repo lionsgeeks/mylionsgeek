@@ -3,48 +3,43 @@
 namespace App\Http\Controllers;
 
 use App\Http\Middleware\EnsureAttendanceStaffRole;
-use App\Models\FaceEnrollment;
-use App\Models\Formation;
-use Inertia\Inertia;
-use App\Http\Controllers\Controller;
-use App\Mail\CompleteUserProfile;
-use App\Mail\UserWelcomeMail;
 use App\Jobs\SendNewsletterEmail;
+use App\Mail\UserWelcomeMail;
 use App\Models\AttendanceListe;
 use App\Models\Computer;
-use App\Models\NewsletterEmail;
-use App\Models\User;
-use App\Services\ProgramStatusService;
-use App\Services\UserLifeStatusService;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use App\Models\Contract;
-use App\Models\Follower;
+use App\Models\FaceEnrollment;
+use App\Models\Formation;
 use App\Models\Like;
 use App\Models\Medical;
+use App\Models\NewsletterEmail;
 use App\Models\Note;
 use App\Models\Post;
-use App\Models\Project;
 use App\Models\Reservation;
+use App\Models\User;
+use App\Services\DisciplineService;
+use App\Services\ExportService;
+use App\Services\ProgramStatusService;
+use App\Services\UserLifeStatusService;
+use App\Services\UserProfileStatsService;
 use App\Support\PostMentionResolver;
-use App\Models\UserProject;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-use App\Services\ExportService;
-use App\Services\DisciplineService;
-use App\Services\UserProfileStatsService;
 
 class UsersController extends Controller
 {
@@ -99,7 +94,6 @@ class UsersController extends Controller
         ]);
     }
 
-
     public function export(Request $request)
     {
         $requestedFields = array_filter(array_map('trim', explode(',', (string) $request->query('fields', 'name,email,cin'))));
@@ -143,7 +137,7 @@ class UsersController extends Controller
             'fieldMap' => $fieldMap,
             'defaultFields' => ['name', 'email', 'cin'],
             'relationships' => ['formation'],
-            'filename' => 'students_export_' . now()->format('Y_m_d_H_i_s'),
+            'filename' => 'students_export_'.now()->format('Y_m_d_H_i_s'),
             'transformers' => [
                 'formation' => function ($user) {
                     return optional($user->formation)->name ?? '';
@@ -177,7 +171,8 @@ class UsersController extends Controller
             ],
         ]);
     }
-    //! edit sunction
+
+    // ! edit sunction
     public function show(Request $request, User $user)
     {
         $user->load(['formation']);
@@ -202,7 +197,7 @@ class UsersController extends Controller
         $absences = $this->getAbsences($user, $request);
 
         // Calculate discipline score using DisciplineService
-        $disciplineService = new DisciplineService();
+        $disciplineService = new DisciplineService;
         $discipline = $disciplineService->calculateDisciplineScore($user);
 
         // Get all formations
@@ -216,7 +211,7 @@ class UsersController extends Controller
             'pro',
             'moderateur',
             'recruiter',
-            'coworker'
+            'coworker',
         ];
         $viewer = $request->user();
         $profileStats = app(UserProfileStatsService::class)->getStats($user);
@@ -252,7 +247,6 @@ class UsersController extends Controller
         ]);
     }
 
-
     private function getReservations(User $user, Request $request)
     {
         $reservations = Reservation::query()
@@ -262,7 +256,7 @@ class UsersController extends Controller
             ->onEachSide(1);
 
         return [
-            'data' => $reservations->map(fn($r) => [
+            'data' => $reservations->map(fn ($r) => [
                 'id' => $r->id,
                 'title' => $r->title,
                 'description' => $r->description,
@@ -346,7 +340,7 @@ class UsersController extends Controller
     {
         $repostCreatedAt = null;
         try {
-            if (!empty($repostRow->created_at)) {
+            if (! empty($repostRow->created_at)) {
                 $repostCreatedAt = Carbon::parse((string) $repostRow->created_at)->toDateTimeString();
             }
         } catch (\Throwable $e) {
@@ -367,7 +361,7 @@ class UsersController extends Controller
             'user_formation' => $reposter->formation?->name,
 
             // Use a string id to avoid collisions with posts.id
-            'id' => 'repost-' . (int) ($repostRow->id ?? 0),
+            'id' => 'repost-'.(int) ($repostRow->id ?? 0),
             'type' => 'repost',
             'description' => (string) ($repostRow->description ?? ''),
             'mention_user_ids' => PostMentionResolver::mapTokensToUserIds((string) ($repostRow->description ?? '')),
@@ -438,7 +432,7 @@ class UsersController extends Controller
 
     protected function decodeFeedCursor(?string $cursor): ?string
     {
-        if (!$cursor) {
+        if (! $cursor) {
             return null;
         }
 
@@ -451,7 +445,7 @@ class UsersController extends Controller
     {
         $decodedCursor = $this->decodeFeedCursor($cursor);
 
-        if (!$decodedCursor) {
+        if (! $decodedCursor) {
             return true;
         }
 
@@ -462,7 +456,7 @@ class UsersController extends Controller
     {
         $decodedCursor = $this->decodeFeedCursor($cursor);
 
-        if (!$decodedCursor) {
+        if (! $decodedCursor) {
             return;
         }
 
@@ -475,7 +469,7 @@ class UsersController extends Controller
     {
         $decodedCursor = $this->decodeFeedCursor($cursor);
 
-        if (!$decodedCursor) {
+        if (! $decodedCursor) {
             return;
         }
 
@@ -493,7 +487,7 @@ class UsersController extends Controller
     {
         $authUser = Auth::user();
 
-        if (!$authUser) {
+        if (! $authUser) {
             return ['posts' => [], 'next_cursor' => null, 'has_more' => false];
         }
 
@@ -554,7 +548,7 @@ class UsersController extends Controller
                 ->map(function ($row) use ($originalPosts, $reposters, $authUser, $context) {
                     $original = $originalPosts[(int) $row->post_id] ?? null;
                     $reposter = $reposters[(int) $row->user_id] ?? null;
-                    if (!$original || !$reposter) {
+                    if (! $original || ! $reposter) {
                         return null;
                     }
 
@@ -594,7 +588,7 @@ class UsersController extends Controller
     {
         $authUser = Auth::user();
 
-        if (!$authUser) {
+        if (! $authUser) {
             return ['posts' => collect()];
         }
 
@@ -622,7 +616,7 @@ class UsersController extends Controller
         $postItems = $postModels->map(fn (Post $post) => $this->mapPostForFeed($post, $authUser));
 
         // For the main feed, merge repost rows so reposts appear as feed items.
-        if (!$user) {
+        if (! $user) {
             $repostRows = DB::table('reposts_posts')
                 ->orderByDesc('created_at')
                 ->limit(60)
@@ -653,7 +647,7 @@ class UsersController extends Controller
                     ->map(function ($row) use ($originalPosts, $reposters, $authUser) {
                         $original = $originalPosts[(int) $row->post_id] ?? null;
                         $reposter = $reposters[(int) $row->user_id] ?? null;
-                        if (!$original || !$reposter) {
+                        if (! $original || ! $reposter) {
                             return null;
                         }
 
@@ -718,9 +712,6 @@ class UsersController extends Controller
         ];
     }
 
-
-
-
     private function getAbsences(User $user, Request $request)
     {
         $absencesQuery = AttendanceListe::query()
@@ -748,7 +739,7 @@ class UsersController extends Controller
             ->get()
             ->groupBy('attendance_id');
 
-        $formatter = fn($row) => [
+        $formatter = fn ($row) => [
             'attendance_id' => $row->attendance_id,
             'date' => $row->attendance_day,
             'morning' => strtolower((string) $row->morning),
@@ -798,7 +789,7 @@ class UsersController extends Controller
         }
 
         // Debug logging
-        Log::info('User payload for user ' . $user->id, [
+        Log::info('User payload for user '.$user->id, [
             'phone' => $user->phone,
             'status' => $user->status,
             'formation_id' => $user->formation_id,
@@ -820,7 +811,7 @@ class UsersController extends Controller
 
     private function formatComputer($computer)
     {
-        if (!$computer) {
+        if (! $computer) {
             return null;
         }
 
@@ -983,11 +974,11 @@ class UsersController extends Controller
         $candidates = [];
         $base = ltrim($path, '/');
         $candidates[] = $base;
-        $candidates[] = 'documents/' . basename($base);
+        $candidates[] = 'documents/'.basename($base);
         if ($kind === 'contract') {
-            $candidates[] = 'contracts/' . basename($base);
+            $candidates[] = 'contracts/'.basename($base);
         } else {
-            $candidates[] = 'medicals/' . basename($base);
+            $candidates[] = 'medicals/'.basename($base);
         }
 
         foreach ($candidates as $candidate) {
@@ -998,7 +989,7 @@ class UsersController extends Controller
 
         foreach ($candidates as $candidate) {
             if (Storage::disk('public')->exists($candidate)) {
-                $fullPath = storage_path('app/public/' . ltrim($candidate, '/'));
+                $fullPath = storage_path('app/public/'.ltrim($candidate, '/'));
                 if (is_file($fullPath)) {
                     return response()->file($fullPath);
                 }
@@ -1092,7 +1083,7 @@ class UsersController extends Controller
 
         $validated = $request->validate([
             'name' => 'nullable|string',
-            'email' => 'nullable|email|unique:users,email,' . $user->id,
+            'email' => 'nullable|email|unique:users,email,'.$user->id,
             'roles' => 'nullable|array',
             'roles.*' => 'string|in:student,coach,admin,super_admin,moderateur,studio_responsable,responsable_studio,coworker,pro,recruiter',
             'status' => 'nullable|string|in:'.implode(',', UserLifeStatusService::ALLOWED_VALUES),
@@ -1233,10 +1224,11 @@ class UsersController extends Controller
 
         return redirect()->back()->with('success', 'User updated successfully');
     }
+
     public function updateAccountStatus(Request $request, User $user)
     {
         $validated = $request->validate([
-            'account_state' => 'required|integer|in:0,1'
+            'account_state' => 'required|integer|in:0,1',
         ]);
 
         $user->forceFill([
@@ -1247,7 +1239,7 @@ class UsersController extends Controller
         return redirect()->back()->with('success', 'User account status updated successfully');
     }
 
-    //! store function
+    // ! store function
     public function store(Request $request, ProgramStatusService $programStatusService)
     {
         $validated = $request->validate([
@@ -1268,7 +1260,7 @@ class UsersController extends Controller
         $existing = User::query()->where('email', $validated['email'])->first();
         if ($existing) {
             return Inertia::render('admin/users/partials/Header', [
-                'message' => 'this email already exist'
+                'message' => 'this email already exist',
             ]);
         }
         if ($request->hasFile('image')) {
@@ -1365,6 +1357,7 @@ class UsersController extends Controller
             })
             ->map(function ($group, $month) {
                 $groupArray = is_array($group) ? $group : $group->toArray();
+
                 return [
                     'month' => $month,
                     'fullDayAbsences' => count($groupArray),
@@ -1375,7 +1368,7 @@ class UsersController extends Controller
             ->values();
 
         // Use DisciplineService for consistent calculation
-        $disciplineService = new DisciplineService();
+        $disciplineService = new DisciplineService;
         $discipline = $disciplineService->calculateDisciplineScore($user);
 
         return response()->json([
@@ -1384,6 +1377,7 @@ class UsersController extends Controller
             'monthlyFullDayAbsences' => $monthlyFullDayAbsences,
         ]);
     }
+
     public function UserAttendanceChart(User $user)
     {
         $attendances = AttendanceListe::query()
@@ -1398,12 +1392,19 @@ class UsersController extends Controller
                 $totalAbsent = 0;
 
                 foreach ($records as $r) {
-                    if (strtolower((string) $r->morning) === 'absent') $totalAbsent++;
-                    if (strtolower((string) $r->lunch) === 'absent') $totalAbsent++;
-                    if (strtolower((string) $r->evening) === 'absent') $totalAbsent++;
+                    if (strtolower((string) $r->morning) === 'absent') {
+                        $totalAbsent++;
+                    }
+                    if (strtolower((string) $r->lunch) === 'absent') {
+                        $totalAbsent++;
+                    }
+                    if (strtolower((string) $r->evening) === 'absent') {
+                        $totalAbsent++;
+                    }
                 }
 
                 $firstRecord = $records->first();
+
                 return [
                     'month' => $firstRecord ? Carbon::parse($firstRecord->attendance_day)->format('F') : 'Unknown',
                     'absence' => $totalAbsent,
@@ -1454,7 +1455,7 @@ class UsersController extends Controller
         // Ensure at least one body field is provided
         if (empty($validated['body']) && empty($validated['body_fr']) && empty($validated['body_ar']) && empty($validated['body_en'])) {
             return response()->json([
-                'error' => 'At least one language content (body, body_fr, body_ar, or body_en) is required.'
+                'error' => 'At least one language content (body, body_fr, body_ar, or body_en) is required.',
             ], 400);
         }
 
@@ -1543,11 +1544,14 @@ class UsersController extends Controller
             }
         }
 
-        $users = $users->unique('id');
+        $users = $users
+            ->unique('id')
+            ->filter(fn (User $recipient) => \App\Models\Organization::userReceivesCommunityBroadcasts($recipient))
+            ->values();
 
         if ($users->isEmpty()) {
             return response()->json([
-                'error' => 'No users found to send email to.'
+                'error' => 'No users found to send email to.',
             ], 400);
         }
 
@@ -1583,9 +1587,9 @@ class UsersController extends Controller
             $notificationBody = "Newsletter emails have been queued for processing.\n\n";
             $notificationBody .= "Subject: {$validated['subject']}\n";
             $notificationBody .= "Total Recipients: {$totalUsers} users\n";
-            $notificationBody .= "Queued at: " . now()->format('Y-m-d H:i:s') . "\n\n";
+            $notificationBody .= 'Queued at: '.now()->format('Y-m-d H:i:s')."\n\n";
             $notificationBody .= "You can now run the queue worker to process these emails:\n";
-            $notificationBody .= "php artisan queue:work";
+            $notificationBody .= 'php artisan queue:work';
 
             foreach ($notificationEmails as $email) {
                 Mail::raw($notificationBody, function ($message) use ($email, $notificationSubject) {
