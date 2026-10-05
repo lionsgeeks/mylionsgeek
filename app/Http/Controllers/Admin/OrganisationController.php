@@ -6,10 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Mail\OrganisationInvitedMail;
 use App\Models\Organization;
 use App\Models\User;
+use App\Support\SendsCredentialsMailAfterResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -128,7 +129,7 @@ class OrganisationController extends Controller
             $lastUser = User::query()->orderByDesc('id')->first();
             $nextId = $lastUser ? ((int) $lastUser->id) + 1 : 1;
 
-            $accountUser = new User();
+            $accountUser = new User;
             $accountUser->forceFill([
                 'id' => $nextId,
                 'name' => $displayName,
@@ -145,7 +146,6 @@ class OrganisationController extends Controller
                 'access_cowork' => 0,
                 'role' => ['recruiter'],
                 'email_verified_at' => now(),
-                'activation_token' => null,
             ])->save();
 
             $organization->update(['account_user_id' => $accountUser->id]);
@@ -153,18 +153,22 @@ class OrganisationController extends Controller
             return $accountUser;
         });
 
-        try {
-            Mail::to($user->email)->send(new OrganisationInvitedMail($user, $plainPassword));
-        } catch (\Throwable $exception) {
-            report($exception);
+        $plainToken = $user->issueActivationToken();
+        $completeProfileUrl = URL::temporarySignedRoute(
+            'organisation.invitation',
+            now()->addHours(User::ACTIVATION_TTL_HOURS),
+            ['token' => $plainToken],
+        );
 
-            return redirect()->back()->with(
-                'warning',
-                'Organisation invited, but the invitation email could not be sent. Check your mail configuration.'
-            );
-        }
+        SendsCredentialsMailAfterResponse::send(
+            $user->email,
+            new OrganisationInvitedMail($user, $completeProfileUrl),
+        );
 
-        return redirect()->back()->with('success', 'Organisation account created. Login details were sent by email.');
+        return redirect()->back()->with(
+            'success',
+            'Organisation account created. An invitation email is being sent.',
+        );
     }
 
     public function updateAccountState(Request $request, Organization $organization): RedirectResponse

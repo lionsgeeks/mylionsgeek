@@ -8,12 +8,31 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class OrganisationOnboardingController extends Controller
 {
+    public function acceptInvitation(Request $request, string $token): RedirectResponse
+    {
+        if (! $request->hasValidSignature()) {
+            return redirect()->route('login')->with('error', __('This invitation link is invalid or has expired.'));
+        }
+
+        $user = User::findByActivationToken($token);
+
+        if (! $user?->isRecruiter() || ! $user->isOrganisationAccount()) {
+            return redirect()->route('login')->with('error', __('This invitation link is invalid or has expired.'));
+        }
+
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return redirect()->route('organisation.onboarding');
+    }
+
     public function show(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
@@ -91,7 +110,6 @@ class OrganisationOnboardingController extends Controller
             $this->stepOneRules($organization, $user),
             $this->stepTwoRules($organization, $user),
             [
-                'current_password' => ['required', 'current_password:web'],
                 'password' => ['required', Password::defaults(), 'confirmed'],
             ]
         ));
@@ -113,6 +131,10 @@ class OrganisationOnboardingController extends Controller
         $user->forceFill([
             'password' => $validated['password'],
         ])->save();
+
+        if ($user->hasPendingActivation()) {
+            $user->consumeActivationToken();
+        }
 
         return redirect()->route('recruiter.dashboard')->with('success', __('Your organisation profile is complete.'));
     }
@@ -197,7 +219,6 @@ class OrganisationOnboardingController extends Controller
     private function updatePassword(Request $request, User $user): RedirectResponse
     {
         $validated = $request->validate([
-            'current_password' => ['required', 'current_password:web'],
             'password' => ['required', Password::defaults(), 'confirmed'],
         ]);
 

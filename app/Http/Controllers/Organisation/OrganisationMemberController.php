@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Organisation;
 use App\Http\Controllers\Controller;
 use App\Mail\EmployerInvitedMail;
 use App\Models\User;
+use App\Support\SendsCredentialsMailAfterResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -75,7 +75,7 @@ class OrganisationMemberController extends Controller
             $lastUser = User::query()->orderByDesc('id')->first();
             $nextId = $lastUser ? ((int) $lastUser->id) + 1 : 1;
 
-            $employer = new User();
+            $employer = new User;
             $employer->forceFill([
                 'id' => $nextId,
                 'name' => $displayName,
@@ -103,17 +103,14 @@ class OrganisationMemberController extends Controller
             return $employer;
         });
 
-        try {
-            Mail::to($employer->email)->send(new EmployerInvitedMail($employer, $organization, $plainPassword));
-        } catch (\Throwable $exception) {
-            report($exception);
+        SendsCredentialsMailAfterResponse::send(
+            $employer->email,
+            new EmployerInvitedMail($employer, $organization, $plainPassword),
+        );
 
-            return redirect()->back()->with(
-                'warning',
-                'Employer invited, but the invitation email could not be sent. Check your mail configuration.'
-            );
-        }
-
-        return redirect()->back()->with('success', 'Employer invited. Login details were sent by email.');
+        return redirect()->back()->with(
+            'success',
+            'Employer invited. An invitation email is being sent.',
+        );
     }
 }

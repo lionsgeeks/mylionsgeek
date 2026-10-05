@@ -28,7 +28,7 @@ export default function InviteOrganisationDialog({ open, setOpen }) {
                 <DialogHeader>
                     <DialogTitle>Invite organisation</DialogTitle>
                     <DialogDescription>
-                        Create the organisation account for this email. We will send a temporary password and a link to sign in and complete the company profile.
+                        Create the organisation account for this email. We will send a secure link to complete the company profile and set a password.
                     </DialogDescription>
                 </DialogHeader>
 

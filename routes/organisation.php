@@ -5,6 +5,10 @@ use App\Http\Controllers\Organisation\OrganisationMemberController;
 use App\Http\Controllers\Organisation\OrganisationOnboardingController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/organisation/invitation/{token}', [OrganisationOnboardingController::class, 'acceptInvitation'])
+    ->middleware('signed')
+    ->name('organisation.invitation');
+
 Route::middleware(['auth', 'verified', 'role:recruiter'])->prefix('organisation')->group(function () {
     Route::get('/onboarding', [OrganisationOnboardingController::class, 'show'])->name('organisation.onboarding');
     Route::post('/onboarding/validate-step', [OrganisationOnboardingController::class, 'validateStep'])
