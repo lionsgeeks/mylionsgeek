@@ -857,4 +857,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(Announcement::class, 'created_by');
     }
+
+    public function coachedSessions(): BelongsToMany
+    {
+        return $this->belongsToMany(TrainingSession::class, 'session_coach', 'user_id', 'session_id')
+            ->withTimestamps();
+    }
 }

@@ -32,6 +32,7 @@ require __DIR__ . '/admin/face-enrollment.php';
 require __DIR__ . '/admin/computers.php';
 require __DIR__ . '/admin/leaderboard.php';
 require __DIR__ . '/admin/training.php';
+require __DIR__ . '/admin/programmes.php';
 require __DIR__ . '/admin/courses.php';
 require __DIR__ . '/admin/exercices.php';
 require __DIR__ . '/admin/geeko.php';

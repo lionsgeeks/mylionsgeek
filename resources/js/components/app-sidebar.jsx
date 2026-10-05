@@ -4,6 +4,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { Link, usePage } from '@inertiajs/react';
 import {
     AwardIcon,
+    BookOpen,
     Briefcase,
     Building2,
     Calendar,

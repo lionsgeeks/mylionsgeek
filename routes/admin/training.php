@@ -1,3 +1,4 @@
+
 <?php
 
 use App\Http\Controllers\FormationController;
@@ -15,6 +16,9 @@ Route::middleware(['auth', 'role:admin,super_admin,moderateur,coach'])->group(fu
     Route::post('/trainings/{training}/certificates/email', [FormationController::class, 'emailGeekLabCertificates'])->name('trainings.certificates.email');
     Route::delete('/trainings/{training}', [FormationController::class, 'destroy'])->name('trainings.destroy');
     Route::put('/trainings/{training}', [FormationController::class, 'update'])->name('trainings.update');
+    Route::post('/trainings/{training}/programme-items', [FormationController::class, 'storeProgrammeItem'])->name('trainings.programme-items.store');
+    Route::put('/trainings/{training}/programme-items/{session}', [FormationController::class, 'updateProgrammeItem'])->name('trainings.programme-items.update');
+    Route::delete('/trainings/{training}/programme-items/{session}', [FormationController::class, 'destroyProgrammeItem'])->name('trainings.programme-items.destroy');
 });
 
 // Attendance endpoints accessible to admin and coach
