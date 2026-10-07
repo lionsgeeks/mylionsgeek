@@ -9,25 +9,65 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class OrganisationOnboardingController extends Controller
 {
-    public function acceptInvitation(Request $request, string $token): RedirectResponse
+    public function acceptInvitation(Request $request, string $token): Response
     {
-        if (! $request->hasValidSignature()) {
-            return redirect()->route('login')->with('error', __('This invitation link is invalid or has expired.'));
+        $user = $this->invitationUser($request, $token);
+
+        if (! $user) {
+            return Inertia::render('profile/ExpiredLink');
         }
 
-        $user = User::findByActivationToken($token);
+        return Inertia::render('organisation/set-password', [
+            'submitUrl' => $request->fullUrl(),
+            'email' => $user->email,
+        ]);
+    }
 
-        if (! $user?->isRecruiter() || ! $user->isOrganisationAccount()) {
-            return redirect()->route('login')->with('error', __('This invitation link is invalid or has expired.'));
+    public function storeInvitationPassword(Request $request, string $token): Response|RedirectResponse
+    {
+        $user = $this->invitationUser($request, $token);
+
+        if (! $user) {
+            return Inertia::render('profile/ExpiredLink');
         }
 
-        Auth::login($user);
+        $validated = $request->validate([
+            'password' => ['required', Password::defaults(), 'confirmed'],
+        ]);
+
+        $saved = DB::transaction(function () use ($user, $validated): bool {
+            $locked = User::query()->whereKey($user->getKey())->lockForUpdate()->first();
+
+            if (! $locked || ! $locked->hasPendingActivation()) {
+                return false;
+            }
+
+            $expiresAt = $locked->activation_token_expires_at;
+            if ($expiresAt !== null && $expiresAt->isPast()) {
+                return false;
+            }
+
+            $locked->forceFill([
+                'password' => $validated['password'],
+                'must_change_password' => false,
+            ])->save();
+            $locked->consumeActivationToken();
+
+            return true;
+        });
+
+        if (! $saved) {
+            return Inertia::render('profile/ExpiredLink');
+        }
+
+        Auth::login($user->fresh());
         $request->session()->regenerate();
 
         return redirect()->route('organisation.onboarding');
@@ -56,6 +96,7 @@ class OrganisationOnboardingController extends Controller
                 'phone' => $organization->phone,
             ],
             'passwordChangeOnly' => $organization->hasCompletedOnboarding() && $user->must_change_password,
+            'skipPassword' => ! $organization->hasCompletedOnboarding() && ! $user->must_change_password,
         ]);
     }
 
@@ -106,13 +147,16 @@ class OrganisationOnboardingController extends Controller
             return $this->updatePassword($request, $user);
         }
 
-        $validated = $request->validate(array_merge(
+        $rules = array_merge(
             $this->stepOneRules($organization, $user),
             $this->stepTwoRules($organization, $user),
-            [
-                'password' => ['required', Password::defaults(), 'confirmed'],
-            ]
-        ));
+        );
+
+        if ($user->must_change_password) {
+            $rules['password'] = ['required', Password::defaults(), 'confirmed'];
+        }
+
+        $validated = $request->validate($rules);
 
         $organization->update([
             'contact_name' => $validated['contact_name'],
@@ -123,20 +167,40 @@ class OrganisationOnboardingController extends Controller
             'onboarding_completed_at' => now(),
         ]);
 
+        $mustSetPassword = $user->must_change_password;
+
         $user->update([
             'name' => $validated['contact_name'],
             'phone' => $validated['phone'],
             'must_change_password' => false,
         ]);
-        $user->forceFill([
-            'password' => $validated['password'],
-        ])->save();
+
+        if ($mustSetPassword && isset($validated['password'])) {
+            $user->forceFill([
+                'password' => $validated['password'],
+            ])->save();
+        }
 
         if ($user->hasPendingActivation()) {
             $user->consumeActivationToken();
         }
 
         return redirect()->route('recruiter.dashboard')->with('success', __('Your organisation profile is complete.'));
+    }
+
+    private function invitationUser(Request $request, string $token): ?User
+    {
+        if (! $request->hasValidSignature()) {
+            return null;
+        }
+
+        $user = User::findByActivationToken($token);
+
+        if (! $user?->isRecruiter() || ! $user->isOrganisationAccount() || ! $user->hasPendingActivation()) {
+            return null;
+        }
+
+        return $user;
     }
 
     /**

@@ -3,6 +3,7 @@
 use App\Mail\OrganisationInvitedMail;
 use App\Models\Organization;
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 
 uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
@@ -70,7 +71,7 @@ test('admin invite creates organisation account and sends invitation mail after 
     });
 });
 
-test('organisation invitation link signs in and redirects to onboarding', function () {
+test('organisation invitation link only sets a password once and then signs in', function () {
     $admin = organisationInviteAdmin();
 
     $this->actingAs($admin)
@@ -78,6 +79,7 @@ test('organisation invitation link signs in and redirects to onboarding', functi
         ->post('/admin/organisations', ['email' => 'link-test@example.com']);
 
     $account = User::query()->where('email', 'link-test@example.com')->first();
+    $tokenHash = (string) $account->getRawOriginal('activation_token');
     expect($account)->not->toBeNull();
 
     $invitationUrl = null;
@@ -92,10 +94,111 @@ test('organisation invitation link signs in and redirects to onboarding', functi
 
     expect($invitationUrl)->not->toBeNull();
 
+    $this->flushSession();
+    auth()->logout();
+
     $this->get($invitationUrl)
-        ->assertRedirect(route('organisation.onboarding', absolute: false));
+        ->assertOk()
+        ->assertDontSee($tokenHash, false)
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/set-password')
+            ->where('email', 'link-test@example.com')
+            ->missing('activation_token')
+            ->has('submitUrl')
+        );
+
+    $this->assertGuest();
+
+    $this->post(strtok($invitationUrl, '?'), [
+        'password' => 'NewPassword1',
+        'password_confirmation' => 'NewPassword1',
+    ])->assertForbidden();
+
+    $account->refresh();
+    expect($account->hasPendingActivation())->toBeTrue()
+        ->and(Hash::check('NewPassword1', $account->password))->toBeFalse();
+
+    $this->post($invitationUrl, [
+        'password' => 'NewPassword1',
+        'password_confirmation' => 'NewPassword1',
+    ])->assertRedirect(route('organisation.onboarding', absolute: false));
 
     $this->assertAuthenticatedAs($account);
+
+    $account->refresh();
+    expect($account->hasPendingActivation())->toBeFalse()
+        ->and($account->must_change_password)->toBeFalse()
+        ->and(Hash::check('NewPassword1', $account->password))->toBeTrue();
+
+    $this->app['auth']->forgetGuards();
+
+    $this->get(route('organisation.onboarding'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/partials/onboardingForm')
+            ->where('skipPassword', true)
+        );
+
+    $this->post(route('organisation.onboarding.store'), [
+        'contact_name' => 'Link Test Contact',
+        'enterprise_name' => 'Link Test Company',
+        'sector' => 'Technology',
+        'location' => 'Casablanca',
+        'phone' => '0611100001',
+    ])->assertRedirect(route('recruiter.dashboard', absolute: false));
+
+    $account->refresh();
+    $organization = Organization::query()->where('email', 'link-test@example.com')->first();
+    expect($organization->hasCompletedOnboarding())->toBeTrue()
+        ->and(Hash::check('NewPassword1', $account->password))->toBeTrue();
+
+    auth()->logout();
+    $this->flushSession();
+
+    $this->post($invitationUrl, [
+        'password' => 'AnotherPassword1',
+        'password_confirmation' => 'AnotherPassword1',
+    ])->assertOk()
+        ->assertInertia(fn ($page) => $page->component('profile/ExpiredLink'));
+
+    $this->assertGuest();
+    $account->refresh();
+    expect(Hash::check('NewPassword1', $account->password))->toBeTrue()
+        ->and(Hash::check('AnotherPassword1', $account->password))->toBeFalse();
+});
+
+test('expired organisation invitation cannot set a password', function () {
+    $admin = organisationInviteAdmin();
+
+    $this->actingAs($admin)
+        ->post('/admin/organisations', ['email' => 'expired-link@example.com']);
+
+    $account = User::query()->where('email', 'expired-link@example.com')->first();
+    $invitationUrl = null;
+    Mail::assertSent(OrganisationInvitedMail::class, function (OrganisationInvitedMail $mail) use (&$invitationUrl, $account) {
+        if (! $mail->hasTo($account->email)) {
+            return false;
+        }
+        $invitationUrl = $mail->completeProfileUrl;
+
+        return true;
+    });
+
+    $account->forceFill(['activation_token_expires_at' => now()->subMinute()])->save();
+
+    $this->flushSession();
+    auth()->logout();
+
+    $this->post($invitationUrl, [
+        'password' => 'NewPassword1',
+        'password_confirmation' => 'NewPassword1',
+    ])->assertOk()
+        ->assertInertia(fn ($page) => $page->component('profile/ExpiredLink'));
+
+    $this->assertGuest();
+    $account->refresh();
+    expect($account->hasPendingActivation())->toBeTrue()
+        ->and(Hash::check('NewPassword1', $account->password))->toBeFalse();
 });
 
 test('inviting the same organisation email again is refused', function () {
@@ -202,14 +305,16 @@ test('admin can resend an expired organisation invitation and the previous link 
     auth()->logout();
 
     $this->get($previousUrl)
-        ->assertRedirect(route('login'));
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('profile/ExpiredLink'));
 
     $this->assertGuest();
 
     $this->get($resentUrl)
-        ->assertRedirect(route('organisation.onboarding', absolute: false));
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('organisation/set-password'));
 
-    $this->assertAuthenticatedAs($account);
+    $this->assertGuest();
 });
 
 test('resend is refused after the organisation invitation is accepted', function () {

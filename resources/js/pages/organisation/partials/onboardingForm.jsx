@@ -89,7 +89,7 @@ function firstValidationMessage(messages) {
     return Array.isArray(messages) ? messages[0] : messages;
 }
 
-export default function OrganisationOnboarding({ organization, passwordChangeOnly = false }) {
+export default function OrganisationOnboarding({ organization, passwordChangeOnly = false, skipPassword = false }) {
     const [step, setStep] = useState(passwordChangeOnly ? 3 : 1);
     const [stepErrors, setStepErrors] = useState({});
     const [validatingStep, setValidatingStep] = useState(false);
@@ -225,6 +225,10 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
                 delete next.phone;
                 return next;
             });
+            if (skipPassword) {
+                form.post('/organisation/onboarding', { preserveScroll: true });
+                return;
+            }
             setStep(3);
         } catch (err) {
             if (err.response?.status === 422) {
@@ -258,18 +262,7 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
     const submit = (e) => {
         e.preventDefault();
 
-        if (passwordChangeOnly) {
-            const pwErrs = validatePasswordsClient();
-            if (Object.keys(pwErrs).length > 0) {
-                setStepErrors((prev) => ({ ...prev, ...pwErrs }));
-                return;
-            }
-            setStepErrors((prev) => {
-                const next = { ...prev };
-                delete next.password;
-                delete next.password_confirmation;
-                return next;
-            });
+        if (skipPassword) {
             form.post('/organisation/onboarding', { preserveScroll: true });
             return;
         }
@@ -344,7 +337,7 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
                         <AppLogoIcon size={80} color="#212529" />
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-widest text-alpha">
-                                Step {step} of {STEPS.length}
+                                Step {step} of {skipPassword ? 2 : STEPS.length}
                             </p>
                             <h1 className="text-2xl font-bold text-beta">{stepTitle}</h1>
                             {stepDescription ? (
@@ -359,7 +352,7 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
 
                     {!passwordChangeOnly && (
                         <div className="flex gap-2">
-                            {STEPS.map((s) => (
+                            {(skipPassword ? STEPS.filter((s) => s.number < 3) : STEPS).map((s) => (
                                 <div key={s.number} className="flex flex-1 flex-col gap-1.5">
                                     <div
                                         className={`h-1 rounded-full transition-all duration-500 ${s.number <= step ? 'bg-alpha' : 'bg-beta/12'
@@ -569,6 +562,8 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
                                             <span className="h-4 w-4 animate-spin rounded-full border-2 border-beta/30 border-t-beta" />
                                             Checking…
                                         </span>
+                                    ) : skipPassword ? (
+                                        'Complete setup →'
                                     ) : (
                                         'Continue →'
                                     )}

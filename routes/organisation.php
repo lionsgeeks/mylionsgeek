@@ -9,6 +9,10 @@ Route::get('/organisation/invitation/{token}', [OrganisationOnboardingController
     ->middleware('signed')
     ->name('organisation.invitation');
 
+Route::post('/organisation/invitation/{token}', [OrganisationOnboardingController::class, 'storeInvitationPassword'])
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('organisation.invitation.store');
+
 Route::middleware(['auth', 'verified', 'role:recruiter'])->prefix('organisation')->group(function () {
     Route::get('/onboarding', [OrganisationOnboardingController::class, 'show'])->name('organisation.onboarding');
     Route::post('/onboarding/validate-step', [OrganisationOnboardingController::class, 'validateStep'])
