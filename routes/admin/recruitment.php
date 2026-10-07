@@ -16,6 +16,9 @@ Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur'])->pr
     Route::get('/organisations', [OrganisationController::class, 'index'])->name('admin.organisations.index');
     Route::get('/organisations/{organization}', [OrganisationController::class, 'show'])->name('admin.organisations.show');
     Route::post('/organisations', [OrganisationController::class, 'store'])->name('admin.organisations.store');
+    Route::post('/organisations/{organization}/resend-invitation', [OrganisationController::class, 'resendInvitation'])
+        ->middleware('throttle:6,1')
+        ->name('admin.organisations.resend-invitation');
     Route::put('/organisations/{organization}/account-state', [OrganisationController::class, 'updateAccountState'])
         ->name('admin.organisations.account-state');
 

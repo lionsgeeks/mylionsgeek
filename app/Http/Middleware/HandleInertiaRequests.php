@@ -199,8 +199,8 @@ class HandleInertiaRequests extends Middleware
                 ];
             },
             'flash' => [
-                'success' => $request->session()->get('success'),
-                'error' => $request->session()->get('error'),
+                'success' => $request->session()->get('success') ?: $request->session()->get('banner_success'),
+                'error' => $request->session()->get('error') ?: $request->session()->get('banner_error'),
             ],
             'conversations' => fn () => $request->session()->get('conversations'),
             'conversation' => fn () => $request->session()->get('conversation'),

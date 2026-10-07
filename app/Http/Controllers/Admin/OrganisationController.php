@@ -10,6 +10,7 @@ use App\Support\SendsCredentialsMailAfterResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -20,31 +21,37 @@ class OrganisationController extends Controller
     public function index(): Response
     {
         $organisations = Organization::query()
-            ->with(['accountUser:id,name,email,image,last_online'])
+            ->with(['accountUser:id,name,email,image,last_online,activation_token,activation_token_expires_at'])
             ->withCount('employers')
             ->orderByDesc('created_at')
             ->get()
-            ->map(fn (Organization $org) => [
-                'id' => $org->id,
-                'email' => $org->email,
-                'enterprise_name' => $org->enterprise_name,
-                'contact_name' => $org->contact_name,
-                'sector' => $org->sector,
-                'location' => $org->location,
-                'phone' => $org->phone,
-                'account_state' => (int) $org->account_state,
-                'onboarding_completed' => $org->hasCompletedOnboarding(),
-                'onboarding_completed_at' => $org->onboarding_completed_at?->toIso8601String(),
-                'created_at' => $org->created_at?->toIso8601String(),
-                'employers_count' => $org->employers_count,
-                'account' => $org->accountUser ? [
-                    'id' => $org->accountUser->id,
-                    'name' => $org->accountUser->name,
-                    'email' => $org->accountUser->email,
-                    'image' => $org->accountUser->image,
-                    'last_online' => $org->accountUser->last_online,
-                ] : null,
-            ]);
+            ->map(function (Organization $org) {
+                $invitation = $this->invitationState($org->accountUser);
+
+                return [
+                    'id' => $org->id,
+                    'email' => $org->email,
+                    'enterprise_name' => $org->enterprise_name,
+                    'contact_name' => $org->contact_name,
+                    'sector' => $org->sector,
+                    'location' => $org->location,
+                    'phone' => $org->phone,
+                    'account_state' => (int) $org->account_state,
+                    'onboarding_completed' => $org->hasCompletedOnboarding(),
+                    'onboarding_completed_at' => $org->onboarding_completed_at?->toIso8601String(),
+                    'created_at' => $org->created_at?->toIso8601String(),
+                    'employers_count' => $org->employers_count,
+                    'invitation_status' => $invitation['invitation_status'],
+                    'invitation_expired' => $invitation['invitation_expired'],
+                    'account' => $org->accountUser ? [
+                        'id' => $org->accountUser->id,
+                        'name' => $org->accountUser->name,
+                        'email' => $org->accountUser->email,
+                        'image' => $org->accountUser->image,
+                        'last_online' => $org->accountUser->last_online,
+                    ] : null,
+                ];
+            });
 
         return Inertia::render('admin/organisations/index', [
             'organisations' => $organisations,
@@ -54,7 +61,7 @@ class OrganisationController extends Controller
     public function show(Organization $organization): Response
     {
         $organization->load([
-            'accountUser:id,name,email,image,last_online,account_state,status',
+            'accountUser:id,name,email,image,last_online,account_state,status,activation_token,activation_token_expires_at',
             'employers' => fn ($query) => $query->orderByDesc('organization_user.created_at'),
         ]);
 
@@ -91,6 +98,8 @@ class OrganisationController extends Controller
             ]);
         }
 
+        $invitation = $this->invitationState($organization->accountUser);
+
         return Inertia::render('admin/organisations/[id]', [
             'organization' => [
                 'id' => $organization->id,
@@ -104,6 +113,8 @@ class OrganisationController extends Controller
                 'onboarding_completed' => $organization->hasCompletedOnboarding(),
                 'display_name' => $organization->displayName(),
                 'employers_count' => $organization->employers->count(),
+                'invitation_status' => $invitation['invitation_status'],
+                'invitation_expired' => $invitation['invitation_expired'],
             ],
             'teamMembers' => $teamMembers->values()->all(),
         ]);
@@ -172,6 +183,36 @@ class OrganisationController extends Controller
         );
     }
 
+    public function resendInvitation(Organization $organization): RedirectResponse
+    {
+        $account = $organization->accountUser;
+
+        if (! $account) {
+            return back()->with('banner_error', 'This organisation has no account to invite.');
+        }
+
+        if (! $account->hasPendingActivation()) {
+            return back()->with('banner_error', 'This invitation has already been accepted.');
+        }
+
+        $plainToken = $account->issueActivationToken();
+        $completeProfileUrl = URL::temporarySignedRoute(
+            'organisation.invitation',
+            now()->addHours(User::ACTIVATION_TTL_HOURS),
+            ['token' => $plainToken],
+        );
+
+        try {
+            Mail::to($account->email)->send(new OrganisationInvitedMail($account, $completeProfileUrl));
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return back()->with('banner_error', 'The invitation email could not be sent. Use Resend invitation to try again.');
+        }
+
+        return back()->with('banner_success', 'Invitation email sent.');
+    }
+
     public function updateAccountState(Request $request, Organization $organization): RedirectResponse
     {
         $validated = $request->validate([
@@ -193,5 +234,28 @@ class OrganisationController extends Controller
         }
 
         return redirect()->back()->with('success', 'Organisation account status updated.');
+    }
+
+    /**
+     * Pending while the activation token still exists, including after it expires.
+     * Accepted once that token has been consumed.
+     *
+     * @return array{invitation_status: 'pending'|'accepted'|null, invitation_expired: bool}
+     */
+    private function invitationState(?User $account): array
+    {
+        if (! $account || ! $account->hasPendingActivation()) {
+            return [
+                'invitation_status' => $account ? 'accepted' : null,
+                'invitation_expired' => false,
+            ];
+        }
+
+        $expiresAt = $account->activation_token_expires_at;
+
+        return [
+            'invitation_status' => 'pending',
+            'invitation_expired' => $expiresAt !== null && $expiresAt->isPast(),
+        ];
     }
 }
