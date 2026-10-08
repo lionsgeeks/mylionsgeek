@@ -1,4 +1,5 @@
 import { Avatar } from '@/components/ui/avatar';
+import { resolveUserAvatarSrc } from '@/lib/userAvatar';
 
 const normalizeRoles = (roleValue) => {
     if (!roleValue) return [];
@@ -14,13 +15,15 @@ const formatRoleLabel = (role) => {
 export function UserInfo({ user, showEmail = false, avatarOnly = false }) {
     const roles = normalizeRoles(user.role);
     const displayRoles = roles.length ? roles.map(formatRoleLabel).join(', ') : null;
+    const avatarSrc = resolveUserAvatarSrc(user);
+    const displayName = user.name || user.email || 'User';
 
     if (avatarOnly) {
         return (
             <Avatar
                 className="h-8 w-8 overflow-hidden rounded-full"
-                image={user.image}
-                name={user.name}
+                src={avatarSrc}
+                name={displayName}
                 lastActivity={user.last_login ?? user.last_online ?? user.last_activity ?? null}
                 onlineCircleClass="hidden"
             />
@@ -36,8 +39,8 @@ export function UserInfo({ user, showEmail = false, avatarOnly = false }) {
             </div>
             <Avatar
                 className="h-8 w-8 overflow-hidden rounded-full"
-                image={user.image}
-                name={user.name}
+                src={avatarSrc}
+                name={displayName}
                 lastActivity={user.last_login ?? user.last_online ?? user.last_activity ?? null}
                 onlineCircleClass="hidden"
             />

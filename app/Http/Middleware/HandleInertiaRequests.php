@@ -68,9 +68,13 @@ class HandleInertiaRequests extends Middleware
                     $rawImage = $user->image ?? null;
                     $avatarUrl = null;
                     if ($rawImage) {
-                        $avatarUrl = Str::startsWith($rawImage, ['http://', 'https://'])
-                            ? $rawImage
-                            : asset('storage/' . ltrim($rawImage, '/'));
+                        if (Str::startsWith($rawImage, ['http://', 'https://'])) {
+                            $avatarUrl = $rawImage;
+                        } elseif (str_contains($rawImage, 'img/profile/')) {
+                            $avatarUrl = asset('storage/' . ltrim($rawImage, '/'));
+                        } else {
+                            $avatarUrl = asset('storage/img/profile/' . ltrim($rawImage, '/'));
+                        }
                     }
 
                     // Return user data merged with computed fields WITHOUT mutating/saving them on the model
@@ -195,8 +199,8 @@ class HandleInertiaRequests extends Middleware
                 ];
             },
             'flash' => [
-                'success' => $request->session()->get('success'),
-                'error' => $request->session()->get('error'),
+                'success' => $request->session()->get('success') ?: $request->session()->get('banner_success'),
+                'error' => $request->session()->get('error') ?: $request->session()->get('banner_error'),
             ],
             'conversations' => fn () => $request->session()->get('conversations'),
             'conversation' => fn () => $request->session()->get('conversation'),

@@ -12,13 +12,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { router } from '@inertiajs/react';
-import { ChevronsLeft, ChevronsRight, CircleCheckBig, Trash } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, CircleCheckBig, RefreshCw, Trash } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function OrganisationsTable({ organisations }) {
     const [currentPage, setCurrentPage] = useState(1);
     const [targetOrg, setTargetOrg] = useState(null);
     const [openDialog, setOpenDialog] = useState(false);
+    const [resendingId, setResendingId] = useState(null);
     const itemsPerPage = 10;
     const totalPages = Math.max(1, Math.ceil(organisations.length / itemsPerPage));
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -37,6 +38,19 @@ export default function OrganisationsTable({ organisations }) {
     const toggleStatus = (org) => {
         setTargetOrg(org);
         setOpenDialog(true);
+    };
+
+    const resendInvitation = (event, org) => {
+        event.stopPropagation();
+        setResendingId(org.id);
+        router.post(
+            `/admin/organisations/${org.id}/resend-invitation`,
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => setResendingId(null),
+            },
+        );
     };
 
     const confirmToggle = () => {
@@ -66,6 +80,7 @@ export default function OrganisationsTable({ organisations }) {
                         <TableHead>Company</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Contact</TableHead>
+                        <TableHead>Invitation</TableHead>
                         <TableHead>Onboarding</TableHead>
                         <TableHead>Menu</TableHead>
                     </TableRow>
@@ -81,26 +96,58 @@ export default function OrganisationsTable({ organisations }) {
                             <TableCell>{org.email}</TableCell>
                             <TableCell>{org.contact_name || '—'}</TableCell>
                             <TableCell>
+                                {org.invitation_status === 'pending' ? (
+                                    <div className="flex flex-col items-start gap-1">
+                                        <Badge variant="secondary">Pending</Badge>
+                                        {org.invitation_expired && (
+                                            <span className="text-xs text-muted-foreground">Link expired</span>
+                                        )}
+                                    </div>
+                                ) : org.invitation_status === 'accepted' ? (
+                                    <Badge variant="secondary" className="bg-alpha/20 text-black">
+                                        Accepted
+                                    </Badge>
+                                ) : (
+                                    '—'
+                                )}
+                            </TableCell>
+                            <TableCell>
                                 <Badge variant="secondary" className={org.onboarding_completed ? 'bg-alpha/20 text-black' : ''}>
                                     {org.onboarding_completed ? 'Complete' : 'Pending'}
                                 </Badge>
                             </TableCell>
                             <TableCell>
-                                <Button
-                                    type="button"
-                                    className="cursor-pointer bg-transparent p-2 duration-200 hover:bg-transparent"
-                                    title={org.account_state === 0 ? 'Suspend' : 'Activate'}
-                                    onClick={(event) => {
-                                        event.stopPropagation();
-                                        toggleStatus(org);
-                                    }}
-                                >
-                                    {org.account_state === 0 ? (
-                                        <Trash size={25} className="text-error" />
-                                    ) : (
-                                        <CircleCheckBig size={25} className="text-green-600" />
+                                <div className="flex items-center">
+                                    {org.invitation_status === 'pending' && (
+                                        <Button
+                                            type="button"
+                                            className="cursor-pointer bg-transparent p-2 duration-200 hover:bg-transparent"
+                                            title="Resend invitation"
+                                            disabled={resendingId === org.id}
+                                            onClick={(event) => resendInvitation(event, org)}
+                                        >
+                                            <RefreshCw
+                                                size={25}
+                                                className={resendingId === org.id ? 'animate-spin text-alpha' : 'text-alpha'}
+                                            />
+                                        </Button>
                                     )}
-                                </Button>
+                                    <Button
+                                        type="button"
+                                        className="cursor-pointer bg-transparent p-2 duration-200 hover:bg-transparent"
+                                        title={org.account_state === 0 ? 'Suspend' : 'Activate'}
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            toggleStatus(org);
+                                        }}
+                                    >
+                                        {org.account_state === 0 ? (
+                                            <Trash size={25} className="text-error" />
+                                        ) : (
+                                            <CircleCheckBig size={25} className="text-green-600" />
+                                        )}
+                                    </Button>
+                                </div>
                             </TableCell>
                         </TableRow>
                     ))}
