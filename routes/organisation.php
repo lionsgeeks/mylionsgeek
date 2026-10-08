@@ -22,6 +22,5 @@ Route::middleware(['auth', 'verified', 'role:recruiter'])->prefix('organisation'
     Route::middleware('organisation.onboarded')->group(function () {
         Route::get('/company', [OrganisationCompanyController::class, 'show'])->name('organisation.company');
         Route::get('/members', [OrganisationMemberController::class, 'index'])->name('organisation.members.index');
-        Route::post('/members', [OrganisationMemberController::class, 'store'])->name('organisation.members.store');
     });
 });
