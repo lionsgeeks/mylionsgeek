@@ -56,7 +56,7 @@ function Field({ id, label, error, icon: Icon, children }) {
     );
 }
 
-function PasswordField({ id, label, error, value, onChange, placeholder, show, onToggleShow, icon: Icon }) {
+function PasswordField({ id, label, error, value, onChange, placeholder, show, onToggleShow, icon: Icon, autoComplete = 'new-password' }) {
     const inputClass =
         'h-11 pl-9 pr-12 bg-white dark:bg-white border-beta/15 text-beta placeholder:text-beta/35 focus-visible:border-alpha/60 focus-visible:ring-alpha/20 select-text';
 
@@ -69,7 +69,7 @@ function PasswordField({ id, label, error, value, onChange, placeholder, show, o
                 onChange={onChange}
                 placeholder={placeholder}
                 className={inputClass}
-                autoComplete="new-password"
+                autoComplete={autoComplete}
             />
             <button
                 type="button"
@@ -93,6 +93,7 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
     const [step, setStep] = useState(passwordChangeOnly ? 3 : 1);
     const [stepErrors, setStepErrors] = useState({});
     const [validatingStep, setValidatingStep] = useState(false);
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
 
@@ -102,6 +103,7 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
         sector: organization?.sector ?? '',
         location: organization?.location ?? '',
         phone: organization?.phone ?? '',
+        current_password: '',
         password: '',
         password_confirmation: '',
     });
@@ -246,6 +248,9 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
 
     const validatePasswordsClient = () => {
         const errs = {};
+        if (!form.data.current_password.trim()) {
+            errs.current_password = 'The current password field is required.';
+        }
         if (!form.data.password.trim()) {
             errs.password = 'The password field is required.';
         } else if (form.data.password.length < 8) {
@@ -275,6 +280,7 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
 
         setStepErrors((prev) => {
             const next = { ...prev };
+            delete next.current_password;
             delete next.password;
             delete next.password_confirmation;
             return next;
@@ -289,7 +295,7 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
             setStep(1);
         } else if (errors.location || errors.phone) {
             setStep(2);
-        } else if (errors.password || errors.password_confirmation) {
+        } else if (errors.current_password || errors.password || errors.password_confirmation) {
             setStep(3);
         }
     }, [form.errors]);
@@ -306,9 +312,7 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
 
     const stepDescription =
         step === 3
-            ? passwordChangeOnly
-                ? 'For your security, you must set a new password before continuing.'
-                : 'Create a password only you know to secure your organisation account.'
+            ? 'Enter your current password, then choose a new one.'
             : null;
 
     return (
@@ -471,6 +475,19 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
                                     transition={{ duration: 0.25 }}
                                     className="space-y-5"
                                 >
+                                    <PasswordField
+                                        id="current_password"
+                                        label="Current password"
+                                        error={fieldError('current_password')}
+                                        value={form.data.current_password}
+                                        onChange={(e) => updateField('current_password', e.target.value)}
+                                        placeholder="Your current password"
+                                        show={showCurrentPassword}
+                                        onToggleShow={() => setShowCurrentPassword((v) => !v)}
+                                        icon={KeyRound}
+                                        autoComplete="current-password"
+                                    />
+
                                     <PasswordField
                                         id="password"
                                         label="Password"

@@ -153,6 +153,7 @@ class OrganisationOnboardingController extends Controller
         );
 
         if ($user->must_change_password) {
+            $rules['current_password'] = ['required', 'current_password:web'];
             $rules['password'] = ['required', Password::defaults(), 'confirmed'];
         }
 
@@ -283,6 +284,7 @@ class OrganisationOnboardingController extends Controller
     private function updatePassword(Request $request, User $user): RedirectResponse
     {
         $validated = $request->validate([
+            'current_password' => ['required', 'current_password:web'],
             'password' => ['required', Password::defaults(), 'confirmed'],
         ]);
 
