@@ -128,7 +128,7 @@ class AttendanceCheckInService
         $currentSlot = $this->slotService->currentSlot($now);
 
         if ($currentSlot === null) {
-            $this->failJson('No attendance to mark right now.', Response::HTTP_UNPROCESSABLE_ENTITY);
+            $this->failJson('No attendance to mark right now.', Response::HTTP_UNPROCESSABLE_ENTITY, 'NO_ACTIVE_SLOT');
         }
 
         $faceMethod = $this->assertFaceVerified($user, $livePhoto);
@@ -154,7 +154,7 @@ class AttendanceCheckInService
             : null;
 
         if ($this->slotService->isSlotMarked($existingSlots[$currentSlot] ?? null)) {
-            $this->failJson("You've already marked attendance for this slot.", Response::HTTP_CONFLICT);
+            $this->failJson("You've already marked attendance for this slot.", Response::HTTP_CONFLICT, 'ALREADY_CHECKED_IN');
         }
 
         $attendance = $this->findOrCreateAttendance($formationId, $attendanceDay, $user->name ?? 'Student');
@@ -245,14 +245,14 @@ class AttendanceCheckInService
         $result = $this->faceVerifier->verify($user, $livePhoto);
 
         if ($result->allowsCheckIn()) {
-            return 'rekognition';
+            return 'face-match';
         }
 
         if ($result === FaceVerificationResult::Rejected) {
-            $this->failJson('Face not recognized.', Response::HTTP_UNPROCESSABLE_ENTITY);
+            $this->failJson('Face not recognized.', Response::HTTP_UNPROCESSABLE_ENTITY, 'FACE_NOT_RECOGNIZED');
         }
 
-        $this->failJson('Unable to verify your identity.', Response::HTTP_SERVICE_UNAVAILABLE);
+        $this->failJson('Unable to verify your identity.', Response::HTTP_SERVICE_UNAVAILABLE, 'FACE_SERVICE_UNAVAILABLE');
     }
 
     private function userMayBypassFaceVerification(User $user): bool
@@ -268,9 +268,17 @@ class AttendanceCheckInService
         ]);
     }
 
-    private function failJson(string $message, int $status): never
+    /**
+     * $errorCode is the machine code the clients switch on (see resources/js/lib/attendance-error-codes.js).
+     */
+    private function failJson(string $message, int $status, ?string $errorCode = null): never
     {
-        throw new HttpResponseException(response()->json(['message' => $message], $status));
+        $payload = ['message' => $message];
+        if ($errorCode !== null) {
+            $payload['error_code'] = $errorCode;
+        }
+
+        throw new HttpResponseException(response()->json($payload, $status));
     }
 
     private function findOrCreateAttendance(int $formationId, string $attendanceDay, string $staffName): Attendance
