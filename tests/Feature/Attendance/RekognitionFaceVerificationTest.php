@@ -248,7 +248,7 @@ test('aws unavailable returns unavailable and creates no attendance', function (
 
     postM8FaceCheckIn($this, $student, '/api/mobile/attendance/check-in')
         ->assertStatus(503)
-        ->assertExactJson(['message' => 'Unable to verify your identity.']);
+        ->assertExactJson(['message' => 'Unable to verify your identity.', 'error_code' => 'FACE_SERVICE_UNAVAILABLE']);
 
     expect(AttendanceListe::count())->toBe(0);
 });

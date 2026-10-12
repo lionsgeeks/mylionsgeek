@@ -2,6 +2,7 @@
 
 use App\Models\Attendance;
 use App\Models\AttendanceListe;
+use App\Models\FaceEnrollment;
 use App\Models\Formation;
 use App\Models\User;
 use App\Services\FaceVerification\FacePlusPlusVerificationService;
@@ -81,6 +82,17 @@ beforeEach(function () {
         $table->timestamps();
     });
 
+    Schema::create('face_enrollments', function (Blueprint $table) {
+        $table->id();
+        $table->unsignedBigInteger('user_id');
+        $table->string('disk');
+        $table->string('path');
+        $table->unsignedBigInteger('enrolled_by')->nullable();
+        $table->timestamp('enrolled_at');
+        $table->timestamps();
+        $table->unique('user_id');
+    });
+
     $this->formation = Formation::create([
         'name' => 'Test Formation',
         'category' => 'coding',
@@ -106,10 +118,23 @@ function facePlusStudent(array $overrides = []): User
     ], $overrides));
 }
 
-function seedProfilePhoto(User $student, string $filename = 'ref.jpg'): void
+function seedProfilePhoto(User $student, string $filename = 'ref.jpg', string $bytes = 'reference-photo-bytes'): void
 {
-    Storage::disk('public')->put('img/profile/'.$filename, 'reference-photo-bytes');
+    Storage::disk('public')->put('img/profile/'.$filename, $bytes);
     $student->forceFill(['image' => $filename])->save();
+}
+
+function seedStaffEnrollment(User $student, string $bytes = 'private-reference-bytes'): void
+{
+    $path = $student->id.'/reference.jpg';
+    Storage::disk('face_enrollments')->put($path, $bytes);
+    FaceEnrollment::query()->create([
+        'user_id' => $student->id,
+        'disk' => 'face_enrollments',
+        'path' => $path,
+        'enrolled_by' => null,
+        'enrolled_at' => now(),
+    ]);
 }
 
 function freezeFacePlusTime(string $time): void
@@ -148,15 +173,18 @@ test('matching face++ compare creates attendance', function () {
     bindFacePlusPlusVerifier();
     fakeFacePlusCompare(200, ['confidence' => 95]);
     $student = facePlusStudent();
-    seedProfilePhoto($student);
+    seedStaffEnrollment($student);
+    seedProfilePhoto($student, 'friend.jpg', 'friend-face-bytes');
 
     postFacePlusCheckIn($this, $student)
         ->assertOk()
         ->assertJsonPath('slot', 'morning')
         ->assertJsonPath('status', 'present');
 
+    $body = Http::recorded()[0][0]->body();
     expect(AttendanceListe::query()->where('user_id', $student->id)->exists())->toBeTrue()
-        ->and(Http::recorded())->not->toBeEmpty();
+        ->and($body)->toContain('private-reference-bytes')
+        ->and($body)->not->toContain('friend-face-bytes');
 });
 
 test('face++ confidence below threshold is rejected', function () {
@@ -164,17 +192,41 @@ test('face++ confidence below threshold is rejected', function () {
     bindFacePlusPlusVerifier();
     fakeFacePlusCompare(200, ['confidence' => 40]);
     $student = facePlusStudent();
-    seedProfilePhoto($student);
+    seedStaffEnrollment($student);
+    seedProfilePhoto($student, 'friend.jpg', 'friend-face-bytes');
 
     postFacePlusCheckIn($this, $student)
         ->assertUnprocessable()
-        ->assertJson(['message' => 'Face not recognized.']);
+        ->assertJson(['message' => 'Face not recognized.', 'error_code' => 'FACE_NOT_RECOGNIZED']);
 
     expect(AttendanceListe::count())->toBe(0)
         ->and(Attendance::count())->toBe(0);
 });
 
-test('missing profile photo keeps verification unavailable', function () {
+test('first check-in locks the profile photo and later edits are ignored', function () {
+    freezeFacePlusTime('09:42:00');
+    bindFacePlusPlusVerifier();
+    fakeFacePlusCompare(200, ['confidence' => 95]);
+    $student = facePlusStudent();
+    seedProfilePhoto($student, 'me.jpg', 'original-face-bytes');
+
+    postFacePlusCheckIn($this, $student)
+        ->assertOk()
+        ->assertJsonPath('status', 'present');
+
+    seedProfilePhoto($student, 'friend.jpg', 'friend-face-bytes');
+
+    postFacePlusCheckIn($this, $student)
+        ->assertStatus(409);
+
+    $recorded = Http::recorded();
+    expect($recorded[0][0]->body())->toContain('original-face-bytes')
+        ->and($recorded[1][0]->body())->toContain('original-face-bytes')
+        ->and($recorded[1][0]->body())->not->toContain('friend-face-bytes')
+        ->and(FaceEnrollment::query()->where('user_id', $student->id)->count())->toBe(1);
+});
+
+test('missing profile photo and enrollment stays unavailable', function () {
     freezeFacePlusTime('09:42:00');
     bindFacePlusPlusVerifier();
     fakeFacePlusCompare();
@@ -185,7 +237,8 @@ test('missing profile photo keeps verification unavailable', function () {
         ->assertJson(['message' => 'Unable to verify your identity.']);
 
     expect(AttendanceListe::count())->toBe(0)
-        ->and(Http::recorded())->toBeEmpty();
+        ->and(Http::recorded())->toBeEmpty()
+        ->and(FaceEnrollment::query()->count())->toBe(0);
 });
 
 test('face++ http error keeps verification unavailable', function () {
@@ -193,7 +246,7 @@ test('face++ http error keeps verification unavailable', function () {
     bindFacePlusPlusVerifier();
     fakeFacePlusCompare(500, ['error_message' => 'INTERNAL_ERROR']);
     $student = facePlusStudent();
-    seedProfilePhoto($student);
+    seedStaffEnrollment($student);
 
     postFacePlusCheckIn($this, $student)
         ->assertStatus(503)
@@ -201,3 +254,27 @@ test('face++ http error keeps verification unavailable', function () {
 
     expect(AttendanceListe::count())->toBe(0);
 });
+
+test('invalid face++ threshold fail-closes as unavailable', function (mixed $threshold, array $body) {
+    freezeFacePlusTime('09:42:00');
+    bindFacePlusPlusVerifier();
+    config(['face_verification.threshold' => $threshold]);
+    fakeFacePlusCompare(200, $body);
+    $student = facePlusStudent();
+    seedStaffEnrollment($student);
+
+    postFacePlusCheckIn($this, $student)
+        ->assertStatus(503)
+        ->assertJson(['message' => 'Unable to verify your identity.']);
+
+    expect(AttendanceListe::count())->toBe(0)
+        ->and(Http::recorded())->toBeEmpty();
+})->with([
+    'empty string' => ['', ['confidence' => 4]],
+    'zero' => [0, ['confidence' => 4]],
+    'zero string' => ['0', ['confidence' => 4]],
+    'non-numeric' => ['no', ['confidence' => 4]],
+    'negative' => [-1, ['confidence' => 4]],
+    'above 100' => [150, ['confidence' => 4]],
+    'zero with missing confidence' => [0, []],
+]);

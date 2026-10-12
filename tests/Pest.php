@@ -61,9 +61,11 @@ function bindFacePlusPlusVerifier(): void
         'face_verification.api_secret' => 'testing-facepp-secret',
         'face_verification.api_url' => 'https://api-us.faceplusplus.com/facepp/v3/compare',
         'face_verification.threshold' => 80,
+        'face.enrollment_disk' => 'face_enrollments',
     ]);
 
     Illuminate\Support\Facades\Storage::fake('public');
+    Illuminate\Support\Facades\Storage::fake('face_enrollments');
 
     app()->forgetInstance(App\Services\FaceVerification\FaceVerificationService::class);
 }

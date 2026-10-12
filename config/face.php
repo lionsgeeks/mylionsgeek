@@ -7,15 +7,17 @@ return [
     | Face verification (attendance check-in)
     |--------------------------------------------------------------------------
     |
-    | Attendance check-in uses Face++ compare against the student's profile
-    | photo (FACEPP_* in config/face_verification.php). Missing Face++ keys
-    | fail-close verification (HTTP 503).
+    | Attendance check-in uses Face++ compare against a private reference
+    | (FACEPP_* in config/face_verification.php). A staff enrollment is used
+    | when one exists. Otherwise the profile photo is copied into that
+    | private disk once, and later profile edits are ignored. Missing Face++
+    | keys or a missing readable reference fail-close verification (HTTP 503).
     |
     | FACE_VERIFICATION_REQUIRED=false skips Face++ (local/dev without keys).
     | Keep true in production.
     |
     | FACE_VERIFICATION_MIN_SIMILARITY is only used by optional Rekognition
-    | staff enrollment, not by Face++ check-in.
+    | enrollment quality checks, not by Face++ check-in.
     |
     */
 

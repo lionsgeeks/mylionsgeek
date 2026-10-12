@@ -8,7 +8,7 @@ use App\Services\FaceVerificationService as FacePlusPlusClient;
 use Illuminate\Http\UploadedFile;
 
 /**
- * Attendance check-in matching via Face++ compare against the student's profile photo.
+ * Attendance check-in matching via Face++ compare against the staff enrollment.
  */
 class FacePlusPlusVerificationService implements FaceVerificationService
 {
