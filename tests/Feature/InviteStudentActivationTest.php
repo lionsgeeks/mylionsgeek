@@ -194,11 +194,17 @@ test('valid signed complete-profile post activates once and cannot be reused', f
         ->post($submitUrl, [
             'password' => 'NewPassword1',
             'password_confirmation' => 'NewPassword1',
+            'document_acceptances' => collect(json_decode(file_get_contents(resource_path('js/pages/profile/documents.json')), true))->mapWithKeys(fn ($document) => [$document['id'] => true])->all(),
+            'cin' => 'AB123456',
         ])
         ->assertRedirect('/login');
 
     $user->refresh();
     expect($user->hasPendingActivation())->toBeFalse()
+        ->and($user->profile_document_acceptances)->toHaveCount(3)
+        ->and($user->profile_document_acceptances[0]['accepted'])->toBeTrue()
+        ->and($user->profile_document_acceptances[0]['content_sha256'])->toHaveLength(64)
+        ->and($user->profile_documents_accepted_at)->not->toBeNull()
         ->and($user->activation_token)->toBeNull()
         ->and($user->activation_token_expires_at)->toBeNull();
 
@@ -210,3 +216,50 @@ test('valid signed complete-profile post activates once and cannot be reused', f
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('profile/ExpiredLink'));
 });
+
+test('lionsgeek students must accept every document before activation', function (string $source) {
+    $user = User::factory()->create(['role' => ['student'], 'invite_source' => $source]);
+    $token = $user->issueActivationToken();
+    $url = URL::temporarySignedRoute('user.complete-profile.update', now()->addHour(), ['token' => $token]);
+    $documents = json_decode(file_get_contents(resource_path('js/pages/profile/documents.json')), true);
+    $acceptances = collect($documents)->mapWithKeys(fn ($document) => [$document['id'] => true])->all();
+
+    foreach ($documents as $document) {
+        $this->post($url, [
+            'password' => 'NewPassword1',
+            'password_confirmation' => 'NewPassword1',
+            'document_acceptances' => array_merge($acceptances, [$document['id'] => false]),
+        ])->assertSessionHasErrors('document_acceptances.'.$document['id']);
+    }
+    $this->post($url, ['password' => 'NewPassword1', 'password_confirmation' => 'NewPassword1'])
+        ->assertSessionHasErrors(array_map(fn ($document) => 'document_acceptances.'.$document['id'], $documents));
+    $user->refresh();
+    expect($user->hasPendingActivation())->toBeTrue()
+        ->and($user->profile_document_acceptances)->toBeNull();
+})->with(['lionsgeek_adult', 'lionsgeek_children']);
+
+test('admin invitations do not require or store student document acceptances', function () {
+    $user = User::factory()->create(['role' => ['recruiter'], 'invite_source' => 'admin']);
+    $token = $user->issueActivationToken();
+    $this->post(URL::temporarySignedRoute('user.complete-profile.update', now()->addHour(), ['token' => $token]), [
+        'password' => 'NewPassword1', 'password_confirmation' => 'NewPassword1', 'phone' => '0611111111', 'cin' => 'CD123456',
+    ])->assertRedirect('/login');
+    expect($user->fresh()->profile_document_acceptances)->toBeNull();
+});
+
+test('CIN is required for adults but optional for children', function (string $source) {
+    $user = User::factory()->create(['role' => ['student'], 'invite_source' => $source]);
+    $token = $user->issueActivationToken();
+    $url = URL::temporarySignedRoute('user.complete-profile.update', now()->addHour(), ['token' => $token]);
+    $payload = [
+        'password' => 'NewPassword1', 'password_confirmation' => 'NewPassword1',
+        'document_acceptances' => collect(json_decode(file_get_contents(resource_path('js/pages/profile/documents.json')), true))->mapWithKeys(fn ($document) => [$document['id'] => true])->all(),
+    ];
+    if ($source === 'lionsgeek_children') {
+        $this->post($url, $payload)->assertRedirect('/login');
+    } else {
+        $this->post($url, $payload)->assertSessionHasErrors('cin');
+        $this->post($url, array_merge($payload, ['cin' => '   ']))->assertSessionHasErrors('cin');
+        expect($user->fresh()->hasPendingActivation())->toBeTrue();
+    }
+})->with(['lionsgeek_adult', 'lionsgeek_children']);
