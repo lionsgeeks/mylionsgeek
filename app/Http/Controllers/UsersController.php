@@ -1251,11 +1251,13 @@ class UsersController extends Controller
             'status' => 'nullable|string|in:'.implode(',', UserLifeStatusService::ALLOWED_VALUES),
             'cin' => 'nullable|string', // National ID, if applicable
             'formation_id' => 'required|exists:formations,id', // Assumes foreign key to formations table
-            'access_studio' => 'required|integer|in:0,1', // Assumes foreign key to formations table
-            'access_cowork' => 'required|integer|in:0,1', // Assumes foreign key to formations table
+            'access_studio' => 'required|integer|in:0,1',
+            'access_cowork' => 'required|integer|in:0,1',
+            'access_scan' => 'nullable|integer|in:0,1',
+            'gender' => 'required|in:male,female',
             'roles' => 'required|array|min:1',
             'roles.*' => 'required|string|in:'.implode(',', User::ASSIGNABLE_ROLES),
-            'entreprise' => 'nullable|string', // Assumes foreign key to formations table
+            'entreprise' => 'nullable|string|max:255',
         ]);
         $existing = User::query()->where('email', $validated['email'])->first();
         if ($existing) {
@@ -1279,23 +1281,27 @@ class UsersController extends Controller
         $lastUser = User::orderBy('id', 'desc')->first();
 
         $defaultStatus = app(UserLifeStatusService::class)->defaultForRoles($validated['roles']);
+        $isRecruiter = in_array('recruiter', $validated['roles'], true);
 
-        $user = User::create([
+        $user = new User;
+        $user->forceFill([
             'id' => $lastUser->id + 1,
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($plainPassword),
             'phone' => $validated['phone'] ?? null,
-            'image' => $validated['image'] ?? null,
+            'image' => $validated['image'] ?? 'pdp.png',
             'status' => $validated['status'] ?? $defaultStatus,
             'cin' => $validated['cin'] ?? null,
+            'gender' => $validated['gender'],
             'formation_id' => $validated['formation_id'],
             'program_status' => $programStatusService->initialProgramStatusFor($validated['formation_id'] ?? null),
-            'account_state' => $validated['account_state'] ?? 'active',
-            'access_studio' => $validated['access_studio'],
-            'access_cowork' => $validated['access_cowork'],
+            'account_state' => 0,
+            'access_studio' => (int) $validated['access_studio'],
+            'access_cowork' => (int) $validated['access_cowork'],
+            'access_scan' => (int) ($validated['access_scan'] ?? 0),
             'role' => $validated['roles'],
-            'entreprise' => $validated['entreprise'] ?? null,
+            'entreprise' => $isRecruiter ? ($validated['entreprise'] ?? null) : null,
             'invite_source' => 'admin',
             'remember_token' => null,
             'email_verified_at' => null,

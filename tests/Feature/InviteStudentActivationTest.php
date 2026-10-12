@@ -101,11 +101,16 @@ test('valid signed complete-profile post activates once and cannot be reused', f
         ->post($submitUrl, [
             'password' => 'NewPassword1',
             'password_confirmation' => 'NewPassword1',
+            'gender' => 'female',
+            'entreprise' => 'Should Not Save',
         ])
         ->assertRedirect('/login');
 
     $user->refresh();
-    expect($user->hasPendingActivation())->toBeFalse()
+    expect($user->gender)->toBe('female')
+        ->and($user->entreprise)->toBeNull()
+        ->and((int) $user->account_state)->toBe(0)
+        ->and($user->hasPendingActivation())->toBeFalse()
         ->and($user->activation_token)->toBeNull()
         ->and($user->activation_token_expires_at)->toBeNull();
 
@@ -116,4 +121,61 @@ test('valid signed complete-profile post activates once and cannot be reused', f
         ])
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('profile/ExpiredLink'));
+});
+
+test('complete-profile rejects a missing gender and does not activate', function () {
+    $user = User::factory()->create([
+        'role' => ['student'],
+        'invite_source' => 'lionsgeek_adult',
+    ]);
+    $plain = $user->issueActivationToken();
+
+    $submitUrl = URL::temporarySignedRoute(
+        'user.complete-profile.update',
+        now()->addHours(24),
+        ['token' => $plain]
+    );
+
+    $this->withoutVite()
+        ->from('/complete-profile/'.$plain)
+        ->post($submitUrl, [
+            'password' => 'NewPassword1',
+            'password_confirmation' => 'NewPassword1',
+            'entreprise' => 'Should Not Save',
+        ])
+        ->assertSessionHasErrors('gender');
+
+    $user->refresh();
+    expect($user->hasPendingActivation())->toBeTrue()
+        ->and($user->entreprise)->not->toBe('Should Not Save');
+});
+
+test('recruiter complete-profile saves the company name', function () {
+    $user = User::factory()->create([
+        'role' => ['recruiter'],
+        'invite_source' => 'admin',
+    ]);
+    $plain = $user->issueActivationToken();
+
+    $submitUrl = URL::temporarySignedRoute(
+        'user.complete-profile.update',
+        now()->addHours(24),
+        ['token' => $plain]
+    );
+
+    $this->withoutVite()
+        ->post($submitUrl, [
+            'password' => 'NewPassword1',
+            'password_confirmation' => 'NewPassword1',
+            'phone' => '0612345678',
+            'gender' => 'male',
+            'entreprise' => 'LionsGeek',
+        ])
+        ->assertRedirect('/login');
+
+    $user->refresh();
+    expect($user->gender)->toBe('male')
+        ->and($user->entreprise)->toBe('LionsGeek')
+        ->and((int) $user->account_state)->toBe(0)
+        ->and($user->hasPendingActivation())->toBeFalse();
 });

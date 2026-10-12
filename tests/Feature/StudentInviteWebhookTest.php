@@ -59,6 +59,10 @@ test('confirmed student invite creates the account and queues the profile email'
         ->and((int) $user->promo)->toBe(6)
         ->and($user->field)->toBe('media')
         ->and($user->normalizedRoles())->toBe(['student'])
+        ->and((int) $user->access_studio)->toBe(0)
+        ->and((int) $user->access_scan)->toBe(0)
+        ->and((int) $user->access_cowork)->toBe(1)
+        ->and((int) $user->account_state)->toBe(0)
         ->and($user->hasPendingActivation())->toBeTrue();
 
     Mail::assertQueued(UserWelcomeMail::class, function (UserWelcomeMail $mail) use ($user) {

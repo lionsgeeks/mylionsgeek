@@ -1,25 +1,27 @@
 // resources/js/pages/profile/index.jsx
 
-import { router, useForm } from '@inertiajs/react';
-import { useState } from 'react';
-import imageCompression from 'browser-image-compression';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { router, useForm } from '@inertiajs/react';
+import imageCompression from 'browser-image-compression';
 import { Camera, Eye, EyeOff } from 'lucide-react';
+import { useState } from 'react';
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2MB — matches backend validation
 
 const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
     const fromLionsgeek = !!profileMeta.from_lionsgeek;
     const isChildren = !!profileMeta.is_children;
+    const isRecruiter = !!profileMeta.is_recruiter;
     const requirePhone = profileMeta.require_phone !== false && !fromLionsgeek;
     const showCin = profileMeta.show_cin !== false && !isChildren;
 
     const { data, setData, processing, errors, setError } = useForm({
         password: '',
         password_confirmation: '',
-        phone: fromLionsgeek ? (user?.phone || '') : '',
+        phone: fromLionsgeek ? user?.phone || '' : '',
         cin: '',
+        gender: '',
         entreprise: '',
         status: '',
         image: null,
@@ -107,6 +109,10 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
             newErrors.password_confirmation = 'Passwords do not match';
         }
 
+        if (!data.gender) {
+            newErrors.gender = 'Gender is required';
+        }
+
         if (!data.image) {
             newErrors.image = 'Profile image is required';
         }
@@ -131,13 +137,23 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
         if (!showCin) {
             delete payload.cin;
         }
+        if (!isRecruiter) {
+            delete payload.entreprise;
+        }
 
         router.post(submitUrl, payload, {
             onSuccess: () => {
                 window.location.href = '/login';
             },
             onError: (formErrors) => {
-                console.error('Validation Errors:', formErrors);
+                const next = {};
+                Object.entries(formErrors || {}).forEach(([key, value]) => {
+                    const message = Array.isArray(value) ? value[0] : value;
+                    if (message) {
+                        next[key] = String(message);
+                    }
+                });
+                setValidationErrors(next);
             },
         });
     };
@@ -173,7 +189,13 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
                                     )}
                                 </div>
                             </div>
-                            <label htmlFor="image-upload" className={`mt-3 cursor-pointer ${compressingImage ? 'pointer-events-none opacity-60' : ''}`}>
+                            {(validationErrors.image || errors.image) && (
+                                <span className="mt-2 max-w-xs text-center text-sm text-red-500">{validationErrors.image || errors.image}</span>
+                            )}
+                            <label
+                                htmlFor="image-upload"
+                                className={`mt-3 cursor-pointer ${compressingImage ? 'pointer-events-none opacity-60' : ''}`}
+                            >
                                 <div className="rounded-lg bg-gray-800 px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-gray-700">
                                     {compressingImage ? 'Compressing…' : 'Upload Image'}
                                 </div>
@@ -187,9 +209,6 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
                                 />
                             </label>
                             <p className="mt-2 text-xs text-gray-500">JPG, PNG or WEBP — large photos are compressed automatically (max 2MB).</p>
-                            {(validationErrors.image || errors.image) && (
-                                <span className="mt-2 text-sm text-red-500">{validationErrors.image || errors.image}</span>
-                            )}
                         </div>
 
                         <div className="space-y-4">
@@ -235,7 +254,26 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
                                 </div>
                             )}
 
-                            {!isChildren && (
+                            <div>
+                                <Label htmlFor="gender" className="mb-2 block text-sm font-medium text-gray-600">
+                                    Gender
+                                </Label>
+                                <select
+                                    id="gender"
+                                    value={data.gender}
+                                    onChange={(e) => setData('gender', e.target.value)}
+                                    className="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-black focus:border-green-500 focus:outline-none"
+                                >
+                                    <option value="">Select gender</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                </select>
+                                {(validationErrors.gender || errors.gender) && (
+                                    <span className="mt-1 block text-sm text-red-500">{validationErrors.gender || errors.gender}</span>
+                                )}
+                            </div>
+
+                            {isRecruiter && (
                                 <div>
                                     <Label htmlFor="entreprise" className="mb-2 block text-sm font-medium text-gray-600">
                                         Entreprise
