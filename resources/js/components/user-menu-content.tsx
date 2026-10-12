@@ -28,6 +28,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
     const [isDocModalOpen, setIsDocModalOpen] = useState(false);
     const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
     const isRecruiter = userRoles(user).includes('recruiter');
+    const canAccessDocuments = userRoles(user).some((role) => ['student', 'admin', 'super_admin', 'moderateur', 'coach', 'pro', 'studio_responsable'].includes(role));
     const profileHref = isRecruiter ? edit() : `/students/${user.id}`;
 
     const handleLogout = () => {
@@ -58,7 +59,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                         View Profile
                     </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem
+                {canAccessDocuments && <DropdownMenuItem
                     onSelect={(e) => {
                         e.preventDefault();
                         setTimeout(() => {
@@ -69,7 +70,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                 >
                     <Dock className="mr-2" />
                     {userRoles(user).includes('student') ? 'My documents' : 'Add document'}
-                </DropdownMenuItem>
+                </DropdownMenuItem>}
 
                 <DropdownMenuItem
                     onSelect={(e) => {

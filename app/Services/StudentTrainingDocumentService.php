@@ -76,6 +76,8 @@ class StudentTrainingDocumentService
             $xpath = new \DOMXPath($xml);
             $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
             $date = $user->profile_documents_accepted_at?->format('d/m/Y') ?? now()->format('d/m/Y');
+            $placeholders = ['{{start_date}}' => $data['startDate'] ?: 'Non renseigné', '{{end_date}}' => $data['endDate'] ?: 'Non renseignée'];
+            $found = [];
             foreach ($xpath->query('//w:body//w:p') as $paragraph) {
                 $nodes = iterator_to_array($xpath->query('.//w:t', $paragraph));
                 $text = implode('', array_map(fn ($node) => $node->textContent, $nodes));
@@ -86,8 +88,13 @@ class StudentTrainingDocumentService
                     $replacement = rtrim($text).' '.($data['cin'] ?: 'Non renseigné');
                 } elseif (str_starts_with(trim($text), 'Nom et prénom :')) {
                     $replacement = 'Nom et prénom : '.$data['studentName'].' / CIN '.($data['cin'] ?: 'Non renseigné');
-                } elseif (str_contains($text, '03/02/2025') && str_contains($text, '10/08/2025')) {
-                    $replacement = str_replace(['03/02/2025', '10/08/2025'], [$data['startDate'] ?: 'Non renseigné', $data['endDate'] ?: 'Non renseignée'], $text);
+                } elseif ($type === 'contract' && (str_contains($text, '{{start_date}}') || str_contains($text, '{{end_date}}'))) {
+                    foreach ($placeholders as $placeholder => $value) {
+                        if (str_contains($text, $placeholder)) {
+                            $found[$placeholder] = true;
+                        }
+                    }
+                    $replacement = strtr($text, $placeholders);
                 } elseif (preg_match('/^Nom de la formation\s*:/u', trim($text))) {
                     $replacement = substr($text, 0, strpos($text, ':') + 1).' '.$data['trainingName'];
                 } elseif (str_starts_with(trim($text), 'Fait à Casablanca, le')) {
@@ -103,6 +110,9 @@ class StudentTrainingDocumentService
                         $node->textContent = '';
                     }
                 }
+            }
+            if ($type === 'contract' && count($found) !== count($placeholders)) {
+                throw new \RuntimeException('Contract template must contain {{start_date}} and {{end_date}} placeholders.');
             }
             $zip->addFromString('word/document.xml', $xml->saveXML());
             $zip->close();

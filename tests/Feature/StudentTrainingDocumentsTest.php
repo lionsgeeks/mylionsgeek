@@ -76,7 +76,7 @@ test('student can download their filled original template but cannot access anot
     $zip->open($path);
     $xml = $zip->getFromName('word/document.xml');
     expect($xml)->toContain('Student Example', 'AB123456', 'Coding', '31/08/2026', '28/02/2027')
-        ->not->toContain('03/02/2025', '10/08/2025', 'CCCCCCCCCCCCCCCxxxxxxxxxxxxxx');
+        ->not->toContain('{{start_date}}', '{{end_date}}', '03/02/2025', '10/08/2025', 'CCCCCCCCCCCCCCCxxxxxxxxxxxxxx');
     $original = new ZipArchive();
     $original->open(public_path('assets/documents/Contrat_de_formation_LionsGeek.docx'));
     for ($i = 0; $i < $original->numFiles; $i++) {
@@ -90,6 +90,32 @@ test('student can download their filled original template but cannot access anot
     unlink($path);
     $this->get('/students/training-documents/'.$other->id.'/charter')->assertNotFound();
     $this->getJson('/admin/users/'.$student->id.'/training-documents/'.$formation->id.'/contract')->assertForbidden();
+});
+
+test('contract generation rejects a template missing a required date placeholder', function () {
+    $formation = documentTraining();
+    $student = documentStudent($formation);
+    $publicPath = public_path();
+    $root = sys_get_temp_dir().'/lg-template-test-'.bin2hex(random_bytes(8));
+    $directory = $root.'/assets/documents';
+    mkdir($directory, 0700, true);
+    $template = $directory.'/Contrat_de_formation_LionsGeek.docx';
+    copy($publicPath.'/assets/documents/Contrat_de_formation_LionsGeek.docx', $template);
+    $zip = new ZipArchive();
+    $zip->open($template);
+    $zip->addFromString('word/document.xml', str_replace('{{end_date}}', 'old sample date', $zip->getFromName('word/document.xml')));
+    $zip->close();
+    app()->usePublicPath($root);
+    try {
+        expect(fn () => app(StudentTrainingDocumentService::class)->filledTemplate($student, $formation, 'contract'))
+            ->toThrow(RuntimeException::class, 'Contract template must contain');
+    } finally {
+        app()->usePublicPath($publicPath);
+        unlink($template);
+        rmdir($directory);
+        rmdir($root.'/assets');
+        rmdir($root);
+    }
 });
 
 test('guests and recruiters cannot view student documents', function () {

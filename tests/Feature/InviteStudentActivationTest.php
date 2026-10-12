@@ -238,14 +238,14 @@ test('lionsgeek students must accept every document before activation', function
         ->and($user->profile_document_acceptances)->toBeNull();
 })->with(['lionsgeek_adult', 'lionsgeek_children']);
 
-test('admin invitations do not require or store student document acceptances', function () {
-    $user = User::factory()->create(['role' => ['recruiter'], 'invite_source' => 'admin']);
+test('admin invitations activate without CIN or student document acceptances', function (string $role) {
+    $user = User::factory()->create(['role' => [$role], 'invite_source' => 'admin']);
     $token = $user->issueActivationToken();
     $this->post(URL::temporarySignedRoute('user.complete-profile.update', now()->addHour(), ['token' => $token]), [
-        'password' => 'NewPassword1', 'password_confirmation' => 'NewPassword1', 'phone' => '0611111111', 'cin' => 'CD123456',
+        'password' => 'NewPassword1', 'password_confirmation' => 'NewPassword1', 'phone' => '0611111111',
     ])->assertRedirect('/login');
     expect($user->fresh()->profile_document_acceptances)->toBeNull();
-});
+})->with(['recruiter', 'coworker', 'coach', 'pro', 'student']);
 
 test('CIN is required for adults but optional for children', function (string $source) {
     $user = User::factory()->create(['role' => ['student'], 'invite_source' => $source]);
