@@ -96,7 +96,6 @@ class User extends Authenticatable
     public function issueActivationToken(): string
     {
         $plain = bin2hex(random_bytes(32));
-
         $this->forceFill([
             'activation_token' => hash('sha256', $plain),
             'activation_token_expires_at' => now()->addHours(self::ACTIVATION_TTL_HOURS),

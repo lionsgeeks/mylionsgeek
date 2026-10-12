@@ -3,11 +3,13 @@
 namespace App\Services;
 
 use App\Exceptions\FaceVerificationException;
+use App\Models\FaceEnrollment;
 use App\Models\User;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class FaceVerificationService
 {
@@ -29,8 +31,9 @@ class FaceVerificationService
     }
 
     /**
-     * Compare a live check-in photo against the student's reference image via Face++.
+     * Compare a live check-in photo against the staff enrollment via Face++.
      *
+     * The reference is the private enrollment file. Profile photo edits are ignored.
      * Live photo bytes are processed in memory only — never written to disk.
      *
      * @return array{passed: bool, confidence: float, method: string}
@@ -39,28 +42,34 @@ class FaceVerificationService
      */
     public function verify(User $student, UploadedFile $livePhoto): array
     {
-        if ($student->image === null || trim((string) $student->image) === '') {
-            throw new FaceVerificationException('No reference photo on file for this student.');
+        $threshold = $this->matchThreshold();
+        if ($threshold === null) {
+            throw new FaceVerificationException('Face verification service is currently unavailable.');
         }
 
-        $relativePath = $this->resolveReferenceRelativePath((string) $student->image);
-        if ($relativePath === null) {
-            throw new FaceVerificationException('Student reference photo not found on disk.');
+        $enrollment = FaceEnrollment::query()->where('user_id', $student->id)->first();
+        if ($enrollment === null) {
+            $enrollment = $this->lockProfileReference($student);
         }
-
-        $absolutePath = Storage::disk('public')->path($relativePath);
-
-        $referenceBytes = file_get_contents($absolutePath);
-        if ($referenceBytes === false || $referenceBytes === '') {
-            throw new FaceVerificationException('Student reference photo not found on disk.');
+        $disk = $this->enrollmentDisk($enrollment);
+        $referenceBytes = $disk === null ? null : $this->readEnrollmentBytes($enrollment, $disk);
+        if (! is_string($referenceBytes) || $referenceBytes === '') {
+            throw new FaceVerificationException('No staff enrollment on file for this student.');
         }
 
         $liveBytes = $livePhoto->get();
         $liveFilename = $livePhoto->getClientOriginalName() ?: 'live.jpg';
-        $referenceFilename = basename($relativePath) ?: 'reference.jpg';
+        $referenceFilename = 'reference.jpg';
 
         try {
-            $response = Http::timeout(15)
+            $response = Http::connectTimeout((int) config('face_verification.connect_timeout', 5))
+                ->timeout((int) config('face_verification.timeout', 40))
+                ->retry(
+                    max(1, (int) config('face_verification.connect_attempts', 3)),
+                    300,
+                    fn (\Throwable $e): bool => $e instanceof ConnectionException && $this->isConnectPhaseFailure($e),
+                    throw: false, // non-2xx responses are handled below, not thrown
+                )
                 ->attach('image_file1', $referenceBytes, $referenceFilename)
                 ->attach('image_file2', $liveBytes, $liveFilename)
                 ->post(config('face_verification.api_url'), [
@@ -84,46 +93,136 @@ class FaceVerificationService
             );
         }
 
-        $confidence = (float) $response->json('confidence', 0);
-        $threshold = (float) config('face_verification.threshold', 80);
+        $confidenceRaw = $response->json('confidence');
+        $confidence = is_numeric($confidenceRaw) ? (float) $confidenceRaw : null;
 
         return [
-            'passed' => $confidence >= $threshold,
-            'confidence' => $confidence,
+            'passed' => $confidence !== null && $confidence >= $threshold,
+            'confidence' => $confidence ?? 0.0,
             'method' => 'face-match',
         ];
     }
 
     /**
-     * Resolve users.image to a public-disk relative path.
-     * DB often stores bare filenames; files live under img/profile/.
+     * Face++ scores are 0–100. A missing, non-numeric, zero, negative, or
+     * above-100 threshold must not be compared, because a cast of 0 accepts
+     * every confidence including a missing score.
      */
-    private function resolveReferenceRelativePath(string $image): ?string
+    private function matchThreshold(): ?float
     {
-        $normalized = ltrim(str_replace('\\', '/', $image), '/');
-        if (str_starts_with($normalized, 'storage/')) {
-            $normalized = substr($normalized, strlen('storage/'));
+        $raw = config('face_verification.threshold', 80);
+
+        if (! is_numeric($raw)) {
+            return null;
         }
 
-        $candidates = [];
-        if ($normalized !== '') {
-            $candidates[] = $normalized;
+        $value = (float) $raw;
+
+        if ($value <= 0.0 || $value > 100.0) {
+            return null;
         }
 
-        $basename = basename($normalized);
-        if ($basename !== '' && $basename !== '.' && $basename !== '..') {
-            $profilePath = 'img/profile/'.$basename;
-            if ($profilePath !== $normalized) {
-                $candidates[] = $profilePath;
+        return $value;
+    }
+
+    /**
+     * True when cURL failed before any request bytes were acknowledged (DNS, TCP connect,
+     * TLS). Read-phase timeouts after the upload are not retried — that would double the wait.
+     */
+    private function isConnectPhaseFailure(ConnectionException $e): bool
+    {
+        $message = $e->getMessage();
+
+        foreach (['Connection timed out', 'Failed to connect', 'Could not resolve host', 'Connection refused', 'SSL connect error'] as $marker) {
+            if (str_contains($message, $marker)) {
+                return true;
             }
         }
 
-        foreach ($candidates as $candidate) {
-            if (is_file(Storage::disk('public')->path($candidate))) {
-                return $candidate;
-            }
+        return false;
+    }
+
+    private function lockProfileReference(User $student): ?FaceEnrollment
+    {
+        $disk = config('face.enrollment_disk', 'face_enrollments');
+        $bytes = is_string($disk) && $disk !== '' && $disk !== 'public'
+            ? $this->readProfileBasenameBytes($student)
+            : null;
+        if (! is_string($bytes) || $bytes === '' || ! is_string($disk) || $disk === '' || $disk === 'public') {
+            return null;
         }
 
-        return null;
+        $path = $student->id.'/profile-lock.jpg';
+
+        try {
+            if (! Storage::disk($disk)->put($path, $bytes)) {
+                return null;
+            }
+        } catch (Throwable) {
+            return null;
+        }
+
+        try {
+            return FaceEnrollment::query()->create([
+                'user_id' => $student->id,
+                'disk' => $disk,
+                'path' => $path,
+                'enrolled_by' => null,
+                'enrolled_at' => now(),
+            ]);
+        } catch (Throwable) {
+            return FaceEnrollment::query()->where('user_id', $student->id)->first();
+        }
+    }
+
+    private function readProfileBasenameBytes(User $student): ?string
+    {
+        $image = str_replace('\\', '/', trim((string) $student->image));
+        if ($image === '' || str_contains($image, '..')) {
+            return null;
+        }
+
+        $basename = basename($image);
+        if ($basename === '' || $basename === '.' || $basename === '..') {
+            return null;
+        }
+
+        try {
+            $bytes = Storage::disk('public')->get('img/profile/'.$basename);
+        } catch (Throwable) {
+            return null;
+        }
+
+        return is_string($bytes) && $bytes !== '' ? $bytes : null;
+    }
+
+    private function enrollmentDisk(?FaceEnrollment $enrollment): ?string
+    {
+        $allowed = config('face.enrollment_disk', 'face_enrollments');
+        if (! is_string($allowed) || $allowed === '' || $allowed === 'public') {
+            return null;
+        }
+
+        if ($enrollment === null || $enrollment->disk !== $allowed) {
+            return null;
+        }
+
+        return $allowed;
+    }
+
+    private function readEnrollmentBytes(FaceEnrollment $enrollment, string $disk): ?string
+    {
+        $path = str_replace('\\', '/', (string) $enrollment->path);
+        if ($path === '' || str_starts_with($path, '/') || str_contains($path, '..') || str_contains($path, "\0")) {
+            return null;
+        }
+
+        try {
+            $bytes = Storage::disk($disk)->get($path);
+        } catch (Throwable) {
+            return null;
+        }
+
+        return is_string($bytes) && $bytes !== '' ? $bytes : null;
     }
 }

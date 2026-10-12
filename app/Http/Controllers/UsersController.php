@@ -1307,7 +1307,7 @@ class UsersController extends Controller
             'invite_source' => 'admin',
             'remember_token' => null,
             'email_verified_at' => null,
-        ])->save();
+        ]);
 
         $plainToken = $user->issueActivationToken();
         $link = URL::temporarySignedRoute(

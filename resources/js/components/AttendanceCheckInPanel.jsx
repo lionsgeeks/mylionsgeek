@@ -3,48 +3,14 @@ import { Button } from '@/components/ui/button';
 import { buildButtonLabel, buildHelperText, isCheckInDisabled, resolveCheckInError } from '@/lib/attendance-check-in-ui';
 import { shouldShowReminderBanner, slotLabel } from '@/lib/attendance-slots';
 import { CheckCircle2, Clock, Coffee, Loader2 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 function csrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 }
 
-function stopStream(stream) {
-    stream?.getTracks()?.forEach((track) => track.stop());
-}
-
-async function blobFromVideo(video) {
-    const width = video.videoWidth;
-    const height = video.videoHeight;
-    if (!width || !height) {
-        throw new Error('Could not capture a photo from the camera.');
-    }
-
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d');
-    if (!context) {
-        throw new Error('Could not capture a photo from the camera.');
-    }
-    context.drawImage(video, 0, 0, width, height);
-
-    const blob = await new Promise((resolve, reject) => {
-        canvas.toBlob(
-            (result) => (result ? resolve(result) : reject(new Error('Could not capture a photo from the camera.'))),
-            'image/jpeg',
-            0.92,
-        );
-    });
-
-    return new File([blob], 'live_photo.jpg', { type: 'image/jpeg' });
-}
-
 /**
  * Interactive check-in UI shared by the full attendance page and the home banner modal.
- *
- * Camera capture is for a live still only. The server performs face matching.
- * This UI does not perform liveness detection.
  *
  * @param {{
  *   formation: { id: number, name?: string } | null,
@@ -60,22 +26,22 @@ export default function AttendanceCheckInPanel({
     onCheckInSuccess,
 }) {
     const attendanceDay = attendanceDayProp ?? initialSlotStatus?.attendance_day ?? null;
-    const videoRef = useRef(null);
-    const streamRef = useRef(null);
 
     const [slotStatus, setSlotStatus] = useState(initialSlotStatus);
     const [row, setRow] = useState(initialSlotStatus?.row ?? null);
     const [submitting, setSubmitting] = useState(false);
-    const [cameraOpen, setCameraOpen] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
+    const [showFaceCapture, setShowFaceCapture] = useState(false);
+    const [faceError, setFaceError] = useState(null);
+    const [isVerifying, setIsVerifying] = useState(false);
+    const [successTime, setSuccessTime] = useState(null);
+    const [faceRetryNonce, setFaceRetryNonce] = useState(0);
 
     useEffect(() => {
         setSlotStatus(initialSlotStatus);
         setRow(initialSlotStatus?.row ?? null);
     }, [initialSlotStatus]);
-
-    useEffect(() => () => closeCamera(), [closeCamera]);
 
     const refreshSlotStatus = useCallback(async () => {
         if (!formation?.id) {
@@ -120,39 +86,8 @@ export default function AttendanceCheckInPanel({
     const reminderVisible = slotStatus ? shouldShowReminderBanner(slotStatus) : false;
     const presentWindow = slotStatus?.present_minutes ?? 15;
 
-    const handleCheckIn = async () => {
+    const handleCheckIn = () => {
         if (!formation?.id || disabled) {
-            return;
-        }
-
-        setError(null);
-        setSuccess(null);
-
-        if (!navigator.mediaDevices?.getUserMedia) {
-            setError('Camera is not available in this browser.');
-            return;
-        }
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: { ideal: 'user' } },
-                audio: false,
-            });
-            streamRef.current = stream;
-            setCameraOpen(true);
-            requestAnimationFrame(() => {
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                }
-            });
-        } catch {
-            closeCamera();
-            setError('Camera permission is required to check in.');
-        }
-    };
-
-    const handleCaptureAndCheckIn = async () => {
-        if (!formation?.id || submitting) {
             return;
         }
 
@@ -194,20 +129,39 @@ export default function AttendanceCheckInPanel({
         formData.append('live_photo', blob, 'live_photo.jpg');
 
         try {
-            const response = await fetch('/students/attendance/check-in', {
+            const res = await fetch('/students/attendance/check-in', {
                 method: 'POST',
                 headers: {
                     Accept: 'application/json',
                     'X-CSRF-TOKEN': csrfToken(),
                     // Do NOT set Content-Type manually
                 },
-                body: JSON.stringify({
-                    formation_id: formation.id,
-                    attendance_day: attendanceDay,
-                }),
+                body: formData,
             });
 
-            const data = await response.json().catch(() => ({}));
+            const data = await res.json().catch(() => ({}));
+            setIsVerifying(false);
+            setSubmitting(false);
+
+            if (res.ok) {
+                const time = new Date().toLocaleTimeString('en-GB', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                });
+                setSuccessTime(time);
+                setSuccess(`You're marked present`);
+                setRow(data.row);
+                await refreshSlotStatus();
+                onCheckInSuccess?.();
+
+                setTimeout(() => {
+                    setShowFaceCapture(false);
+                    setFaceError(null);
+                }, 1500);
+                return;
+            }
+
+            const resolved = resolveCheckInError(res.status, data);
 
             if (resolved.type === 'face_error') {
                 setFaceError(resolved.message);
@@ -216,14 +170,13 @@ export default function AttendanceCheckInPanel({
                 return;
             }
 
-            setSuccess(`Checked in for ${slotLabel(data.slot)} (${data.status}).`);
-            setRow(data.row);
-            await refreshSlotStatus();
-            onCheckInSuccess?.();
+            setShowFaceCapture(false);
+            setError(resolved.message);
         } catch {
-            setError('Network error. Please try again.');
-        } finally {
+            setIsVerifying(false);
             setSubmitting(false);
+            setShowFaceCapture(false);
+            setError('Network error. Please try again.');
         }
     };
 
@@ -272,16 +225,23 @@ export default function AttendanceCheckInPanel({
                 </div>
             )}
 
-            <Button type="button" className="h-12 w-full text-base" disabled={disabled} onClick={handleCheckIn}>
-                {submitting ? (
-                    <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Checking in…
-                    </>
-                ) : (
-                    buttonLabel
-                )}
-            </Button>
+            {isVerifying && !showFaceCapture ? (
+                <div className="flex h-12 items-center justify-center gap-3 rounded-md border border-border bg-muted/40">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-[#ffc801]" />
+                    <span className="text-sm text-muted-foreground">Checking it&apos;s you…</span>
+                </div>
+            ) : !successTime ? (
+                <Button type="button" className="h-12 w-full text-base" disabled={disabled} onClick={handleCheckIn}>
+                    {submitting ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Checking in…
+                        </>
+                    ) : (
+                        buttonLabel
+                    )}
+                </Button>
+            ) : null}
 
             {helperText && slotStatus.phase !== 'gap' && !successTime && (
                 <p className="text-center text-sm text-muted-foreground">{helperText}</p>
