@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
-import { 
-    ChevronLeft, 
-    ChevronRight, 
+import {
+    ChevronLeft,
+    ChevronRight,
     Info,
     Layers,
     Edit2,
@@ -197,18 +197,24 @@ export default function TrainingProgrammeGrid({
             const parsed = parseTrainingItems(training);
             setItems(parsed);
 
-            const maxWk = parsed.reduce((max, item) => Math.max(max, item.endWeek || 1), DEFAULT_WEEKS_COUNT);
-            if (maxWk > weeks.length) {
-                setWeeks(Array.from({ length: maxWk }, (_, i) => ({
-                    id: i + 1,
-                    number: i + 1,
-                    label: `Week ${i + 1}`,
-                    isDefault: i < DEFAULT_WEEKS_COUNT,
-                })));
-            }
+            const weeksFromDb = training.training_weeks || training.trainingWeeks || [];
+            const maxWkFromItems = parsed.reduce((max, item) => Math.max(max, item.endWeek || 1), DEFAULT_WEEKS_COUNT);
+            const maxDbWk = weeksFromDb.reduce((max, w) => Math.max(max, w.week_number || 1), DEFAULT_WEEKS_COUNT);
+            const totalWeeksCount = Math.max(maxWkFromItems, maxDbWk);
+
+            setWeeks(Array.from({ length: totalWeeksCount }, (_, i) => {
+                const weekNum = i + 1;
+                const dbWeek = weeksFromDb.find((w) => w.week_number === weekNum);
+                return {
+                    id: dbWeek ? dbWeek.id : weekNum,
+                    number: weekNum,
+                    label: dbWeek?.title || `Week ${weekNum}`,
+                    isDefault: weekNum <= DEFAULT_WEEKS_COUNT,
+                };
+            }));
         }
     }, [training]);
-    
+
     // Cell Drag selection state (for creating new items)
     const [isSelecting, setIsSelecting] = useState(false);
     const [selectionStart, setSelectionStart] = useState(null); // { week, day }
@@ -224,7 +230,7 @@ export default function TrainingProgrammeGrid({
     const [resizingItem, setResizingItem] = useState(null);
     const [resizeEdge, setResizeEdge] = useState(null); // 'top' or 'bottom'
     const [resizeHoveredDay, setResizeHoveredDay] = useState(null); // 0..4
-    
+
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
@@ -242,24 +248,29 @@ export default function TrainingProgrammeGrid({
 
     // CREATE: Add new week handler
     const handleAddWeek = () => {
-        setWeeks((prev) => {
-            const nextNum = prev.length + 1;
-            const newWeek = {
-                id: Date.now(),
-                number: nextNum,
-                label: `Week ${nextNum}`,
-                isDefault: false,
-            };
-            setTimeout(() => {
-                if (scrollContainerRef.current) {
-                    scrollContainerRef.current.scrollTo({
-                        left: scrollContainerRef.current.scrollWidth,
-                        behavior: 'smooth',
-                    });
-                }
-            }, 50);
-            return [...prev, newWeek];
-        });
+        const nextNum = weeks.length + 1;
+        const newWeek = {
+            id: Date.now(),
+            number: nextNum,
+            label: `Week ${nextNum}`,
+            isDefault: false,
+        };
+        setWeeks((prev) => [...prev, newWeek]);
+        setTimeout(() => {
+            if (scrollContainerRef.current) {
+                scrollContainerRef.current.scrollTo({
+                    left: scrollContainerRef.current.scrollWidth,
+                    behavior: 'smooth',
+                });
+            }
+        }, 50);
+
+        if (training?.id) {
+            router.post(`/trainings/${training.id}/weeks`, { week_number: nextNum }, {
+                preserveScroll: true,
+                preserveState: true,
+            });
+        }
     };
 
     // UPDATE: Rename week label handler
@@ -311,8 +322,16 @@ export default function TrainingProgrammeGrid({
             });
         });
 
+        const weekNum = weekToDelete.number;
         setDeletingWeek(null);
         setIsDeleteWeekModalOpen(false);
+
+        if (training?.id) {
+            router.delete(`/trainings/${training.id}/weeks/${weekNum}`, {
+                preserveScroll: true,
+                preserveState: true,
+            });
+        }
     };
 
     // Calculate normalized current selection bounds for continuous multi-week cell selection

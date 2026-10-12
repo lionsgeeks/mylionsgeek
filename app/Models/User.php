@@ -52,6 +52,7 @@ class User extends Authenticatable
         'invite_source',
         'expo_push_token', // Expo push notification token
         'apns_voip_token', // iOS PushKit VoIP token for CallKit cold-start
+        'is_external',
         // 'xp'
     ];
 
@@ -80,6 +81,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'must_change_password' => 'boolean',
             'has_handicap' => 'boolean',
+            'is_external' => 'boolean',
             'role' => 'array',
             'socials' => 'array',
         ];

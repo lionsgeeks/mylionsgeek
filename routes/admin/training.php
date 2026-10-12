@@ -1,4 +1,3 @@
-
 <?php
 
 use App\Http\Controllers\FormationController;
@@ -16,6 +15,8 @@ Route::middleware(['auth', 'role:admin,super_admin,moderateur,coach'])->group(fu
     Route::post('/trainings/{training}/certificates/email', [FormationController::class, 'emailGeekLabCertificates'])->name('trainings.certificates.email');
     Route::delete('/trainings/{training}', [FormationController::class, 'destroy'])->name('trainings.destroy');
     Route::put('/trainings/{training}', [FormationController::class, 'update'])->name('trainings.update');
+    Route::post('/trainings/{training}/weeks', [FormationController::class, 'storeWeek'])->name('trainings.weeks.store');
+    Route::delete('/trainings/{training}/weeks/{weekNumber}', [FormationController::class, 'destroyWeek'])->name('trainings.weeks.destroy');
     Route::post('/trainings/{training}/programme-items', [FormationController::class, 'storeProgrammeItem'])->name('trainings.programme-items.store');
     Route::put('/trainings/{training}/programme-items/{session}', [FormationController::class, 'updateProgrammeItem'])->name('trainings.programme-items.update');
     Route::delete('/trainings/{training}/programme-items/{session}', [FormationController::class, 'destroyProgrammeItem'])->name('trainings.programme-items.destroy');

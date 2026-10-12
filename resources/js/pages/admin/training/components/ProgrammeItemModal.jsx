@@ -151,7 +151,7 @@ export default function ProgrammeItemModal({
         const s = initialData || selectionRange;
         if (!s) return '';
         const weekText = s.startWeek === s.endWeek ? `Week ${s.startWeek}` : `Week ${s.startWeek} to Week ${s.endWeek}`;
-        
+
         const startLinear = (s.startWeek - 1) * 5 + s.startDay;
         const endLinear = (s.endWeek - 1) * 5 + s.endDay;
         const totalDays = endLinear - startLinear + 1;
