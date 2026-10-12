@@ -922,7 +922,7 @@ class UsersController extends Controller
             });
 
         return response()->json([
-            'contracts' => $contracts->values(),
+            'contracts' => $contracts->values()->concat(app(\App\Services\StudentTrainingDocumentService::class)->items($user))->values(),
             'medicals' => $medicals->values(),
         ]);
     }
