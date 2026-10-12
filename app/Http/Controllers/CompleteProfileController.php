@@ -71,6 +71,9 @@ class CompleteProfileController extends Controller
 
         $fromLionsgeek = in_array($user->invite_source, ['lionsgeek_adult', 'lionsgeek_children'], true);
         $isChildren = $user->invite_source === 'lionsgeek_children';
+        $documents = $fromLionsgeek
+            ? json_decode(file_get_contents(resource_path('js/pages/profile/documents.json')), true, 512, JSON_THROW_ON_ERROR)
+            : [];
 
         $request->merge([
             'cin' => $request->filled('cin') ? $request->input('cin') : null,
@@ -93,10 +96,18 @@ class CompleteProfileController extends Controller
         if ($isChildren) {
             $rules['cin'] = 'nullable|string|max:10|unique:users,cin,' . $user->id;
         } else {
-            $rules['cin'] = 'nullable|string|max:10|unique:users,cin,' . $user->id;
+            $rules['cin'] = 'required|string|max:10|unique:users,cin,' . $user->id;
         }
 
-        $validated = $request->validate($rules);
+        $messages = [];
+        foreach ($documents as $document) {
+            $field = 'document_acceptances.'.$document['id'];
+            $rules[$field] = 'required|accepted';
+            $messages[$field.'.required'] = 'Please accept '.$document['name'].'.';
+            $messages[$field.'.accepted'] = 'Please accept '.$document['name'].'.';
+        }
+
+        $validated = $request->validate($rules, $messages);
 
         if ($request->hasFile('image')) {
             $file = $request->file('image');
@@ -124,6 +135,15 @@ class CompleteProfileController extends Controller
         $user->account_state = 0;
         if (array_key_exists('image', $validated)) {
             $user->image = $validated['image'];
+        }
+        if ($fromLionsgeek) {
+            $user->profile_document_acceptances = array_map(fn ($document) => [
+                'id' => $document['id'],
+                'name' => $document['name'],
+                'accepted' => true,
+                'content_sha256' => hash('sha256', implode("\n", $document['paragraphs'])),
+            ], $documents);
+            $user->profile_documents_accepted_at = now();
         }
         $user->save();
         $user->consumeActivationToken();
