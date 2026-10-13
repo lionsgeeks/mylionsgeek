@@ -1,13 +1,28 @@
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, Building2 } from 'lucide-react';
+import { useState } from 'react';
 import OrganisationTeamTable from './partials/OrganisationTeamTable';
 
 export default function AdminOrganisationShow({ organization, teamMembers }) {
     const { flash } = usePage().props;
     const org = organization ?? {};
     const displayName = org.display_name || org.enterprise_name || org.email || 'Organisation';
+    const [resending, setResending] = useState(false);
+
+    const resendInvitation = () => {
+        setResending(true);
+        router.post(
+            `/admin/organisations/${org.id}/resend-invitation`,
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => setResending(false),
+            },
+        );
+    };
 
     return (
         <AppLayout>
@@ -27,6 +42,12 @@ export default function AdminOrganisationShow({ organization, teamMembers }) {
                     </div>
                 )}
 
+                {flash?.error && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+                        {flash.error}
+                    </div>
+                )}
+
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="flex items-start gap-3">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-alpha/15">
@@ -40,7 +61,26 @@ export default function AdminOrganisationShow({ organization, teamMembers }) {
                             )}
                         </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                        {org.invitation_status === 'pending' ? (
+                            <Badge variant="secondary">Invite pending</Badge>
+                        ) : org.invitation_status === 'accepted' ? (
+                            <Badge variant="secondary" className="bg-alpha/20 text-black">
+                                Invite accepted
+                            </Badge>
+                        ) : null}
+                        {org.invitation_expired && <span className="text-xs text-muted-foreground">Link expired</span>}
+                        {org.invitation_status === 'pending' && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={resending}
+                                className="h-8 cursor-pointer px-3 text-xs"
+                                onClick={resendInvitation}
+                            >
+                                {resending ? 'Sending…' : 'Resend invitation'}
+                            </Button>
+                        )}
                         <Badge variant="secondary" className={org.onboarding_completed ? 'bg-alpha/20 text-black' : ''}>
                             {org.onboarding_completed ? 'Onboarding complete' : 'Onboarding pending'}
                         </Badge>
