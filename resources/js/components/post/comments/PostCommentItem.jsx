@@ -40,8 +40,8 @@ export default function PostCommentItem({
         <div
             className={
                 isFacebookEmbed
-                    ? 'group flex gap-2 rounded-lg bg-muted/40 px-2 py-1.5 animate-in fade-in dark:bg-white/[0.06]'
-                    : 'group flex items-center gap-3 rounded-2xl border border-alpha/10 bg-gray-50 p-3 transition duration-200 hover:border-alpha/30 hover:shadow-md animate-in fade-in slide-in-from-left-2 dark:bg-beta'
+                    ? 'group flex gap-2 rounded-lg bg-beta px-2 py-1.5 animate-in fade-in'
+                    : 'group flex items-center gap-3 rounded-2xl border border-light/10 bg-beta p-3 transition duration-200 animate-in fade-in slide-in-from-left-2 hover:border-alpha/30'
             }
         >
             <Link href={takeToUserProfile(c)}>
@@ -56,19 +56,15 @@ export default function PostCommentItem({
                 />
             </Link>
 
-            <div
-                className={
-                    isFacebookEmbed ? 'w-[70%] flex-1 px-2 py-0.5' : 'w-[70%] flex-1'
-                }
-            >
+            <div className={isFacebookEmbed ? 'w-[70%] flex-1 px-2 py-0.5' : 'w-[70%] flex-1'}>
                 <div className="mb-1 flex justify-between">
                     <div className={isFacebookEmbed ? 'flex flex-col pb-2' : 'flex flex-1 items-start justify-between'}>
                         <Link
                             href={takeToUserProfile(c)}
                             className={
                                 isFacebookEmbed
-                                    ? 'truncate text-[13px] font-semibold text-beta hover:underline dark:text-light'
-                                    : 'max-w-[150px] truncate font-medium text-dark dark:text-light'
+                                    ? 'truncate text-[13px] font-semibold text-light hover:underline'
+                                    : 'max-w-[150px] truncate font-medium text-light'
                             }
                         >
                             {c.user_name || 'User'}
@@ -156,9 +152,7 @@ export default function PostCommentItem({
                 ) : (
                     <>
                         <div className="w-full">
-                            <p className="w-full text-sm leading-snug break-words whitespace-pre-wrap text-neutral-800 dark:text-neutral-100">
-                                {displayText}
-                            </p>
+                            <p className="w-full text-sm leading-snug break-words whitespace-pre-wrap text-light">{displayText}</p>
                             {isLong && (
                                 <button
                                     type="button"
@@ -202,7 +196,7 @@ export default function PostCommentItem({
                                 <button
                                     type="button"
                                     onClick={() => onOpenCommentLikes?.(c)}
-                                    className="text-xs text-neutral-500 hover:text-alpha dark:text-neutral-400 dark:hover:text-alpha cursor-pointer"
+                                    className="cursor-pointer text-xs text-neutral-500 hover:text-alpha dark:text-neutral-400 dark:hover:text-alpha"
                                     aria-label="Show users who liked this comment"
                                 >
                                     {Number(c.likes_count || 0)}
