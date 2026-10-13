@@ -1,12 +1,12 @@
 // resources/js/pages/profile/index.jsx
 
-import { router, useForm } from '@inertiajs/react';
-import { useState } from 'react';
-import imageCompression from 'browser-image-compression';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { router, useForm } from '@inertiajs/react';
+import imageCompression from 'browser-image-compression';
 import { Camera, Eye, EyeOff } from 'lucide-react';
+import { useState } from 'react';
 import profileDocuments from './documents.json';
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2MB — matches backend validation
@@ -14,6 +14,7 @@ const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2MB — matches backend validation
 const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
     const fromLionsgeek = !!profileMeta.from_lionsgeek;
     const isChildren = !!profileMeta.is_children;
+    const isRecruiter = !!profileMeta.is_recruiter;
     const requirePhone = profileMeta.require_phone !== false && !fromLionsgeek;
     const showCin = profileMeta.show_cin !== false && !isChildren;
     const requireCin = showCin && fromLionsgeek && !isChildren;
@@ -21,8 +22,9 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
     const { data, setData, processing, errors, setError } = useForm({
         password: '',
         password_confirmation: '',
-        phone: fromLionsgeek ? (user?.phone || '') : '',
+        phone: fromLionsgeek ? user?.phone || '' : '',
         cin: '',
+        gender: '',
         entreprise: '',
         status: '',
         image: null,
@@ -115,6 +117,10 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
             newErrors.password_confirmation = 'Passwords do not match';
         }
 
+        if (!data.gender) {
+            newErrors.gender = 'Gender is required';
+        }
+
         if (!data.image) {
             newErrors.image = 'Profile image is required';
         }
@@ -147,12 +153,23 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
         if (!showCin) {
             delete payload.cin;
         }
+        if (!isRecruiter) {
+            delete payload.entreprise;
+        }
 
         router.post(submitUrl, payload, {
             onSuccess: () => {
                 window.location.href = '/login';
             },
             onError: (formErrors) => {
+                const next = {};
+                Object.entries(formErrors || {}).forEach(([key, value]) => {
+                    const message = Array.isArray(value) ? value[0] : value;
+                    if (message) {
+                        next[key] = String(message);
+                    }
+                });
+                setValidationErrors(next);
                 setError(formErrors);
             },
         });
@@ -189,7 +206,13 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
                                     )}
                                 </div>
                             </div>
-                            <label htmlFor="image-upload" className={`mt-3 cursor-pointer ${compressingImage ? 'pointer-events-none opacity-60' : ''}`}>
+                            {(validationErrors.image || errors.image) && (
+                                <span className="mt-2 max-w-xs text-center text-sm text-red-500">{validationErrors.image || errors.image}</span>
+                            )}
+                            <label
+                                htmlFor="image-upload"
+                                className={`mt-3 cursor-pointer ${compressingImage ? 'pointer-events-none opacity-60' : ''}`}
+                            >
                                 <div className="rounded-lg bg-gray-800 px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-gray-700">
                                     {compressingImage ? 'Compressing…' : 'Upload Image'}
                                 </div>
@@ -203,9 +226,6 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
                                 />
                             </label>
                             <p className="mt-2 text-xs text-gray-500">JPG, PNG or WEBP — large photos are compressed automatically (max 2MB).</p>
-                            {(validationErrors.image || errors.image) && (
-                                <span className="mt-2 text-sm text-red-500">{validationErrors.image || errors.image}</span>
-                            )}
                         </div>
 
                         <div className="space-y-4">
@@ -253,7 +273,26 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
                                 </div>
                             )}
 
-                            {!fromLionsgeek && !isChildren && (
+                            <div>
+                                <Label htmlFor="gender" className="mb-2 block text-sm font-medium text-gray-600">
+                                    Gender
+                                </Label>
+                                <select
+                                    id="gender"
+                                    value={data.gender}
+                                    onChange={(e) => setData('gender', e.target.value)}
+                                    className="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-black focus:border-green-500 focus:outline-none"
+                                >
+                                    <option value="">Select gender</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                </select>
+                                {(validationErrors.gender || errors.gender) && (
+                                    <span className="mt-1 block text-sm text-red-500">{validationErrors.gender || errors.gender}</span>
+                                )}
+                            </div>
+
+                            {isRecruiter && !fromLionsgeek && (
                                 <div>
                                     <Label htmlFor="entreprise" className="mb-2 block text-sm font-medium text-gray-600">
                                         Entreprise
@@ -329,37 +368,44 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
                             </div>
                         </div>
 
-                        {fromLionsgeek && <fieldset className="mt-6 space-y-3 rounded-lg border border-gray-200 p-4">
-                            <legend className="px-2 text-sm font-semibold text-gray-800">Documents</legend>
-                            <p className="text-sm text-gray-600">Read and accept all three documents to complete your profile.</p>
-                            {profileDocuments.map((document) => (
-                                <div key={document.id} className="flex items-start gap-3">
-                                    <input
-                                        type="checkbox"
-                                        aria-label={document.name}
-                                        required
-                                        checked={!!data.document_acceptances[document.id]}
-                                        onChange={(event) => {
-                                            setData('document_acceptances', { ...data.document_acceptances, [document.id]: event.target.checked });
-                                            setActiveDocument(document);
-                                        }}
-                                        className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-gray-800"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setActiveDocument(document)}
-                                        className="min-w-0 break-words text-left text-sm font-medium text-gray-800 underline underline-offset-4 hover:text-gray-600"
-                                    >
-                                        {document.name}
-                                    </button>
-                                    {(validationErrors[`document_acceptances.${document.id}`] || errors[`document_acceptances.${document.id}`]) && (
-                                        <span className="text-sm text-red-500" role="alert">
-                                            {validationErrors[`document_acceptances.${document.id}`] || errors[`document_acceptances.${document.id}`]}
-                                        </span>
-                                    )}
-                                </div>
-                            ))}
-                        </fieldset>}
+                        {fromLionsgeek && (
+                            <fieldset className="mt-6 space-y-3 rounded-lg border border-gray-200 p-4">
+                                <legend className="px-2 text-sm font-semibold text-gray-800">Documents</legend>
+                                <p className="text-sm text-gray-600">Read and accept all three documents to complete your profile.</p>
+                                {profileDocuments.map((document) => (
+                                    <div key={document.id} className="flex items-start gap-3">
+                                        <input
+                                            type="checkbox"
+                                            aria-label={document.name}
+                                            required
+                                            checked={!!data.document_acceptances[document.id]}
+                                            onChange={(event) => {
+                                                setData('document_acceptances', {
+                                                    ...data.document_acceptances,
+                                                    [document.id]: event.target.checked,
+                                                });
+                                                setActiveDocument(document);
+                                            }}
+                                            className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-gray-800"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveDocument(document)}
+                                            className="min-w-0 text-left text-sm font-medium break-words text-gray-800 underline underline-offset-4 hover:text-gray-600"
+                                        >
+                                            {document.name}
+                                        </button>
+                                        {(validationErrors[`document_acceptances.${document.id}`] ||
+                                            errors[`document_acceptances.${document.id}`]) && (
+                                            <span className="text-sm text-red-500" role="alert">
+                                                {validationErrors[`document_acceptances.${document.id}`] ||
+                                                    errors[`document_acceptances.${document.id}`]}
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </fieldset>
+                        )}
 
                         <div className="mt-6">
                             <Button
@@ -372,20 +418,35 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
                             </Button>
                         </div>
                     </form>
-                    <Dialog open={!!activeDocument} onOpenChange={(open) => { if (!open) setActiveDocument(null); }}>
+                    <Dialog
+                        open={!!activeDocument}
+                        onOpenChange={(open) => {
+                            if (!open) setActiveDocument(null);
+                        }}
+                    >
                         <DialogContent className="flex max-h-[85dvh] flex-col overflow-hidden sm:max-w-3xl">
                             <DialogHeader className="shrink-0 pr-6">
-                                <DialogTitle className="break-words leading-snug">{activeDocument?.name}</DialogTitle>
+                                <DialogTitle className="leading-snug break-words">{activeDocument?.name}</DialogTitle>
                             </DialogHeader>
-                            <div className="min-h-0 overflow-y-auto overscroll-contain pr-3" lang="fr" tabIndex={0} role="region" aria-label="Document content">
+                            <div
+                                className="min-h-0 overflow-y-auto overscroll-contain pr-3"
+                                lang="fr"
+                                tabIndex={0}
+                                role="region"
+                                aria-label="Document content"
+                            >
                                 <div className="space-y-4 text-sm leading-7">
                                     {activeDocument?.paragraphs.map((paragraph, index) => (
-                                        <p key={index} className="whitespace-pre-wrap break-words">{paragraph}</p>
+                                        <p key={index} className="break-words whitespace-pre-wrap">
+                                            {paragraph}
+                                        </p>
                                     ))}
                                 </div>
                             </div>
                             <DialogFooter className="shrink-0">
-                                <Button type="button" onClick={() => setActiveDocument(null)}>Close</Button>
+                                <Button type="button" onClick={() => setActiveDocument(null)}>
+                                    Close
+                                </Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>

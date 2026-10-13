@@ -7,7 +7,7 @@ export function getSectionShellClass(isFacebookEmbed, embedded) {
     if (embedded) {
         return 'border-t border-beta/10 px-3 pt-4 sm:px-4 dark:border-light/10';
     }
-    return 'relative mx-auto flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-alpha/30 bg-white px-3 shadow-2xl dark:border-alpha/20 dark:bg-[#1b1d20] sm:px-4';
+    return 'relative mx-auto flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-alpha/30 bg-dark px-3 text-light shadow-2xl sm:px-4';
 }
 
 export function getTitleRowClass(isFacebookEmbed, embedded) {
@@ -18,7 +18,7 @@ export function getTitleRowClass(isFacebookEmbed, embedded) {
 
 export function getTitleTextClass(isFacebookEmbed, embedded) {
     if (isFacebookEmbed) {
-        return 'text-xs font-semibold tracking-wide text-muted-foreground uppercase dark:text-light/50';
+        return 'text-xs font-semibold tracking-wide text-light/70 uppercase';
     }
     if (embedded) return 'text-sm font-semibold text-beta dark:text-light';
     return 'text-lg font-bold tracking-wide text-alpha uppercase sm:text-base';

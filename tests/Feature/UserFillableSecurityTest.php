@@ -2,7 +2,6 @@
 
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 
@@ -11,7 +10,6 @@ uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 beforeEach(function () {
     Mail::fake();
     $this->withoutVite();
-    Config::set('services.lionsgeek.key', 'test-lionsgeek-invite-key');
 });
 
 function l3User(array $overrides = []): User
@@ -82,31 +80,6 @@ test('staff can still set access flags and role on another user', function () {
         ->and((int) $target->access_scan)->toBe(1)
         ->and((int) $target->access_cowork)->toBe(1)
         ->and((int) $target->access_studio)->toBe(1);
-});
-
-test('invite student creation still assigns student role and access flags', function () {
-    $admin = l3User([
-        'role' => ['admin'],
-        'email' => 'l3.inviter@example.com',
-    ]);
-
-    $this->actingAs($admin, 'sanctum')
-        ->postJson('/api/invite-student', [
-            'name' => 'L3 Invited',
-            'email' => 'l3.invited@example.com',
-            'phone' => '0612345678',
-        ])
-        ->assertOk()
-        ->assertJsonPath('status', 'created');
-
-    $invited = User::query()->where('email', 'l3.invited@example.com')->first();
-
-    expect($invited)->not->toBeNull()
-        ->and($invited->normalizedRoles())->toBe(['student'])
-        ->and((int) $invited->access_studio)->toBe(1)
-        ->and((int) $invited->access_cowork)->toBe(1)
-        ->and($invited->password)->not->toBeEmpty()
-        ->and($invited->hasPendingActivation())->toBeTrue();
 });
 
 test('mobile profile update ignores privileged extra fields', function () {

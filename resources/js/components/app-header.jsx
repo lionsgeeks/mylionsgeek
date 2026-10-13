@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
+import { resolveUserAvatarSrc } from '@/lib/userAvatar';
 import { Link, usePage } from '@inertiajs/react';
 import { Briefcase, Building2, Folder, Home, LayoutGrid, Medal, Menu, Search, Timer } from 'lucide-react';
 import AppLogo from './app-logo';
@@ -171,8 +172,8 @@ export function AppHeader({ breadcrumbs = [] }) {
                                     <Button variant="ghost" className="size-10 rounded-full p-1">
                                         <Avatar
                                             className="size-8 overflow-hidden rounded-full"
-                                            image={auth.user.image}
-                                            name={auth.user.name}
+                                            src={resolveUserAvatarSrc(auth.user)}
+                                            name={auth.user.name || auth.user.email || 'User'}
                                             lastActivity={null}
                                             onlineCircleClass="hidden"
                                         />

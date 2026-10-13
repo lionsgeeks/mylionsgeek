@@ -57,7 +57,7 @@ export default function PostCommentComposer({
                                     maxLength={2000}
                                     className={
                                         isFacebookEmbed
-                                            ? 'w-full rounded-full border border-border/60 bg-muted/50 px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-alpha/50 focus:ring-1 focus:ring-alpha focus:outline-none dark:border-white/15 dark:bg-white/10 dark:text-light dark:placeholder:text-light/45'
+                                            ? 'w-full rounded-full border border-light/15 bg-beta px-4 py-2 text-sm text-light placeholder:text-light/45 focus:border-alpha/50 focus:ring-1 focus:ring-alpha focus:outline-none'
                                             : 'w-full rounded-lg border border-alpha/40 bg-white px-4 py-2.5 text-sm text-neutral-800 placeholder-gray-400 shadow-sm transition focus:border-alpha/40 focus:ring-2 focus:ring-alpha focus:outline-0 dark:bg-dark dark:text-neutral-100 dark:placeholder-gray-500'
                                     }
                                 />
