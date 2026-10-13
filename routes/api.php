@@ -1,27 +1,18 @@
 <?php
 
-use App\Http\Controllers\API\LearningController;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\AppVersionController;
 use App\Http\Controllers\API\MobileAuthController;
-use App\Http\Controllers\PlacesController;
 use App\Http\Controllers\API\ReservationController;
 use App\Http\Controllers\ChatController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\SendClassController;
+use App\Http\Controllers\PlacesController;
 use Illuminate\Http\Request;
-
-
+use Illuminate\Support\Facades\Route;
 
 Route::get('/reservations/{id}', [ReservationController::class, 'show'])
     ->middleware('auth:sanctum');
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
-
-Route::post('/invite-student', [UserController::class, 'inviteStudent'])
-    ->middleware('invite.student');
 
 // Mobile authentication endpoints (public, throttled before credential/reset work)
 Route::post('/mobile/login', [MobileAuthController::class, 'login'])
@@ -42,10 +33,10 @@ Route::get('/mobile/app-version', [AppVersionController::class, 'show']);
 
 // LionsGeek (lionsgeek.ma) events/info-session proxy for the mobile app.
 // Incoming: Sanctum + per-route authorization. Outgoing: server-side LIONSGEEK_MA_API_KEY.
-require __DIR__ . '/api/events-info.php';
+require __DIR__.'/api/events-info.php';
 
 // lionsgeek.ma → mylionsgeek webhooks (shared LIONSGEEK_MA_API_KEY bearer).
-require __DIR__ . '/api/internal.php';
+require __DIR__.'/api/internal.php';
 
 Route::get('/users', [ReservationController::class, 'getUserss'])
     ->middleware('auth:sanctum')
@@ -67,19 +58,19 @@ Route::post('/cowork/reserve', [ReservationController::class, 'storeReservationC
     ->middleware('auth:sanctum')
     ->name('cowork.reserve');
 
-require __DIR__ . "/api/learning.php";
+require __DIR__.'/api/learning.php';
 
 Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
-    require __DIR__ . '/api/profile.php';
-    require __DIR__ . '/api/activity.php';
-    require __DIR__ . '/api/posts.php';
-    require __DIR__ . '/api/projects.php';
-    require __DIR__ . '/api/reservations.php';
-    require __DIR__ . '/api/leaderboard.php';
-    require __DIR__ . '/api/search.php';
-    require __DIR__ . '/api/training.php';
-    require __DIR__ . '/api/face-enrollment.php';
-    require __DIR__ . '/api/notifications.php';
+    require __DIR__.'/api/profile.php';
+    require __DIR__.'/api/activity.php';
+    require __DIR__.'/api/posts.php';
+    require __DIR__.'/api/projects.php';
+    require __DIR__.'/api/reservations.php';
+    require __DIR__.'/api/leaderboard.php';
+    require __DIR__.'/api/search.php';
+    require __DIR__.'/api/training.php';
+    require __DIR__.'/api/face-enrollment.php';
+    require __DIR__.'/api/notifications.php';
 
     Route::post('/password', [MobileAuthController::class, 'updatePassword']);
     Route::post('/logout', [MobileAuthController::class, 'logout']);

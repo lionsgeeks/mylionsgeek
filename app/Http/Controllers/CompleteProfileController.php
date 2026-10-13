@@ -7,11 +7,11 @@ use App\Mail\UserWelcomeMail;
 use App\Mail\WelcomeUserAfterProfileComplete;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Hash;
 
 class CompleteProfileController extends Controller
 {
@@ -40,6 +40,7 @@ class CompleteProfileController extends Controller
             'profileMeta' => [
                 'from_lionsgeek' => $fromLionsgeek,
                 'is_children' => $inviteSource === 'lionsgeek_children',
+                'is_recruiter' => in_array('recruiter', $user->normalizedRoles(), true),
                 'require_phone' => ! $fromLionsgeek,
                 'show_cin' => $inviteSource !== 'lionsgeek_children',
             ],
@@ -71,21 +72,26 @@ class CompleteProfileController extends Controller
 
         $fromLionsgeek = in_array($user->invite_source, ['lionsgeek_adult', 'lionsgeek_children'], true);
         $isChildren = $user->invite_source === 'lionsgeek_children';
+        $isRecruiter = in_array('recruiter', $user->normalizedRoles(), true);
         $documents = $fromLionsgeek
             ? json_decode(file_get_contents(resource_path('js/pages/profile/documents.json')), true, 512, JSON_THROW_ON_ERROR)
             : [];
 
         $request->merge([
             'cin' => $request->filled('cin') ? $request->input('cin') : null,
-            'entreprise' => $request->filled('entreprise') ? $request->input('entreprise') : null,
+            'entreprise' => $isRecruiter && $request->filled('entreprise') ? $request->input('entreprise') : null,
         ]);
 
         $rules = [
             'password' => 'required|string|min:8|confirmed',
-            'entreprise' => 'nullable|string|max:255',
             'status' => 'nullable|string|max:255',
             'image' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif|max:2048',
+            'gender' => 'required|in:male,female',
         ];
+
+        if ($isRecruiter) {
+            $rules['entreprise'] = 'nullable|string|max:255';
+        }
 
         if ($fromLionsgeek) {
             $rules['phone'] = 'nullable|string|max:30';
@@ -94,7 +100,7 @@ class CompleteProfileController extends Controller
         }
 
         if ($isChildren) {
-            $rules['cin'] = 'nullable|string|max:10|unique:users,cin,' . $user->id;
+            $rules['cin'] = 'nullable|string|max:10|unique:users,cin,'.$user->id;
         } else {
             $rules['cin'] = 'required|string|max:10|unique:users,cin,' . $user->id;
         }
@@ -131,7 +137,8 @@ class CompleteProfileController extends Controller
             $user->cin = $validated['cin'] ?? null;
         }
 
-        $user->entreprise = $validated['entreprise'] ?? null;
+        $user->gender = $validated['gender'];
+        $user->entreprise = $isRecruiter ? ($validated['entreprise'] ?? null) : null;
         $user->account_state = 0;
         if (array_key_exists('image', $validated)) {
             $user->image = $validated['image'];

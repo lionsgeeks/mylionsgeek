@@ -56,7 +56,7 @@ function Field({ id, label, error, icon: Icon, children }) {
     );
 }
 
-function PasswordField({ id, label, error, value, onChange, placeholder, show, onToggleShow, icon: Icon }) {
+function PasswordField({ id, label, error, value, onChange, placeholder, show, onToggleShow, icon: Icon, autoComplete = 'new-password' }) {
     const inputClass =
         'h-11 pl-9 pr-12 bg-white dark:bg-white border-beta/15 text-beta placeholder:text-beta/35 focus-visible:border-alpha/60 focus-visible:ring-alpha/20 select-text';
 
@@ -69,7 +69,7 @@ function PasswordField({ id, label, error, value, onChange, placeholder, show, o
                 onChange={onChange}
                 placeholder={placeholder}
                 className={inputClass}
-                autoComplete={id === 'current_password' ? 'current-password' : 'new-password'}
+                autoComplete={autoComplete}
             />
             <button
                 type="button"
@@ -89,7 +89,7 @@ function firstValidationMessage(messages) {
     return Array.isArray(messages) ? messages[0] : messages;
 }
 
-export default function OrganisationOnboarding({ organization, passwordChangeOnly = false }) {
+export default function OrganisationOnboarding({ organization, passwordChangeOnly = false, skipPassword = false }) {
     const [step, setStep] = useState(passwordChangeOnly ? 3 : 1);
     const [stepErrors, setStepErrors] = useState({});
     const [validatingStep, setValidatingStep] = useState(false);
@@ -227,6 +227,10 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
                 delete next.phone;
                 return next;
             });
+            if (skipPassword) {
+                form.post('/organisation/onboarding', { preserveScroll: true });
+                return;
+            }
             setStep(3);
         } catch (err) {
             if (err.response?.status === 422) {
@@ -263,19 +267,7 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
     const submit = (e) => {
         e.preventDefault();
 
-        if (passwordChangeOnly) {
-            const pwErrs = validatePasswordsClient();
-            if (Object.keys(pwErrs).length > 0) {
-                setStepErrors((prev) => ({ ...prev, ...pwErrs }));
-                return;
-            }
-            setStepErrors((prev) => {
-                const next = { ...prev };
-                delete next.current_password;
-                delete next.password;
-                delete next.password_confirmation;
-                return next;
-            });
+        if (skipPassword) {
             form.post('/organisation/onboarding', { preserveScroll: true });
             return;
         }
@@ -316,13 +308,11 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
             ? 'Tell us about your company'
             : step === 2
                 ? 'How can we reach you?'
-                : 'Choose a new password';
+                : 'Choose a password';
 
     const stepDescription =
         step === 3
-            ? passwordChangeOnly
-                ? 'For your security, you must set a new password before continuing.'
-                : 'Replace the temporary password from your invitation email with one only you know.'
+            ? 'Enter your current password, then choose a new one.'
             : null;
 
     return (
@@ -351,7 +341,7 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
                         <AppLogoIcon size={80} color="#212529" />
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-widest text-alpha">
-                                Step {step} of {STEPS.length}
+                                Step {step} of {skipPassword ? 2 : STEPS.length}
                             </p>
                             <h1 className="text-2xl font-bold text-beta">{stepTitle}</h1>
                             {stepDescription ? (
@@ -366,7 +356,7 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
 
                     {!passwordChangeOnly && (
                         <div className="flex gap-2">
-                            {STEPS.map((s) => (
+                            {(skipPassword ? STEPS.filter((s) => s.number < 3) : STEPS).map((s) => (
                                 <div key={s.number} className="flex flex-1 flex-col gap-1.5">
                                     <div
                                         className={`h-1 rounded-full transition-all duration-500 ${s.number <= step ? 'bg-alpha' : 'bg-beta/12'
@@ -491,15 +481,16 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
                                         error={fieldError('current_password')}
                                         value={form.data.current_password}
                                         onChange={(e) => updateField('current_password', e.target.value)}
-                                        placeholder="Password from your invitation email"
+                                        placeholder="Your current password"
                                         show={showCurrentPassword}
                                         onToggleShow={() => setShowCurrentPassword((v) => !v)}
                                         icon={KeyRound}
+                                        autoComplete="current-password"
                                     />
 
                                     <PasswordField
                                         id="password"
-                                        label="New password"
+                                        label="Password"
                                         error={fieldError('password')}
                                         value={form.data.password}
                                         onChange={(e) => updateField('password', e.target.value)}
@@ -534,7 +525,7 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
 
                                     <PasswordField
                                         id="password_confirmation"
-                                        label="Confirm new password"
+                                        label="Confirm password"
                                         error={fieldError('password_confirmation')}
                                         value={form.data.password_confirmation}
                                         onChange={(e) => updateField('password_confirmation', e.target.value)}
@@ -588,6 +579,8 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
                                             <span className="h-4 w-4 animate-spin rounded-full border-2 border-beta/30 border-t-beta" />
                                             Checking…
                                         </span>
+                                    ) : skipPassword ? (
+                                        'Complete setup →'
                                     ) : (
                                         'Continue →'
                                     )}
