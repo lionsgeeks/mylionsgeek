@@ -913,7 +913,7 @@ class UsersController extends Controller
             });
 
         return response()->json([
-            'contracts' => $contracts->values(),
+            'contracts' => $contracts->values()->concat(app(\App\Services\StudentTrainingDocumentService::class)->items($user))->values(),
             'medicals' => $medicals->values(),
         ]);
     }
@@ -1305,7 +1305,7 @@ class UsersController extends Controller
             'invite_source' => 'admin',
             'remember_token' => null,
             'email_verified_at' => null,
-        ])->save();
+        ]);
 
         $plainToken = $user->issueActivationToken();
         $link = URL::temporarySignedRoute(

@@ -1,11 +1,13 @@
 // resources/js/pages/profile/index.jsx
 
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { router, useForm } from '@inertiajs/react';
 import imageCompression from 'browser-image-compression';
 import { Camera, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
+import profileDocuments from './documents.json';
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2MB — matches backend validation
 
@@ -25,6 +27,7 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
         entreprise: '',
         status: '',
         image: null,
+        document_acceptances: Object.fromEntries(profileDocuments.map((document) => [document.id, false])),
     });
 
     const [imagePreview, setImagePreview] = useState(null);
@@ -32,6 +35,7 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [validationErrors, setValidationErrors] = useState({});
     const [compressingImage, setCompressingImage] = useState(false);
+    const [activeDocument, setActiveDocument] = useState(null);
 
     const handleImageChange = async (e) => {
         const file = e.target.files?.[0];
@@ -89,6 +93,9 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
 
     const validateForm = () => {
         const newErrors = {};
+        if (showCin && !data.cin.trim()) {
+            newErrors.cin = 'CIN is required';
+        }
 
         if (requirePhone && (!data.phone || data.phone.trim() === '')) {
             newErrors.phone = 'Phone number is required';
@@ -117,6 +124,13 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
             newErrors.image = 'Profile image is required';
         }
 
+        if (fromLionsgeek) {
+            profileDocuments.forEach((document) => {
+                if (!data.document_acceptances[document.id]) {
+                    newErrors[`document_acceptances.${document.id}`] = `Please accept ${document.name}.`;
+                }
+            });
+        }
         setValidationErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -133,6 +147,7 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
         if (fromLionsgeek) {
             // Phone/name already stored from lionsgeek-app — do not overwrite from empty form.
             delete payload.phone;
+            delete payload.entreprise;
         }
         if (!showCin) {
             delete payload.cin;
@@ -154,6 +169,7 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
                     }
                 });
                 setValidationErrors(next);
+                setError(formErrors);
             },
         });
     };
@@ -236,11 +252,13 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
                                     {showCin && (
                                         <div className="flex-1">
                                             <Label htmlFor="cin" className="mb-2 block text-sm font-medium text-gray-600">
-                                                CIN
+                                                CIN *
                                             </Label>
                                             <input
                                                 id="cin"
                                                 type="text"
+                                                required
+                                                maxLength={10}
                                                 value={data.cin}
                                                 onChange={(e) => setData('cin', e.target.value)}
                                                 placeholder="Enter your CIN"
@@ -273,7 +291,7 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
                                 )}
                             </div>
 
-                            {isRecruiter && (
+                            {isRecruiter && !fromLionsgeek && (
                                 <div>
                                     <Label htmlFor="entreprise" className="mb-2 block text-sm font-medium text-gray-600">
                                         Entreprise
@@ -349,6 +367,45 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
                             </div>
                         </div>
 
+                        {fromLionsgeek && (
+                            <fieldset className="mt-6 space-y-3 rounded-lg border border-gray-200 p-4">
+                                <legend className="px-2 text-sm font-semibold text-gray-800">Documents</legend>
+                                <p className="text-sm text-gray-600">Read and accept all three documents to complete your profile.</p>
+                                {profileDocuments.map((document) => (
+                                    <div key={document.id} className="flex items-start gap-3">
+                                        <input
+                                            type="checkbox"
+                                            aria-label={document.name}
+                                            required
+                                            checked={!!data.document_acceptances[document.id]}
+                                            onChange={(event) => {
+                                                setData('document_acceptances', {
+                                                    ...data.document_acceptances,
+                                                    [document.id]: event.target.checked,
+                                                });
+                                                setActiveDocument(document);
+                                            }}
+                                            className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-gray-800"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveDocument(document)}
+                                            className="min-w-0 text-left text-sm font-medium break-words text-gray-800 underline underline-offset-4 hover:text-gray-600"
+                                        >
+                                            {document.name}
+                                        </button>
+                                        {(validationErrors[`document_acceptances.${document.id}`] ||
+                                            errors[`document_acceptances.${document.id}`]) && (
+                                            <span className="text-sm text-red-500" role="alert">
+                                                {validationErrors[`document_acceptances.${document.id}`] ||
+                                                    errors[`document_acceptances.${document.id}`]}
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </fieldset>
+                        )}
+
                         <div className="mt-6">
                             <Button
                                 type="button"
@@ -360,6 +417,38 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
                             </Button>
                         </div>
                     </form>
+                    <Dialog
+                        open={!!activeDocument}
+                        onOpenChange={(open) => {
+                            if (!open) setActiveDocument(null);
+                        }}
+                    >
+                        <DialogContent className="flex max-h-[85dvh] flex-col overflow-hidden sm:max-w-3xl">
+                            <DialogHeader className="shrink-0 pr-6">
+                                <DialogTitle className="leading-snug break-words">{activeDocument?.name}</DialogTitle>
+                            </DialogHeader>
+                            <div
+                                className="min-h-0 overflow-y-auto overscroll-contain pr-3"
+                                lang="fr"
+                                tabIndex={0}
+                                role="region"
+                                aria-label="Document content"
+                            >
+                                <div className="space-y-4 text-sm leading-7">
+                                    {activeDocument?.paragraphs.map((paragraph, index) => (
+                                        <p key={index} className="break-words whitespace-pre-wrap">
+                                            {paragraph}
+                                        </p>
+                                    ))}
+                                </div>
+                            </div>
+                            <DialogFooter className="shrink-0">
+                                <Button type="button" onClick={() => setActiveDocument(null)}>
+                                    Close
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
         </div>

@@ -248,7 +248,7 @@ test('aws unavailable returns unavailable and creates no attendance', function (
 
     postM8FaceCheckIn($this, $student, '/api/mobile/attendance/check-in')
         ->assertStatus(503)
-        ->assertExactJson(['message' => 'Unable to verify your identity.']);
+        ->assertExactJson(['message' => 'Unable to verify your identity.', 'error_code' => 'FACE_SERVICE_UNAVAILABLE']);
 
     expect(AttendanceListe::count())->toBe(0);
 });
@@ -256,12 +256,10 @@ test('aws unavailable returns unavailable and creates no attendance', function (
 test('invalid credentials keep verification unavailable', function () {
     freezeM8FaceTime('09:42:00');
     $student = m8FaceStudent();
-    Storage::fake('face_enrollments');
-    seedPrivateFaceEnrollment($student, m8FaceStaff());
 
     config([
-        'services.rekognition.key' => '',
-        'services.rekognition.secret' => '',
+        'face_verification.api_key' => '',
+        'face_verification.api_secret' => '',
     ]);
     app()->forgetInstance(FaceVerificationService::class);
 
@@ -424,10 +422,10 @@ test('invalid configured threshold fail-closes as unavailable', function () {
     expect(AttendanceListe::count())->toBe(0);
 });
 
-test('production binding is unavailable when aws is not configured', function () {
+test('production binding is unavailable when face++ is not configured', function () {
     config([
-        'services.rekognition.key' => '',
-        'services.rekognition.secret' => '',
+        'face_verification.api_key' => '',
+        'face_verification.api_secret' => '',
     ]);
     app()->forgetInstance(FaceVerificationService::class);
 
