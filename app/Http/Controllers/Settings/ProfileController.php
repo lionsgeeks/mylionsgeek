@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
 use App\Models\User;
+use App\Services\ProfileImageStore;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -32,22 +33,13 @@ class ProfileController extends Controller
     {
         $data = $request->validated();
 
-        // Handle avatar upload if provided
-        // if ($request->hasFile('image')) {
-        //     $path = $request->file('image')->store('', 'public');
-        //     $data['image'] = $path; // Store just the path without /storage/ prefix
-        // }
+        // Store the new avatar (hashed filename under storage/img/profile); the old file is removed after the update.
+        $previousImage = $request->user()->image;
+        $newImage = null;
+
         if ($request->hasFile('image')) {
-            $file = $request->file('image');
-
-            // Generate a unique hashed filename (like 68fb430843ce2.jpg)
-            $filename = $file->hashName();
-
-            // Move the file to public/img/profile/
-            $file->move(public_path('/storage/img/profile'), $filename);
-
-            // Store only the filename in database
-            $data['image'] = $filename;
+            $newImage = app(ProfileImageStore::class)->store($request->file('image'));
+            $data['image'] = $newImage;
         }
 
         // Only update the fields that are actually in the database
@@ -57,6 +49,10 @@ class ProfileController extends Controller
         // Use a fresh user instance to avoid virtual attributes
         $userId = $request->user()->id;
         User::where('id', $userId)->update($updateData);
+
+        if ($newImage !== null) {
+            app(ProfileImageStore::class)->deletePrevious($previousImage, $newImage, (int) $userId);
+        }
 
         // Check if email was changed and reset verification
         if (isset($updateData['email']) && $updateData['email'] !== $request->user()->getOriginal('email')) {
