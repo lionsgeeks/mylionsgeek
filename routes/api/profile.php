@@ -23,6 +23,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile/education/{id}', [ProfileEducationController::class, 'update'])->whereNumber('id');
     Route::delete('/profile/education/{id}', [ProfileEducationController::class, 'destroy'])->whereNumber('id');
 
+    Route::get('/profile/{userId}/posts', [PostController::class, 'userPosts'])->whereNumber('userId');
     Route::get('/profile/{userId}/reposts', [PostController::class, 'userReposts'])->whereNumber('userId');
     Route::get('/profile/{userId}', [ProfileController::class, 'show']);
     Route::get('/profile/{userId}/followers', [ProfileController::class, 'listFollowers']);

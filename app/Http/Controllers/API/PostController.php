@@ -252,6 +252,69 @@ class PostController extends Controller
     }
 
     /**
+     * Every post a profile wrote, newest first.
+     * Pages stay small; the client follows next_offset until it is null.
+     */
+    public function userPosts(Request $request, int $userId)
+    {
+        $viewer = Auth::guard('sanctum')->user();
+
+        if (! $viewer) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $profile = User::query()->find($userId);
+
+        if (! $profile) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+
+        $offset = max(0, (int) $request->query('offset', 0));
+        $limit = min(50, max(1, (int) $request->query('limit', 20)));
+
+        if (in_array((int) $profile->id, $viewer->excludedAuthorIds(), true)) {
+            return response()->json([
+                'posts' => [],
+                'next_offset' => null,
+            ]);
+        }
+
+        $posts = Post::with(['user', 'likes', 'comments'])
+            ->withCount(['reposts'])
+            ->where('user_id', $profile->id)
+            ->where(function ($hidden) {
+                $hidden->whereNull('is_hidden')->orWhere('is_hidden', false);
+            })
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->offset($offset)
+            ->limit($limit + 1)
+            ->get();
+
+        $hasMore = $posts->count() > $limit;
+        $page = $posts->take($limit)->values();
+
+        $savedInteractionIds = [];
+        $pageIds = $page->pluck('id')->map(fn ($id) => (int) $id)->all();
+        if ($pageIds !== []) {
+            $savedInteractionIds = DB::table('post_saves')
+                ->where('user_id', $viewer->id)
+                ->whereIn('post_id', $pageIds)
+                ->pluck('post_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+        }
+
+        return response()->json([
+            'posts' => $page
+                ->map(fn (Post $post) => $this->mapPostForMobileFeed($post, $viewer, $savedInteractionIds))
+                ->values()
+                ->all(),
+            'next_offset' => $hasMore ? $offset + $page->count() : null,
+        ]);
+    }
+
+    /**
      * Every post a profile has reposted, newest first.
      * Pages stay small; the client follows next_offset until it is null.
      */
