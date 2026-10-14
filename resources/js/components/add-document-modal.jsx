@@ -2,8 +2,12 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogPanel, Transition } from '@headlessui/react';
 import { Fragment, useEffect, useState } from 'react';
+import { usePage } from '@inertiajs/react';
 
 export function AddDocumentModal({ user, isOpen, onClose }) {
+    const { auth } = usePage().props;
+    const roles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
+    const canUpload = roles.some((role) => ['admin', 'super_admin', 'moderateur', 'coach', 'pro', 'studio_responsable'].includes(role));
     const [docs, setDocs] = useState({ contracts: [], medicals: [] });
     const [uploadKind, setUploadKind] = useState('contract');
     const [uploadError, setUploadError] = useState('');
@@ -11,7 +15,7 @@ export function AddDocumentModal({ user, isOpen, onClose }) {
 
     const loadDocs = async () => {
         try {
-            const r = await fetch(`/admin/users/${user.id}/documents`, {
+            const r = await fetch(canUpload ? `/admin/users/${user.id}/documents` : '/students/training-documents', {
                 credentials: 'same-origin',
                 headers: { Accept: 'application/json' },
             });
@@ -140,7 +144,7 @@ export function AddDocumentModal({ user, isOpen, onClose }) {
                         >
                             {/* Header */}
                             <div className="mb-4 flex items-center justify-between">
-                                <Dialog.Title className="text-xl font-bold">Add Document</Dialog.Title>
+                                <Dialog.Title className="text-xl font-bold">{canUpload ? 'Add Document' : 'My Documents'}</Dialog.Title>
                                 <button
                                     type="button"
                                     onClick={(e) => {
@@ -158,7 +162,7 @@ export function AddDocumentModal({ user, isOpen, onClose }) {
                             </div>
 
                             {/* Upload Form */}
-                            <form className="space-y-4" onSubmit={handleSubmit} onClick={(e) => e.stopPropagation()}>
+                            {canUpload && <form className="space-y-4" onSubmit={handleSubmit} onClick={(e) => e.stopPropagation()}>
                                 <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-5">
                                     {/* Kind */}
                                     <div>
@@ -232,7 +236,7 @@ export function AddDocumentModal({ user, isOpen, onClose }) {
                                 </div>
 
                                 {uploadError && <div className="text-sm text-red-600">{uploadError}</div>}
-                            </form>
+                            </form>}
 
                             {/* Documents list */}
                             <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2" onClick={(e) => e.stopPropagation()}>
@@ -269,11 +273,12 @@ function DocumentList({ title, count, items, user, type }) {
                         <li key={i} className="flex items-center justify-between rounded-lg border bg-white px-3 py-2 dark:bg-neutral-800">
                             <span className="truncate">{d.name}</span>
                             <a
-                                href={`/admin/users/${user.id}/documents/${type}/${d.id}`}
+                                href={d.url || `/admin/users/${user.id}/documents/${type}/${d.id}`}
                                 className="text-xs font-semibold text-alpha"
                                 target="_blank"
+                                rel="noopener noreferrer"
                             >
-                                View
+                                {d.download ? 'Download' : 'View'}
                             </a>
                         </li>
                     ))}

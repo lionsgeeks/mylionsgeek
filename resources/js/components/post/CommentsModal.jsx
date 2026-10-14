@@ -1,6 +1,6 @@
-import PostCommentsSection from './PostCommentsSection';
 import { useEffect } from 'react';
 import { helpers } from '../utils/helpers';
+import PostCommentsSection from './PostCommentsSection';
 
 /**
  * Standalone comments sheet (overlay). Prefer embedding {@link PostCommentsSection} in PostModal for the feed.
@@ -19,7 +19,7 @@ export default function CommentsModal({ open, onClose, postId, onCommentAdded, o
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <button type="button" className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-label="Close comments" />
+            <button type="button" className="absolute inset-0 bg-beta/60" onClick={onClose} aria-label="Close comments" />
             <div className="relative z-10 w-full max-w-md" onClick={(e) => e.stopPropagation()} role="presentation">
                 <button
                     type="button"

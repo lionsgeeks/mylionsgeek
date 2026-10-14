@@ -8,7 +8,7 @@ use Illuminate\Queue\SerializesModels;
 
 class UserWelcomeMail extends Mailable
 {
-    use SerializesModels;
+    use Queueable, SerializesModels;
 
     public $user;
     public $link;

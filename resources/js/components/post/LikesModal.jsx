@@ -4,11 +4,22 @@ import { Link } from '@inertiajs/react';
 import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { timeAgo } from '../../lib/utils';
+import { helpers } from '../utils/helpers';
 
 const LikesModal = ({ postId, open, onClose, takeToUserProfile }) => {
     const [likes, setLikes] = useState([]);
     const [loading, setLoading] = useState(false);
     const getInitials = useInitials();
+    const { stopScrolling } = helpers();
+
+    useEffect(() => {
+        if (!open) {
+            return undefined;
+        }
+
+        stopScrolling(true);
+        return () => stopScrolling(false);
+    }, [open, stopScrolling]);
 
     useEffect(() => {
         if (open && postId) {
@@ -50,19 +61,19 @@ const LikesModal = ({ postId, open, onClose, takeToUserProfile }) => {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Overlay */}
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" onClick={onClose} />
+            <div className="absolute inset-0 bg-beta/60" onClick={onClose} />
 
             {/* Modal */}
-            <div className="relative mx-auto flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-alpha/30 bg-light shadow-2xl transition-all duration-300 dark:bg-dark_gray">
+            <div className="relative mx-auto flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-alpha/30 bg-dark text-light shadow-2xl">
                 {/* Header */}
-                <div className="relative border-b border-alpha/30 bg-gradient-to-r from-alpha/10 to-alpha/5 px-6 py-4">
+                <div className="relative border-b border-alpha/30 bg-dark px-6 py-4">
                     <div className="flex items-center justify-center gap-2">
-                        <h2 className="text-lg font-semibold text-beta dark:text-alpha">Liked by</h2>
+                        <h2 className="text-lg font-semibold text-light">Liked by</h2>
                     </div>
                     <p className="mt-1 text-center text-sm text-gray-500 dark:text-gray-400">{loading ? 'Loading...' : `${likes.length} people`}</p>
                     <button
                         onClick={onClose}
-                        className="absolute top-1/2 right-4 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-gray-500 transition hover:bg-alpha/10 hover:text-dark dark:text-gray-400"
+                        className="absolute top-1/2 right-4 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-light transition hover:bg-light/10"
                     >
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -80,7 +91,7 @@ const LikesModal = ({ postId, open, onClose, takeToUserProfile }) => {
                         likes.map((like, index) => (
                             <div
                                 key={like.id}
-                                className="flex items-center gap-3 rounded-2xl border border-alpha/10 bg-gray-50 p-3 transition duration-200 hover:border-alpha/30 hover:shadow-md dark:bg-beta"
+                                className="flex items-center gap-3 rounded-2xl border border-light/10 bg-beta p-3 transition duration-200 hover:border-alpha/30"
                             >
                                 {/* Avatar */}
                                 <Link
@@ -99,7 +110,7 @@ const LikesModal = ({ postId, open, onClose, takeToUserProfile }) => {
                                     {/* User info */}
                                     <div className="flex flex-1 items-start justify-between">
                                         <div className="flex flex-col">
-                                            <span className="max-w-[150px] truncate font-medium text-dark dark:text-light">{like.user_name}</span>
+                                            <span className="max-w-[150px] truncate font-medium text-light">{like.user_name}</span>
                                             <span className="text-xs text-gray-500 dark:text-gray-400">{like.user_status}</span>
                                         </div>
 

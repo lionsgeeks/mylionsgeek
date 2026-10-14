@@ -133,6 +133,7 @@ test('svg avatar is rejected on admin user store and is not persisted', function
         ->post('/admin/users/store', [
             'name' => 'M6 Svg User',
             'email' => $email,
+            'gender' => 'male',
             'formation_id' => $formation->id,
             'access_studio' => 0,
             'access_cowork' => 0,
@@ -191,6 +192,7 @@ test('raster profile and cover uploads still succeed on the former landmine path
         ->post('/admin/users/store', [
             'name' => 'M6 Raster User',
             'email' => $email,
+            'gender' => 'female',
             'formation_id' => $formation->id,
             'access_studio' => 0,
             'access_cowork' => 0,
@@ -301,6 +303,7 @@ test('svg is still rejected on the other profile and cover upload paths', functi
                 ->post($url, [
                     'password' => 'NewPassword1',
                     'password_confirmation' => 'NewPassword1',
+                    'gender' => 'male',
                     'image' => $svg,
                 ], ['Accept' => 'application/json']);
         },

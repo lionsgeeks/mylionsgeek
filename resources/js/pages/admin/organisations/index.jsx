@@ -30,12 +30,18 @@ export default function AdminOrganisationsIndex({ organisations }) {
                     illustration={students}
                     userName={auth?.user?.name ?? ''}
                     title="Organisations"
-                    description="Invite organisations by email. Each organisation receives one account to complete their company profile and invite employers."
+                    description="Invite organisations by email. Each organisation receives one account to complete their company profile."
                 />
 
                 {flash?.success && (
                     <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-200">
                         {flash.success}
+                    </div>
+                )}
+
+                {flash?.error && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+                        {flash.error}
                     </div>
                 )}
 

@@ -12,8 +12,11 @@ const formatRoleLabel = (role) => (role === 'studio_responsable' ? 'Responsable 
 const defaultForm = {
     name: '',
     email: '',
-    access_studio: 1,
+    gender: '',
+    entreprise: '',
+    access_studio: 0,
     access_cowork: 1,
+    access_scan: 0,
     formation_id: null,
     roles: ['student'],
 };
@@ -86,6 +89,26 @@ export default function AddUserDialog({ open, setOpen, trainings }) {
                         </div>
 
                         <div>
+                            <Label>Gender</Label>
+                            <Select value={data.gender || ''} onValueChange={(v) => setData('gender', v)}>
+                                <SelectTrigger className={inputClass}>
+                                    <SelectValue placeholder="Select gender" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="male">Male</SelectItem>
+                                    <SelectItem value="female">Female</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {data.roles.includes('recruiter') && (
+                            <div>
+                                <Label>Entreprise</Label>
+                                <Input value={data.entreprise} onChange={(e) => setData('entreprise', e.target.value)} className={inputClass} />
+                            </div>
+                        )}
+
+                        <div>
                             <Label>Access Studio</Label>
                             <Select value={data.access_studio?.toString() || ''} onValueChange={(v) => setData('access_studio', Number(v))}>
                                 <SelectTrigger className={inputClass}>
@@ -101,6 +124,19 @@ export default function AddUserDialog({ open, setOpen, trainings }) {
                         <div>
                             <Label>Access Cowork</Label>
                             <Select value={data.access_cowork?.toString() || ''} onValueChange={(v) => setData('access_cowork', Number(v))}>
+                                <SelectTrigger className={inputClass}>
+                                    <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="1">Yes</SelectItem>
+                                    <SelectItem value="0">No</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div>
+                            <Label>Access Scan</Label>
+                            <Select value={data.access_scan?.toString() || '0'} onValueChange={(v) => setData('access_scan', Number(v))}>
                                 <SelectTrigger className={inputClass}>
                                     <SelectValue placeholder="Select" />
                                 </SelectTrigger>

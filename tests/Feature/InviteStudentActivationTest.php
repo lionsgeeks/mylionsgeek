@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\User;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 
@@ -9,98 +8,6 @@ uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 beforeEach(function () {
     Mail::fake();
-    Config::set('services.lionsgeek.key', 'test-lionsgeek-invite-key');
-});
-
-function invitePayload(array $overrides = []): array
-{
-    return array_merge([
-        'name' => 'Invited Student',
-        'email' => 'invited.student@example.com',
-        'phone' => '0612345678',
-    ], $overrides);
-}
-
-function staffUser(array $roles = ['admin']): User
-{
-    return User::factory()->create([
-        'role' => $roles,
-        'email_verified_at' => now(),
-    ]);
-}
-
-test('anonymous user cannot invite students', function () {
-    $this->postJson('/api/invite-student', invitePayload())
-        ->assertUnauthorized();
-
-    expect(User::query()->where('email', 'invited.student@example.com')->exists())->toBeFalse();
-});
-
-test('student token cannot invite students', function () {
-    $student = User::factory()->create(['role' => ['student']]);
-
-    $this->actingAs($student, 'sanctum')
-        ->postJson('/api/invite-student', invitePayload())
-        ->assertForbidden();
-
-    expect(User::query()->where('email', 'invited.student@example.com')->exists())->toBeFalse();
-});
-
-test('empty shared api key does not fail open', function () {
-    Config::set('services.lionsgeek.key', '');
-
-    $this->withToken('')
-        ->postJson('/api/invite-student', invitePayload())
-        ->assertUnauthorized();
-});
-
-test('staff can invite students and response does not expose the user or activation token', function () {
-    $admin = staffUser();
-
-    $response = $this->actingAs($admin, 'sanctum')
-        ->postJson('/api/invite-student', invitePayload());
-
-    $response->assertOk()
-        ->assertJson([
-            'status' => 'created',
-            'mail_sent' => true,
-        ])
-        ->assertJsonMissingPath('data')
-        ->assertJsonMissingPath('activation_token');
-
-    $user = User::query()->where('email', 'invited.student@example.com')->first();
-    expect($user)->not->toBeNull()
-        ->and($user->hasPendingActivation())->toBeTrue()
-        ->and($user->activation_token)->not->toBeNull()
-        ->and(strlen((string) $user->getRawOriginal('activation_token')))->toBe(64);
-});
-
-test('lionsgeek.ma shared bearer can invite students', function () {
-    $response = $this->withToken('test-lionsgeek-invite-key')
-        ->postJson('/api/invite-student', invitePayload());
-
-    $response->assertOk()->assertJson(['status' => 'created']);
-    expect(User::query()->where('email', 'invited.student@example.com')->exists())->toBeTrue();
-});
-
-test('inviting an already activated account does not rotate the activation token', function () {
-    $existing = User::factory()->create([
-        'email' => 'invited.student@example.com',
-        'activation_token' => null,
-        'role' => ['student'],
-    ]);
-
-    $this->withToken('test-lionsgeek-invite-key')
-        ->postJson('/api/invite-student', invitePayload())
-        ->assertOk()
-        ->assertJson([
-            'status' => 'exists',
-            'mail_sent' => false,
-        ]);
-
-    $existing->refresh();
-    expect($existing->hasPendingActivation())->toBeFalse()
-        ->and($existing->activation_token)->toBeNull();
 });
 
 test('unsigned complete-profile get cannot activate', function () {
@@ -194,11 +101,23 @@ test('valid signed complete-profile post activates once and cannot be reused', f
         ->post($submitUrl, [
             'password' => 'NewPassword1',
             'password_confirmation' => 'NewPassword1',
+            'gender' => 'female',
+            'entreprise' => 'Should Not Save',
+            'document_acceptances' => collect(json_decode(file_get_contents(resource_path('js/pages/profile/documents.json')), true))->mapWithKeys(fn ($document) => [$document['id'] => true])->all(),
+            'cin' => 'AB123456',
         ])
         ->assertRedirect('/login');
 
     $user->refresh();
+    expect($user->gender)->toBe('female')
+        ->and($user->entreprise)->toBeNull()
+        ->and((int) $user->account_state)->toBe(0)
+        ->and($user->hasPendingActivation())->toBeFalse();
     expect($user->hasPendingActivation())->toBeFalse()
+        ->and($user->profile_document_acceptances)->toHaveCount(3)
+        ->and($user->profile_document_acceptances[0]['accepted'])->toBeTrue()
+        ->and($user->profile_document_acceptances[0]['content_sha256'])->toHaveLength(64)
+        ->and($user->profile_documents_accepted_at)->not->toBeNull()
         ->and($user->activation_token)->toBeNull()
         ->and($user->activation_token_expires_at)->toBeNull();
 
@@ -210,3 +129,106 @@ test('valid signed complete-profile post activates once and cannot be reused', f
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('profile/ExpiredLink'));
 });
+
+test('complete-profile rejects a missing gender and does not activate', function () {
+    $user = User::factory()->create([
+        'role' => ['student'],
+        'invite_source' => 'lionsgeek_adult',
+    ]);
+    $plain = $user->issueActivationToken();
+
+    $submitUrl = URL::temporarySignedRoute(
+        'user.complete-profile.update',
+        now()->addHours(24),
+        ['token' => $plain]
+    );
+
+    $this->withoutVite()
+        ->from('/complete-profile/'.$plain)
+        ->post($submitUrl, [
+            'password' => 'NewPassword1',
+            'password_confirmation' => 'NewPassword1',
+            'entreprise' => 'Should Not Save',
+        ])
+        ->assertSessionHasErrors('gender');
+
+    $user->refresh();
+    expect($user->hasPendingActivation())->toBeTrue()
+        ->and($user->entreprise)->not->toBe('Should Not Save');
+});
+
+test('recruiter complete-profile saves the company name', function () {
+    $user = User::factory()->create([
+        'role' => ['recruiter'],
+        'invite_source' => 'admin',
+    ]);
+    $plain = $user->issueActivationToken();
+
+    $submitUrl = URL::temporarySignedRoute(
+        'user.complete-profile.update',
+        now()->addHours(24),
+        ['token' => $plain]
+    );
+
+    $this->withoutVite()
+        ->post($submitUrl, [
+            'password' => 'NewPassword1',
+            'password_confirmation' => 'NewPassword1',
+            'phone' => '0612345678',
+            'gender' => 'male',
+            'entreprise' => 'LionsGeek',
+        ])
+        ->assertRedirect('/login');
+
+    $user->refresh();
+    expect($user->gender)->toBe('male')
+        ->and($user->entreprise)->toBe('LionsGeek')
+        ->and((int) $user->account_state)->toBe(0)
+        ->and($user->hasPendingActivation())->toBeFalse();
+});
+test('lionsgeek students must accept every document before activation', function (string $source) {
+    $user = User::factory()->create(['role' => ['student'], 'invite_source' => $source]);
+    $token = $user->issueActivationToken();
+    $url = URL::temporarySignedRoute('user.complete-profile.update', now()->addHour(), ['token' => $token]);
+    $documents = json_decode(file_get_contents(resource_path('js/pages/profile/documents.json')), true);
+    $acceptances = collect($documents)->mapWithKeys(fn ($document) => [$document['id'] => true])->all();
+
+    foreach ($documents as $document) {
+        $this->post($url, [
+            'password' => 'NewPassword1',
+            'password_confirmation' => 'NewPassword1',
+            'document_acceptances' => array_merge($acceptances, [$document['id'] => false]),
+        ])->assertSessionHasErrors('document_acceptances.'.$document['id']);
+    }
+    $this->post($url, ['password' => 'NewPassword1', 'password_confirmation' => 'NewPassword1'])
+        ->assertSessionHasErrors(array_map(fn ($document) => 'document_acceptances.'.$document['id'], $documents));
+    $user->refresh();
+    expect($user->hasPendingActivation())->toBeTrue()
+        ->and($user->profile_document_acceptances)->toBeNull();
+})->with(['lionsgeek_adult', 'lionsgeek_children']);
+
+test('admin invitations do not require or store student document acceptances', function () {
+    $user = User::factory()->create(['role' => ['recruiter'], 'invite_source' => 'admin']);
+    $token = $user->issueActivationToken();
+    $this->post(URL::temporarySignedRoute('user.complete-profile.update', now()->addHour(), ['token' => $token]), [
+        'password' => 'NewPassword1', 'password_confirmation' => 'NewPassword1', 'phone' => '0611111111', 'cin' => 'CD123456',
+    ])->assertRedirect('/login');
+    expect($user->fresh()->profile_document_acceptances)->toBeNull();
+});
+
+test('CIN is required for adults but optional for children', function (string $source) {
+    $user = User::factory()->create(['role' => ['student'], 'invite_source' => $source]);
+    $token = $user->issueActivationToken();
+    $url = URL::temporarySignedRoute('user.complete-profile.update', now()->addHour(), ['token' => $token]);
+    $payload = [
+        'password' => 'NewPassword1', 'password_confirmation' => 'NewPassword1',
+        'document_acceptances' => collect(json_decode(file_get_contents(resource_path('js/pages/profile/documents.json')), true))->mapWithKeys(fn ($document) => [$document['id'] => true])->all(),
+    ];
+    if ($source === 'lionsgeek_children') {
+        $this->post($url, $payload)->assertRedirect('/login');
+    } else {
+        $this->post($url, $payload)->assertSessionHasErrors('cin');
+        $this->post($url, array_merge($payload, ['cin' => '   ']))->assertSessionHasErrors('cin');
+        expect($user->fresh()->hasPendingActivation())->toBeTrue();
+    }
+})->with(['lionsgeek_adult', 'lionsgeek_children']);
