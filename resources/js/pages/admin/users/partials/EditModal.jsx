@@ -1,3 +1,4 @@
+import InputError from '@/components/input-error';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -5,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useInitials } from '@/hooks/use-initials';
-import { router, usePage } from '@inertiajs/react';
+import { router, useForm, usePage } from '@inertiajs/react';
 import { Briefcase, ExternalLink, Facebook, Github, ImagePlus, Instagram, Linkedin, MessageCircle, Send, Trash, Twitter, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { normalizeStatusForSelect, resolveStatusOptions } from '@/components/helpers/userStatuses';
@@ -26,6 +27,44 @@ const resolveProgramStatusValue = (programStatus) => programStatus || PROGRAM_ST
 const NONE_TRAINING_VALUE = 'none';
 const resolveFormationSelectValue = (formationId) =>
     formationId != null && formationId !== '' ? String(formationId) : NONE_TRAINING_VALUE;
+
+const KNOWN_FIELD_ERRORS = new Set([
+    'image',
+    'name',
+    'email',
+    'phone',
+    'gender',
+    'program_status',
+    'status',
+    'cin',
+    'has_handicap',
+    'speciality',
+    'resume',
+    'formation_id',
+    'access_studio',
+    'access_cowork',
+    'access_scan',
+    'roles',
+]);
+
+function fieldMessage(errors, key) {
+    const value = errors?.[key];
+    if (Array.isArray(value)) {
+        return value[0] || '';
+    }
+    return typeof value === 'string' ? value : '';
+}
+
+function rolesMessage(errors) {
+    const direct = fieldMessage(errors, 'roles');
+    if (direct) {
+        return direct;
+    }
+
+    const nestedKey = Object.keys(errors || {}).find((key) => key.startsWith('roles.'));
+
+    return nestedKey ? fieldMessage(errors, nestedKey) : '';
+}
 const platformIcons = {
     instagram: Instagram,
     facebook: Facebook,
@@ -63,7 +102,6 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         userRolesLower.includes('moderateur') ||
         userRolesLower.includes('studio_responsable') ||
         userRolesLower.includes('responsable_studio');
-    const [errors, setErrors] = useState({});
     const [newSocialPlatform, setNewSocialPlatform] = useState('');
     const [newSocialUrl, setNewSocialUrl] = useState('');
     const [socialValidationError, setSocialValidationError] = useState('');
@@ -105,7 +143,15 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     // Filter out platforms that are already added
     const availablePlatforms = platforms.filter((platform) => !socialLinks.some((link) => link.title === platform.value));
 
-    const [formData, setFormData] = useState({
+    const {
+        data: formData,
+        setData: setFormData,
+        put,
+        processing,
+        errors,
+        clearErrors,
+        transform,
+    } = useForm({
         name: editedUser?.name || '',
         email: editedUser?.email || '',
         roles: [],
@@ -183,6 +229,13 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         });
         setSocialLinks(editedUser?.social_links || []);
     }, [open, editedUser, canEditOthers, status]);
+
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+        clearErrors();
+    }, [open, editedUser?.id]);
     const validateSocialUrl = () => {
         if (!newSocialPlatform || !newSocialUrl) return false;
 
@@ -249,59 +302,53 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
 
         if (!editedUser) return;
 
-        const form = new FormData();
+        transform((current) => {
+            const payload = {
+                name: current.name,
+                email: current.email,
+                speciality: current.speciality ?? '',
+                formation_id: current.formation_id === NONE_TRAINING_VALUE || !current.formation_id ? '' : String(current.formation_id),
+                access_studio: current.access_studio === 'Yes' ? 1 : 0,
+                access_cowork: current.access_cowork === 'Yes' ? 1 : 0,
+                access_scan: current.access_scan === 'Yes' ? 1 : 0,
+            };
 
-        form.append('_method', 'put');
-        form.append('name', formData.name);
-        form.append('email', formData.email);
-        // Never send roles when editing yourself — another admin must change them.
-        if (!isEditingSelf) {
-            formData.roles.forEach((r) => form.append('roles[]', r));
-        }
-        if (showStatusField && formData.status) {
-            form.append('status', formData.status);
-        }
-        // Only admin/super_admin receive cin/phone/has_handicap on the index DTO.
-        // Never POST empty values for missing keys — that would wipe student records.
-        if (canGrantStaffRoles || Object.prototype.hasOwnProperty.call(editedUser, 'phone')) {
-            form.append('phone', formData.phone ?? '');
-        }
-        if (canGrantStaffRoles || Object.prototype.hasOwnProperty.call(editedUser, 'cin')) {
-            form.append('cin', formData.cin ?? '');
-        }
-        form.append('speciality', formData.speciality ?? '');
-        form.append('formation_id', formData.formation_id === NONE_TRAINING_VALUE || !formData.formation_id ? '' : String(formData.formation_id));
-
-        if (canEditOthers) {
-            form.append('gender', formData.gender === 'none' ? '' : formData.gender);
-            if (canEditHealthData) {
-                form.append('has_handicap', formData.has_handicap === 'none' ? '' : formData.has_handicap);
+            // Never send roles when editing yourself — another admin must change them.
+            if (!isEditingSelf) {
+                payload.roles = current.roles;
             }
-            form.append('program_status', formData.program_status === 'all' ? '' : formData.program_status);
-        }
+            if (showStatusField && current.status) {
+                payload.status = current.status;
+            }
+            // Only admin/super_admin receive cin/phone/has_handicap on the index DTO.
+            // Never POST empty values for missing keys — that would wipe student records.
+            if (canGrantStaffRoles || Object.prototype.hasOwnProperty.call(editedUser, 'phone')) {
+                payload.phone = current.phone ?? '';
+            }
+            if (canGrantStaffRoles || Object.prototype.hasOwnProperty.call(editedUser, 'cin')) {
+                payload.cin = current.cin ?? '';
+            }
+            if (canEditOthers) {
+                payload.gender = current.gender === 'none' ? '' : current.gender;
+                if (canEditHealthData) {
+                    payload.has_handicap = current.has_handicap === 'none' ? '' : current.has_handicap;
+                }
+                payload.program_status = current.program_status === 'all' ? '' : current.program_status;
+            }
+            if (current.image instanceof File) {
+                payload.image = current.image;
+            }
+            if (current.resumeFile instanceof File) {
+                payload.resume = current.resumeFile;
+            }
 
-        form.append('access_studio', formData.access_studio === 'Yes' ? 1 : 0);
-        form.append('access_cowork', formData.access_cowork === 'Yes' ? 1 : 0);
-        form.append('access_scan', formData.access_scan === 'Yes' ? 1 : 0);
+            return payload;
+        });
 
-        if (formData?.image instanceof File) {
-            form.append('image', formData?.image);
-        }
-
-        if (formData?.resumeFile instanceof File) {
-            form.append('resume', formData.resumeFile);
-        }
-
-        router.post(`/students/update/${editedUser.id}`, form, {
+        put(`/students/update/${editedUser.id}`, {
             forceFormData: true,
-            onSuccess: () => {
-                setErrors({});
-                onClose();
-            },
-            onError: (err) => {
-                setErrors(err);
-                console.error('Form submission error:', err);
-            },
+            preserveScroll: true,
+            onSuccess: () => onClose(),
         });
     };
 
@@ -351,26 +398,27 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                 />
                             </label>
                         </div>
-                        {errors.image && (
-                            <p className="max-w-xs text-center text-sm text-red-500">{errors.image}</p>
-                        )}
+                        <InputError className="mt-1 max-w-xs text-center" message={fieldMessage(errors, 'image')} />
                     </div>
 
                     {/* Form Fields - Left Column */}
                     <div className="col-span-1">
                         <Label htmlFor="name">Name</Label>
                         <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+                        <InputError className="mt-1" message={fieldMessage(errors, 'name')} />
                     </div>
                     {/* Right Column - Email */}
                     <div className="col-span-1">
                         <Label htmlFor="email">Email</Label>
                         <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                        <InputError className="mt-1" message={fieldMessage(errors, 'email')} />
                     </div>
                     {/* Phone — only when index DTO includes it (admin/super_admin) */}
                     {canGrantStaffRoles && (
                         <div className="col-span-1">
                             <Label htmlFor="phone">Phone</Label>
                             <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+                            <InputError className="mt-1" message={fieldMessage(errors, 'phone')} />
                         </div>
                     )}
                     {canEditOthers && (
@@ -389,6 +437,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                     ))}
                                 </SelectContent>
                             </Select>
+                            <InputError className="mt-1" message={fieldMessage(errors, 'gender')} />
                         </div>
                     )}
                     {canEditOthers && (
@@ -422,6 +471,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
+                            <InputError className="mt-1" message={fieldMessage(errors, 'program_status')} />
                         </div>
                     )}
                     {showStatusField && (
@@ -439,12 +489,14 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                     ))}
                                 </SelectContent>
                             </Select>
+                            <InputError className="mt-1" message={fieldMessage(errors, 'status')} />
                         </div>
                     )}
                     {canGrantStaffRoles && (
                         <div className="col-span-1">
                             <Label htmlFor="cin">CIN</Label>
                             <Input id="cin" value={formData.cin || ''} onChange={(e) => setFormData({ ...formData, cin: e.target.value })} />
+                            <InputError className="mt-1" message={fieldMessage(errors, 'cin')} />
                         </div>
                     )}
                     {canEditHealthData && (
@@ -463,6 +515,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                     ))}
                                 </SelectContent>
                             </Select>
+                            <InputError className="mt-1" message={fieldMessage(errors, 'has_handicap')} />
                         </div>
                     )}
                     <div className="lg:col-span-1 md:col-span-2">
@@ -473,9 +526,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                             onChange={(e) => setFormData({ ...formData, speciality: e.target.value })}
                             placeholder="e.g. Full stack developer, Mobile developer"
                         />
-                        {errors.speciality && (
-                            <p className="mt-1 text-xs text-red-500">{Array.isArray(errors.speciality) ? errors.speciality[0] : errors.speciality}</p>
-                        )}
+                        <InputError className="mt-1" message={fieldMessage(errors, 'speciality')} />
                     </div>
                     <div className="col-span-1">
                         <Label htmlFor="resume" className="mb-2 flex items-center gap-2">
@@ -491,9 +542,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                 setFormData({ ...formData, resumeFile: file });
                             }}
                         />
-                        {errors.resume && (
-                            <p className="mt-1 text-xs text-red-500">{Array.isArray(errors.resume) ? errors.resume[0] : errors.resume}</p>
-                        )}
+                        <InputError className="mt-1" message={fieldMessage(errors, 'resume')} />
                         {!formData.resumeFile && editedUser?.resume_url && (
                             <>
                                 <a
@@ -536,6 +585,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                     ))}
                                 </SelectContent>
                             </Select>
+                            <InputError className="mt-1" message={fieldMessage(errors, 'formation_id')} />
                         </div>
                     )}
                     {/* Left Column - Access Studio */}
@@ -555,6 +605,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                     <SelectItem value={'No'}>No</SelectItem>
                                 </SelectContent>
                             </Select>
+                            <InputError className="mt-1" message={fieldMessage(errors, 'access_studio')} />
                         </div>
                     )}
                     {/* Right Column - Access Cowork */}
@@ -574,6 +625,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                     <SelectItem value={'No'}>No</SelectItem>
                                 </SelectContent>
                             </Select>
+                            <InputError className="mt-1" message={fieldMessage(errors, 'access_cowork')} />
                         </div>
                     )}
                     {isAdminOrStudioResponsable && (
@@ -595,6 +647,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                             <p className="mt-1 text-xs text-neutral-500">
                                 Mobile Scan tab (events and info sessions)
                             </p>
+                            <InputError className="mt-1" message={fieldMessage(errors, 'access_scan')} />
                         </div>
                     )}
                     {/* Right Column - Roles (never editable on your own account) */}
@@ -629,6 +682,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                         canGrantStaffRoles={canGrantStaffRoles}
                                     />
                                 )}
+                                <InputError className="mt-1" message={rolesMessage(errors)} />
                             </div>
                         )}
                     </Rolegard>
@@ -724,6 +778,12 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         </div>
                     )}
 
+                    {Object.entries(errors)
+                        .filter(([key]) => !KNOWN_FIELD_ERRORS.has(key) && !key.startsWith('roles.'))
+                        .map(([key]) => (
+                            <InputError key={key} className="col-span-1 md:col-span-2" message={fieldMessage(errors, key)} />
+                        ))}
+
                     {/* Footer */}
                     <div className="col-span-1 mt-6 md:col-span-2">
                         <div className="flex flex-col items-center justify-between gap-4 border-t pt-4 md:flex-row">
@@ -755,7 +815,9 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                 >
                                     Cancel
                                 </Button>
-                                <Button type="submit">Save changes</Button>
+                                <Button type="submit" disabled={processing}>
+                                    {processing ? 'Saving...' : 'Save changes'}
+                                </Button>
                             </div>
                         </div>
                     </div>

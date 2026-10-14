@@ -1095,7 +1095,7 @@ class UsersController extends Controller
             'has_handicap' => 'nullable|in:0,1',
             'program_status' => 'nullable|in:active,certified,not_certified,left',
             'speciality' => 'nullable|string|max:255',
-            'image' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif|max:10240',
+            'image' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif',
             'cover' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif', // <-- allow cover image
             'resume' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
             'access_cowork' => 'nullable|integer|in:0,1',
