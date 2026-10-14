@@ -5,11 +5,11 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserSocialLink;
+use App\Services\CoverImageStore;
 use App\Services\ProfileImageStore;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
@@ -67,7 +67,7 @@ class ProfileController extends Controller
         $userData['last_online'] = $user->last_online ? (is_string($user->last_online) ? $user->last_online : $user->last_online->format('Y-m-d H:i:s')) : null;
 
         // Always expose own editable fields
-        $userData['phone']  = $user->phone ?? null;
+        $userData['phone'] = $user->phone ?? null;
         $userData['status'] = $user->status ?? null;
         $userData['speciality'] = $user->speciality ?? null;
         $userData['about'] = $user->about ?? null;
@@ -261,12 +261,12 @@ class ProfileController extends Controller
         }
 
         $data = $request->validate([
-            'name'   => 'sometimes|string|max:255',
-            'email'  => ['sometimes', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
-            'phone'  => 'sometimes|nullable|string|max:30',
+            'name' => 'sometimes|string|max:255',
+            'email' => ['sometimes', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'phone' => 'sometimes|nullable|string|max:30',
             'status' => 'sometimes|nullable|string|max:255',
             'speciality' => 'sometimes|nullable|string|max:255',
-            'image'  => 'sometimes|file|image|mimes:jpeg,jpg,png,webp,gif|max:10240',
+            'image' => 'sometimes|file|image|mimes:jpeg,jpg,png,webp,gif|max:10240',
             'resume' => 'sometimes|file|mimes:pdf,doc,docx|max:10240',
         ]);
 
@@ -298,14 +298,14 @@ class ProfileController extends Controller
 
         return response()->json([
             'message' => 'Profile updated',
-            'data'    => [
-                'id'     => $user->id,
-                'name'   => $user->name,
-                'email'  => $user->email,
-                'phone'  => $user->phone,
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
                 'status' => $user->status,
                 'speciality' => $user->speciality,
-                'image'  => $user->image,
+                'image' => $user->image,
                 'resume' => $user->resume,
                 'resume_url' => $user->resumePublicUrl(),
                 'resume_view_url' => $user->resumeViewUrl(),
@@ -324,29 +324,15 @@ class ProfileController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        $data = $request->validate([
-            'cover' => 'required|file|image|mimes:jpeg,jpg,png,webp,gif|max:6144',
+        $request->validate([
+            'cover' => 'required|file|image|mimes:jpeg,jpg,png,webp,gif|max:10240',
         ]);
 
-        $file = $request->file('cover');
-
-        // Store covers under: storage/app/public/img/cover
-        // Public URL (via storage symlink): /storage/img/cover/<filename>
-        $disk = 'public';
-        $dir = 'img/cover';
-
-        // Best-effort delete old cover (supports either "filename" or "img/cover/filename").
-        if (is_string($user->cover) && $user->cover !== '') {
-            $old = str_replace('\\', '/', $user->cover);
-            if (strpos($old, '/') === false) {
-                $old = $dir . '/' . $old;
-            }
-            Storage::disk($disk)->delete($old);
-        }
-
-        $storedPath = $file->store($dir, $disk); // returns "img/cover/<filename>"
-        $user->cover = $storedPath;
-        $user->save();
+        $store = app(CoverImageStore::class);
+        $previous = $user->cover;
+        $path = $store->store($request->file('cover'));
+        $user->update(['cover' => $path]);
+        $store->deletePrevious($previous, $path, (int) $user->id);
 
         return response()->json([
             'message' => 'Cover updated',
@@ -385,13 +371,13 @@ class ProfileController extends Controller
 
         $data = $request->validate([
             'title' => 'required|string|max:80',
-            'url'   => UserSocialLink::URL_RULES,
+            'url' => UserSocialLink::URL_RULES,
         ]);
 
         $link = UserSocialLink::create([
-            'user_id'    => $user->id,
-            'title'      => $data['title'],
-            'url'        => $data['url'],
+            'user_id' => $user->id,
+            'title' => $data['title'],
+            'url' => $data['url'],
             'sort_order' => (int) UserSocialLink::query()->where('user_id', '=', $user->id)->max('sort_order') + 1,
         ]);
 
@@ -444,11 +430,11 @@ class ProfileController extends Controller
             ->select('users.id', 'users.name', 'users.image', 'users.promo', 'users.status')
             ->get()
             ->map(fn ($u) => [
-                'id'           => $u->id,
-                'name'         => $u->name,
-                'image'        => $u->image,
-                'promo'        => $u->promo,
-                'status'       => $u->status,
+                'id' => $u->id,
+                'name' => $u->name,
+                'image' => $u->image,
+                'promo' => $u->promo,
+                'status' => $u->status,
                 'is_following' => in_array($u->id, $viewerFollowingIds),
             ]);
 
@@ -475,11 +461,11 @@ class ProfileController extends Controller
             ->select('users.id', 'users.name', 'users.image', 'users.promo', 'users.status')
             ->get()
             ->map(fn ($u) => [
-                'id'           => $u->id,
-                'name'         => $u->name,
-                'image'        => $u->image,
-                'promo'        => $u->promo,
-                'status'       => $u->status,
+                'id' => $u->id,
+                'name' => $u->name,
+                'image' => $u->image,
+                'promo' => $u->promo,
+                'status' => $u->status,
                 'is_following' => in_array($u->id, $viewerFollowingIds),
             ]);
 
@@ -513,7 +499,7 @@ class ProfileController extends Controller
 
         return response()->json([
             'followed' => ! $already,
-            'user_id'  => (int) $target->id,
+            'user_id' => (int) $target->id,
         ]);
     }
 }
