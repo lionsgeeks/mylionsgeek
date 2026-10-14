@@ -342,7 +342,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                 <ImagePlus size={18} className="text-white" />
                                 <input
                                     type="file"
-                                    accept="image/*"
+                                    accept="image/jpeg,image/png,image/jpg,image/webp,image/gif"
                                     className="absolute inset-0 cursor-pointer opacity-0"
                                     onChange={(e) => {
                                         const file = e.target.files?.[0] || null;
@@ -351,6 +351,9 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                 />
                             </label>
                         </div>
+                        {errors.image && (
+                            <p className="max-w-xs text-center text-sm text-red-500">{errors.image}</p>
+                        )}
                     </div>
 
                     {/* Form Fields - Left Column */}

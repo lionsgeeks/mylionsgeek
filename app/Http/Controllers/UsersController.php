@@ -19,6 +19,7 @@ use App\Models\Reservation;
 use App\Models\User;
 use App\Services\DisciplineService;
 use App\Services\ExportService;
+use App\Services\ProfileImageStore;
 use App\Services\ProgramStatusService;
 use App\Services\UserLifeStatusService;
 use App\Services\UserProfileStatsService;
@@ -1094,7 +1095,7 @@ class UsersController extends Controller
             'has_handicap' => 'nullable|in:0,1',
             'program_status' => 'nullable|in:active,certified,not_certified,left',
             'speciality' => 'nullable|string|max:255',
-            'image' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif',
+            'image' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif|max:10240',
             'cover' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif', // <-- allow cover image
             'resume' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
             'access_cowork' => 'nullable|integer|in:0,1',
@@ -1136,17 +1137,12 @@ class UsersController extends Controller
                 : null;
             $user->save();
         }
+        $previousImage = $user->image;
+        $newImage = null;
+
         if ($request->hasFile('image')) {
-            $file = $request->file('image');
-
-            // Generate a unique hashed filename (like 68fb430843ce2.jpg)
-            $filename = $file->hashName();
-
-            // Move the file to public/img/profile/
-            $file->move(public_path('/storage/img/profile'), $filename);
-
-            // Store only the filename in database
-            $validated['image'] = $filename;
+            $newImage = app(ProfileImageStore::class)->store($request->file('image'));
+            $validated['image'] = $newImage;
         }
         if ($request->hasFile('cover')) {
             $coverFile = $request->file('cover');
@@ -1220,6 +1216,10 @@ class UsersController extends Controller
             $user->forceFill([
                 'certified_at' => $user->certified_at ?? now(),
             ])->save();
+        }
+
+        if ($newImage !== null) {
+            app(ProfileImageStore::class)->deletePrevious($previousImage, $newImage, (int) $user->id);
         }
 
         return redirect()->back()->with('success', 'User updated successfully');
