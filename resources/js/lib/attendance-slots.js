@@ -22,10 +22,10 @@ export function slotLabel(slot) {
 
 /**
  * Default value for a slot with no DB data on the selected calendar date.
- * Always pending — absent is only shown after finalize/check-in/coach actually writes it.
+ * Absent until check-in, a coach mark, or finalize writes a real status.
  */
 export function defaultUnresolvedSlotValue() {
-    return 'pending';
+    return 'absent';
 }
 
 /**
@@ -72,7 +72,7 @@ export function alreadyMarkedSlots(slotStatus) {
 
 /**
  * Home feed banner: show for the entire active slot (present and late).
- * Relies on already_marked_slots (pending/null are unmarked).
+ * Relies on already_marked_slots (default absent and legacy pending are not locked).
  */
 export function shouldShowHomeReminderBanner(slotStatus) {
     if (!slotStatus) {

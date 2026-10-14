@@ -203,10 +203,21 @@ class AttendanceSlotService
     }
 
     /**
+     * Default stored value for a slot nobody has actively resolved.
+     * Legacy rows may still contain 'pending'; new writes use 'absent'.
+     */
+    public function defaultSlotValue(): string
+    {
+        return 'absent';
+    }
+
+    /**
      * Build merged slot values for a server-authoritative check-in.
      *
-     * Past slots (index < current) get a finalized 'absent' when still unresolved — the window
-     * has already closed with no action. Future slots get 'pending' (unresolved, still overwritable).
+     * The current slot is graded unless it is already present, late, or excused.
+     * A stored 'absent' or legacy 'pending' on the current slot is the default and is replaced.
+     * Every other unresolved slot (past or not yet opened) is written as 'absent'.
+     * Already resolved present/late/excused/absent values on other slots are preserved.
      *
      * @return array{morning: string, lunch: string, evening: string}
      */
@@ -221,21 +232,20 @@ class AttendanceSlotService
         $result = [];
         foreach ($order as $index => $slot) {
             $existing = $existingSlots[$slot] ?? null;
+
+            if ($index === $currentIndex) {
+                $result[$slot] = $this->blocksStudentCheckIn($existing) ? $existing : $currentStatus;
+
+                continue;
+            }
+
             if ($this->isSlotMarked($existing)) {
                 $result[$slot] = $existing;
 
                 continue;
             }
 
-            if ($index < $currentIndex) {
-                // Window already closed with no resolution — finalized absence
-                $result[$slot] = 'absent';
-            } elseif ($index === $currentIndex) {
-                $result[$slot] = $currentStatus;
-            } else {
-                // Window has not opened yet — unresolved, must stay overwritable
-                $result[$slot] = 'pending';
-            }
+            $result[$slot] = $this->defaultSlotValue();
         }
 
         return $result;
@@ -244,8 +254,8 @@ class AttendanceSlotService
     /**
      * Build slot values when a slot window closes with no student/coach action.
      *
-     * Just-closed and earlier unresolved slots → absent (finalized).
-     * Still-future unresolved slots → pending. Already-resolved slots are preserved.
+     * Unresolved slots, including ones that have not opened yet, are written as 'absent'.
+     * Already-resolved slots are preserved. Legacy 'pending' is unresolved and becomes 'absent'.
      *
      * @param  array{morning?: string|null, lunch?: string|null, evening?: string|null}|null  $existingSlots
      * @return array{morning: string, lunch: string, evening: string}
@@ -267,7 +277,7 @@ class AttendanceSlotService
                 continue;
             }
 
-            $result[$slot] = $index <= $closedIndex ? 'absent' : 'pending';
+            $result[$slot] = $this->defaultSlotValue();
         }
 
         return $result;
@@ -275,10 +285,11 @@ class AttendanceSlotService
 
     /**
      * Whether a slot has a real attendance determination (student check-in, coach mark,
-     * or finalized absence after window close).
+     * or an absence already written).
      *
-     * 'pending' (and null/empty) means unresolved — not marked. 'absent' is always a real
-     * determination and is marked.
+     * Legacy 'pending' (and null/empty) is unresolved — not marked. 'absent' is the default
+     * determination and is marked, so later merges do not blank it out. The open slot can
+     * still be replaced on check-in via blocksStudentCheckIn().
      */
     public function isSlotMarked(?string $value): bool
     {
@@ -289,6 +300,21 @@ class AttendanceSlotService
         $normalized = strtolower(trim($value));
 
         return $normalized !== '' && $normalized !== 'pending';
+    }
+
+    /**
+     * Statuses a student check-in must not overwrite. Absent is the default, so it stays open
+     * until the student is graded present or late. Legacy pending stays open too.
+     */
+    public function blocksStudentCheckIn(?string $value): bool
+    {
+        if ($value === null) {
+            return false;
+        }
+
+        $normalized = strtolower(trim($value));
+
+        return in_array($normalized, ['present', 'late', 'excused'], true);
     }
 
     /**
@@ -315,6 +341,25 @@ class AttendanceSlotService
         }
 
         return $marked;
+    }
+
+    /**
+     * Slots that should disable check-in and suppress the reminder.
+     * Default absent and legacy pending are not locked.
+     *
+     * @return list<string>
+     */
+    public function slotsBlockingCheckIn(?array $existingSlots): array
+    {
+        $locked = [];
+        foreach ($this->slotOrder() as $slot) {
+            $value = $existingSlots[$slot] ?? null;
+            if ($this->blocksStudentCheckIn($value)) {
+                $locked[] = $slot;
+            }
+        }
+
+        return $locked;
     }
 
     private function secondsSinceMidnight(Carbon $now): int
