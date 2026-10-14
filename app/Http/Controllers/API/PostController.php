@@ -1047,11 +1047,16 @@ class PostController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
+        $offset = max(0, (int) $request->query('offset', 0));
+        $limit = min(50, max(1, (int) $request->query('limit', 20)));
         $blockedIds = $user->blockedUserIds();
 
         $savedQuery = $user->savedPosts()
             ->with(['user', 'likes', 'comments'])
-            ->withCount(['reposts']);
+            ->withCount(['reposts'])
+            ->where(function ($hidden) {
+                $hidden->whereNull('posts.is_hidden')->orWhere('posts.is_hidden', false);
+            });
 
         if ($blockedIds !== []) {
             $savedQuery->whereNotIn('posts.user_id', $blockedIds);
@@ -1059,23 +1064,28 @@ class PostController extends Controller
 
         $saved = $savedQuery
             ->orderByPivot('created_at', 'desc')
-            ->limit(60)
+            ->offset($offset)
+            ->limit($limit + 1)
             ->get();
 
-        $savedInteractionIds = $saved
+        $hasMore = $saved->count() > $limit;
+        $page = $saved->take($limit)->values();
+
+        $savedInteractionIds = $page
             ->map(fn ($p) => (int) $this->resolveInteractionPost($p)->id)
             ->filter()
             ->unique()
             ->values()
             ->all();
 
-        $feed = $saved
+        $feed = $page
             ->map(fn ($post) => $this->mapPostForMobileFeed($post, $user, $savedInteractionIds))
             ->values()
-            ->toArray();
+            ->all();
 
         return response()->json([
             'posts' => $feed,
+            'next_offset' => $hasMore ? $offset + $page->count() : null,
         ]);
     }
 
