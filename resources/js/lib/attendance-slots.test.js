@@ -7,6 +7,7 @@ import {
 } from './attendance-check-in-ui.js';
 import {
     alreadyMarkedSlots,
+    defaultUnresolvedSlotValue,
     shouldShowHomeReminderBanner,
 } from './attendance-slots.js';
 
@@ -16,6 +17,12 @@ const activeMorning = {
     minutes_into_slot: 5,
     present_minutes: 15,
 };
+
+describe('defaultUnresolvedSlotValue', () => {
+    it('returns absent for a slot with no saved value', () => {
+        assert.equal(defaultUnresolvedSlotValue(), 'absent');
+    });
+});
 
 describe('alreadyMarkedSlots / shouldShowHomeReminderBanner', () => {
     it('defaults missing already_marked_slots to [] and does not throw', () => {

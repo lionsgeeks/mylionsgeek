@@ -118,7 +118,7 @@ function createDisciplineThresholdFormation(): Formation
     ]);
 }
 
-test('finalize creates a row with absent for closed slot and pending for future', function () {
+test('finalize creates a row with absent for the closed slot and later slots', function () {
     Carbon::setTestNow(Carbon::parse(Carbon::now()->toDateString().' 11:00:00', config('app.timezone', 'UTC')));
 
     $formation = Formation::create([
@@ -139,8 +139,8 @@ test('finalize creates a row with absent for closed slot and pending for future'
     $row = AttendanceListe::where('user_id', $student->id)->first();
     expect($row)->not->toBeNull();
     expect($row->morning)->toBe('absent');
-    expect($row->lunch)->toBe('pending');
-    expect($row->evening)->toBe('pending');
+    expect($row->lunch)->toBe('absent');
+    expect($row->evening)->toBe('absent');
 });
 
 test('finalize updates pending closed slot to absent and skips already resolved', function () {
@@ -194,12 +194,12 @@ test('finalize updates pending closed slot to absent and skips already resolved'
     $rowA = AttendanceListe::where('user_id', $studentA->id)->first();
     expect($rowA->morning)->toBe('present');
     expect($rowA->lunch)->toBe('absent');
-    expect($rowA->evening)->toBe('pending');
+    expect($rowA->evening)->toBe('absent');
 
     $rowB = AttendanceListe::where('user_id', $studentB->id)->first();
     expect($rowB->morning)->toBe('late');
     expect($rowB->lunch)->toBe('present');
-    expect($rowB->evening)->toBe('pending');
+    expect($rowB->evening)->toBe('absent');
 });
 
 test('finalize is idempotent when run twice', function () {
@@ -247,8 +247,8 @@ test('finalize still runs when clock is past close minute (queue delay safe)', f
     $row = AttendanceListe::where('user_id', $student->id)->first();
     expect($row)->not->toBeNull();
     expect($row->morning)->toBe('absent');
-    expect($row->lunch)->toBe('pending');
-    expect($row->evening)->toBe('pending');
+    expect($row->lunch)->toBe('absent');
+    expect($row->evening)->toBe('absent');
 });
 
 test('evening finalize backfills pending morning when later slots already marked', function () {
@@ -439,8 +439,8 @@ test('one student failure does not stop finalizing others', function () {
     $goodRow = AttendanceListe::where('user_id', $goodStudent->id)->first();
     expect($goodRow)->not->toBeNull();
     expect($goodRow->morning)->toBe('absent');
-    expect($goodRow->lunch)->toBe('pending');
-    expect($goodRow->evening)->toBe('pending');
+    expect($goodRow->lunch)->toBe('absent');
+    expect($goodRow->evening)->toBe('absent');
 
     \Illuminate\Support\Facades\Log::shouldHaveReceived('error')
         ->withArgs(function ($message, $context = []) use ($badStudent) {
@@ -531,8 +531,8 @@ test('finalize crossing a 5% discipline threshold creates notification and sends
 
     expect(AttendanceListe::where('user_id', $student->id)->where('attendance_day', $today)->first())
         ->morning->toBe('absent')
-        ->lunch->toBe('pending')
-        ->evening->toBe('pending');
+        ->lunch->toBe('absent')
+        ->evening->toBe('absent');
 });
 
 test('finalize that does not cross a discipline threshold creates no notification', function () {
