@@ -53,43 +53,54 @@ test('explicit training end date takes precedence and missing start is not inven
     expect($service->content($student, $formation->fresh(), 'contract')['endDate'])->toBe('28/02/2027');
 });
 
-test('student document list contains a contract and charter for each enrolled training', function () {
+function pdfPageCount(string $pdf): int
+{
+    return preg_match_all('#/Type\s*/Page[^s]#', $pdf);
+}
+
+test('student document list contains one contract and one charter for their own training', function () {
     $formation = documentTraining();
     $other = documentTraining(['name' => 'Media']);
     $student = documentStudent($formation);
-    // Existing application enrollment also resolves formations by promo.
+    // Promo matches resolve extra formations, but documents are issued for the assigned one only.
     $formation->forceFill(['promo' => 'DOCS'])->save();
     $other->forceFill(['promo' => 'DOCS'])->save();
     $student->forceFill(['promo' => 'DOCS'])->save();
     $this->actingAs($student)->getJson('/students/training-documents')
-        ->assertOk()->assertJsonCount(4, 'contracts');
+        ->assertOk()->assertJsonCount(2, 'contracts')
+        ->assertJsonPath('contracts.0.name', 'Contrat de formation — Coding');
+    $this->get('/students/training-documents/'.$other->id.'/contract')->assertNotFound();
 });
 
-test('student can download their filled original template but cannot access another training or admin documents', function () {
+test('student can download their one-page training PDFs but cannot access another training or admin documents', function () {
     $formation = documentTraining();
     $student = documentStudent($formation);
     $other = documentTraining(['name' => 'Other']);
-    $response = $this->actingAs($student)->get('/students/training-documents/'.$formation->id.'/contract')
-        ->assertOk()->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    $path = $response->baseResponse->getFile()->getPathname();
-    $zip = new ZipArchive();
-    $zip->open($path);
-    $xml = $zip->getFromName('word/document.xml');
-    expect($xml)->toContain('Student Example', 'AB123456', 'Coding', '31/08/2026', '28/02/2027')
-        ->not->toContain('03/02/2025', '10/08/2025', 'CCCCCCCCCCCCCCCxxxxxxxxxxxxxx');
-    $original = new ZipArchive();
-    $original->open(public_path('assets/documents/Contrat_de_formation_LionsGeek.docx'));
-    for ($i = 0; $i < $original->numFiles; $i++) {
-        $part = $original->getNameIndex($i);
-        if ($part !== 'word/document.xml') {
-            expect($zip->getFromName($part))->toBe($original->getFromName($part));
-        }
+    foreach (['contract', 'charter'] as $type) {
+        $response = $this->actingAs($student)->get('/students/training-documents/'.$formation->id.'/'.$type)
+            ->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        expect(pdfPageCount($response->getContent()))->toBe(1);
     }
-    $original->close();
-    $zip->close();
-    unlink($path);
     $this->get('/students/training-documents/'.$other->id.'/charter')->assertNotFound();
     $this->getJson('/admin/users/'.$student->id.'/training-documents/'.$formation->id.'/contract')->assertForbidden();
+});
+
+test('assigned computer contract is listed and downloadable as a one-page PDF by its holder only', function () {
+    $formation = documentTraining();
+    $student = documentStudent($formation);
+    $computer = \App\Models\Computer::create([
+        'reference' => 'LG-042', 'cpu' => 'SN-123', 'gpu' => 'none', 'mark' => 'Dell',
+        'state' => 'working', 'user_id' => $student->id, 'start' => '2026-09-01',
+    ]);
+    $this->actingAs($student)->getJson('/students/training-documents')
+        ->assertOk()->assertJsonCount(3, 'contracts')
+        ->assertJsonPath('contracts.2.name', 'Contrat ordinateur — Dell LG-042');
+    $response = $this->get('/students/computer-contract/'.$computer->id)
+        ->assertOk()->assertHeader('Content-Type', 'application/pdf');
+    expect(pdfPageCount($response->getContent()))->toBe(1);
+
+    $classmate = documentStudent($formation);
+    $this->actingAs($classmate)->get('/students/computer-contract/'.$computer->id)->assertNotFound();
 });
 
 test('guests and recruiters cannot view student documents', function () {
@@ -106,12 +117,7 @@ test('staff document area includes personalized links and serves both document t
         ->assertOk()->assertJsonCount(2, 'contracts');
     foreach (['contract', 'charter'] as $type) {
         $response = $this->get('/admin/users/'.$student->id.'/training-documents/'.$formation->id.'/'.$type)
-            ->assertOk()->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-        $path = $response->baseResponse->getFile()->getPathname();
-        $zip = new ZipArchive();
-        $zip->open($path);
-        expect($zip->getFromName('word/document.xml'))->toContain('Student Example', 'AB123456');
-        $zip->close();
-        unlink($path);
+            ->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        expect(pdfPageCount($response->getContent()))->toBe(1);
     }
 });
