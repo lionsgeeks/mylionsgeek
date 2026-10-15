@@ -7,6 +7,7 @@ use App\Models\AppBlockModal;
 use App\Models\AppSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class AppVersionController extends Controller
@@ -46,6 +47,12 @@ class AppVersionController extends Controller
             'app_store_url.regex' => 'Must be a valid App Store link (e.g. https://apps.apple.com/app/id123456789).',
             'play_store_url.regex' => 'Must be a valid Play Store link (e.g. https://play.google.com/store/apps/details?id=com.example.app).',
         ]);
+
+        if (AppBlockModal::query()->where('is_active', true)->exists()) {
+            throw ValidationException::withMessages([
+                'app_alert' => 'Deactivate every active app alert before changing the app version.',
+            ]);
+        }
 
         AppSetting::set(self::VERSION_KEY, $validated['version']);
         AppSetting::set(self::APP_STORE_URL_KEY, $validated['app_store_url']);

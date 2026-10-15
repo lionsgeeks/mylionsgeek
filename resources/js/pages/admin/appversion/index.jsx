@@ -91,8 +91,12 @@ export default function AppVersionIndex({ appVersion, modalHistory = [] }) {
                     <p className="mt-1 text-sm text-dark/60 dark:text-light/60">
                         Match the version in{' '}
                         <span className="font-mono text-beta dark:text-alpha">lionsgeek-mobile/app.json</span> after both
-                        store listings are live. Saving this does not turn a modal on or off.
+                        store listings are live. Saving this does not turn an alert on or off. Deactivate every
+                        active alert before saving a new version.
                     </p>
+                    {versionForm.errors.app_alert && (
+                        <p className="mt-2 text-sm text-error">{versionForm.errors.app_alert}</p>
+                    )}
                 </div>
                 <div>
                     <Label htmlFor="version">Required app version</Label>

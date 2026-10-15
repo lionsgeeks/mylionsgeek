@@ -112,7 +112,7 @@ test('activating one modal turns the previous one off', function () {
         ->assertJsonPath('modal.title', 'Second');
 });
 
-test('saving the app version does not turn a modal off', function () {
+test('an active app alert blocks a version change until every alert is off', function () {
     $admin = appAccessUser(['admin']);
     $modal = AppBlockModal::query()->create([
         'is_active' => true,
@@ -121,16 +121,25 @@ test('saving the app version does not turn a modal off', function () {
     ]);
 
     $this->actingAs($admin)
+        ->from('/admin/appversion')
         ->post('/admin/appversion', versionPayload())
-        ->assertRedirect();
+        ->assertRedirect('/admin/appversion')
+        ->assertSessionHasErrors('app_alert');
 
     expect($modal->fresh()->is_active)->toBeTrue();
+    expect(AppSetting::get(AppVersionController::VERSION_KEY, ''))->toBe('');
 
-    $this->getJson('/api/mobile/app-version')
-        ->assertOk()
-        ->assertJsonPath('version', '1.2.3')
-        ->assertJsonPath('block_mode', 'modal')
-        ->assertJsonPath('modal.title', 'Holiday');
+    $this->actingAs($admin)
+        ->post('/admin/appversion/modals/'.$modal->id.'/active', ['active' => false])
+        ->assertRedirect();
+
+    $this->actingAs($admin)
+        ->post('/admin/appversion', versionPayload())
+        ->assertRedirect()
+        ->assertSessionDoesntHaveErrors('app_alert');
+
+    expect($modal->fresh()->is_active)->toBeFalse();
+    expect(AppSetting::get(AppVersionController::VERSION_KEY))->toBe('1.2.3');
 });
 
 test('the admin page lists modal history with an id for the block column', function () {
