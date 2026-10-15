@@ -211,7 +211,10 @@ test('admin invitations activate without CIN or student document acceptances', f
     $user = User::factory()->create(['role' => [$role], 'invite_source' => 'admin']);
     $token = $user->issueActivationToken();
     $this->post(URL::temporarySignedRoute('user.complete-profile.update', now()->addHour(), ['token' => $token]), [
-        'password' => 'NewPassword1', 'password_confirmation' => 'NewPassword1', 'phone' => '0611111111',
+        'password' => 'NewPassword1',
+        'password_confirmation' => 'NewPassword1',
+        'phone' => '0611111111',
+        'gender' => 'male',
     ])->assertRedirect('/login');
     expect($user->fresh()->profile_document_acceptances)->toBeNull();
 })->with(['recruiter', 'coworker', 'coach', 'pro', 'student']);
@@ -221,7 +224,9 @@ test('CIN is required for adults but optional for children', function (string $s
     $token = $user->issueActivationToken();
     $url = URL::temporarySignedRoute('user.complete-profile.update', now()->addHour(), ['token' => $token]);
     $payload = [
-        'password' => 'NewPassword1', 'password_confirmation' => 'NewPassword1',
+        'password' => 'NewPassword1',
+        'password_confirmation' => 'NewPassword1',
+        'gender' => 'male',
         'document_acceptances' => collect(json_decode(file_get_contents(resource_path('js/pages/profile/documents.json')), true))->mapWithKeys(fn ($document) => [$document['id'] => true])->all(),
     ];
     if ($source === 'lionsgeek_children') {

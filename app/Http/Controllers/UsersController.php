@@ -783,6 +783,10 @@ class UsersController extends Controller
             'resume' => $user->resume,
             'resume_view_url' => $user->resumeViewUrl(),
             'role' => $user->role,
+            'access_studio' => (int) $user->access_studio,
+            'access_cowork' => (int) $user->access_cowork,
+            'access_scan' => (int) $user->access_scan,
+            'can_add_users' => (int) $user->can_add_users,
         ];
 
         if ($includeHealthData) {

@@ -179,3 +179,52 @@ test('coach cannot grant can_add_users on another coach', function () {
 
     expect((int) $otherCoach->fresh()->can_add_users)->toBe(0);
 });
+
+test('editing a coach phone keeps can_add_users granted', function () {
+    $admin = addUserActor(['admin']);
+    $coach = addUserActor(['coach']);
+    $coach->forceFill([
+        'can_add_users' => 1,
+        'access_studio' => 1,
+        'access_cowork' => 1,
+        'access_scan' => 1,
+        'phone' => '0600000000',
+    ])->save();
+
+    $this->actingAs($admin)
+        ->from('/admin/users/'.$coach->id)
+        ->put('/students/update/'.$coach->id, [
+            'phone' => '0612345678',
+        ])
+        ->assertRedirect();
+
+    $coach->refresh();
+
+    expect($coach->phone)->toBe('0612345678')
+        ->and((int) $coach->can_add_users)->toBe(1)
+        ->and((int) $coach->access_studio)->toBe(1)
+        ->and((int) $coach->access_cowork)->toBe(1)
+        ->and((int) $coach->access_scan)->toBe(1);
+});
+
+test('admin coach profile payload includes can_add_users and access flags', function () {
+    $admin = addUserActor(['admin']);
+    $coach = addUserActor(['coach']);
+    $coach->forceFill([
+        'can_add_users' => 1,
+        'access_studio' => 1,
+        'access_cowork' => 0,
+        'access_scan' => 1,
+    ])->save();
+
+    $this->actingAs($admin)
+        ->get('/admin/users/'.$coach->id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/users/[id]')
+            ->where('user.can_add_users', 1)
+            ->where('user.access_studio', 1)
+            ->where('user.access_cowork', 0)
+            ->where('user.access_scan', 1)
+        );
+});
