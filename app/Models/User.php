@@ -84,6 +84,8 @@ class User extends Authenticatable
             'is_external' => 'boolean',
             'role' => 'array',
             'socials' => 'array',
+            'profile_document_acceptances' => 'array',
+            'profile_documents_accepted_at' => 'datetime',
         ];
     }
 

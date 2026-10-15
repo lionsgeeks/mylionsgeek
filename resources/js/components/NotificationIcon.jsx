@@ -10,7 +10,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 export default function NotificationIcon() {
     const page = usePage();
-    const { auth, attendanceWarning } = page.props;
+    const { auth } = page.props;
     const [notifications, setNotifications] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
     const [ablyClient, setAblyClient] = useState(null);
@@ -18,13 +18,6 @@ export default function NotificationIcon() {
     const [denyModalOpen, setDenyModalOpen] = useState(false);
     const [denyNotificationId, setDenyNotificationId] = useState(null);
     const [denialReason, setDenialReason] = useState('');
-    const [dismissedAttendanceIds, setDismissedAttendanceIds] = useState(() => {
-        try {
-            return JSON.parse(localStorage.getItem('dismissedAttendanceNotifications') || '[]');
-        } catch {
-            return [];
-        }
-    });
 
     const userRoles = useMemo(() => {
         const role = auth?.user?.role;
@@ -32,16 +25,14 @@ export default function NotificationIcon() {
         return role ? [role] : [];
     }, [auth?.user?.role]);
 
-    const isCoach = userRoles.includes('coach');
     const isAdmin = userRoles.includes('admin');
-    const isStudioResponsable = userRoles.includes('studio_responsable');
 
     useEffect(() => {
         notificationsRef.current = notifications;
     }, [notifications]);
 
     // Fetch notifications function
-    const fetchNotifications = React.useCallback(async (dismissedIds = dismissedAttendanceIds) => {
+    const fetchNotifications = React.useCallback(async () => {
         const notificationList = [];
 
         try {
@@ -89,47 +80,10 @@ export default function NotificationIcon() {
             console.error('Failed to fetch notifications:', error);
         }
 
-        // Add attendance alerts for coaches - only show active trainings
-        if (isCoach && attendanceWarning?.hasWarning) {
-            const allTrainings = Array.isArray(attendanceWarning.trainings) ? attendanceWarning.trainings : [];
-
-            // Filter to only show active trainings (same logic as attendance-warning.jsx)
-            const getTrainingStatus = (training) => {
-                if (!training.start_time) return null;
-                const start = new Date(training.start_time);
-                const now = new Date();
-                const sixMonthsLater = new Date(start);
-                sixMonthsLater.setMonth(start.getMonth() + 6);
-                if (now < sixMonthsLater && start < now) return 'active';
-                return null;
-            };
-
-            const activeTrainings = allTrainings.filter((t) => getTrainingStatus(t) === 'active');
-
-            activeTrainings.forEach((training) => {
-                const notificationId = `attendance-${training.id}`;
-                if (dismissedIds.includes(notificationId)) {
-                    return;
-                }
-
-                notificationList.push({
-                    id: notificationId,
-                    type: 'attendance',
-                    senderName: 'System',
-                    senderImage: null,
-                    message: `Don't forget to mark attendance for "${training.name}"`,
-                    link: `/trainings/${training.id}`,
-                    iconType: 'clock',
-                    timestamp: new Date(),
-                    readAt: null, // Attendance notifications are always unread (system notifications)
-                });
-            });
-        }
-
         // Sort by timestamp (newest first)
         notificationList.sort((a, b) => b.timestamp - a.timestamp);
         setNotifications(notificationList);
-    }, [isCoach, isAdmin, isStudioResponsable, attendanceWarning, dismissedAttendanceIds]);
+    }, []);
 
     // Fetch notifications on mount and when dependencies change
     useEffect(() => {
@@ -198,24 +152,12 @@ export default function NotificationIcon() {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
                 },
             });
-            const attendanceIds = notificationsRef.current
-                .filter((notification) => notification.type === 'attendance')
-                .map((notification) => notification.id);
-            if (attendanceIds.length > 0) {
-                const nextDismissedIds = Array.from(new Set([...dismissedAttendanceIds, ...attendanceIds]));
-                localStorage.setItem('dismissedAttendanceNotifications', JSON.stringify(nextDismissedIds));
-                setDismissedAttendanceIds(nextDismissedIds);
-                await fetchNotifications(nextDismissedIds);
-
-                return;
-            }
-
             // Refresh notifications to get updated list with read_at timestamps
             await fetchNotifications();
         } catch (error) {
             console.error('Failed to mark all notifications as read:', error);
         }
-    }, [dismissedAttendanceIds, fetchNotifications]);
+    }, [fetchNotifications]);
 
     // Fetch notifications when dropdown opens
     useEffect(() => {
@@ -237,15 +179,6 @@ export default function NotificationIcon() {
 
     const markAsRead = async (notification) => {
         try {
-            if (notification.type === 'attendance') {
-                const nextDismissedIds = Array.from(new Set([...dismissedAttendanceIds, notification.id]));
-                localStorage.setItem('dismissedAttendanceNotifications', JSON.stringify(nextDismissedIds));
-                setDismissedAttendanceIds(nextDismissedIds);
-                setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
-
-                return;
-            }
-
             // Extract type and ID from notification.id (e.g., "follow-123" -> type="follow", id="123")
             // Handle compound types like "project-submission-123", "project-status-123", or "access-request-123"
             const parts = notification.id.split('-');

@@ -7,21 +7,21 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-/** Always use Mail::send() — never Mail::queue() — so credentials mail is not stored in the jobs table. */
+/** Sent via SendsCredentialsMailAfterResponse (Mail::send in-process, never Mail::queue). */
 class OrganisationInvitedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public User $user, public string $plainPassword) {}
+    public function __construct(public User $user, public string $completeProfileUrl) {}
 
     public function build(): self
     {
-        return $this->subject(config('app.name').' - Your organisation account credentials')
+        return $this->subject(config('app.name').' - Complete your organisation profile')
             ->view('emails.organisation-invited')
             ->with([
                 'user' => $this->user,
-                'plainPassword' => $this->plainPassword,
-                'loginUrl' => url('/login'),
+                'completeProfileUrl' => $this->completeProfileUrl,
+                'expiresHours' => User::ACTIVATION_TTL_HOURS,
             ]);
     }
 }

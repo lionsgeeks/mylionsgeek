@@ -74,7 +74,10 @@ const addOrRemoveFollow = (userId, isFollowing) => {
     }
 };
 
+let scrollLockCount = 0;
 let scrollY = 0;
+let previousHtmlOverflow = '';
+let previousBodyOverflow = '';
 
 const stopScrolling = (isOpen) => {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
@@ -82,20 +85,39 @@ const stopScrolling = (isOpen) => {
     }
 
     if (isOpen) {
-        scrollY = window.scrollY;
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${scrollY}px`;
-        document.body.style.left = '0';
-        document.body.style.right = '0';
-        document.body.style.width = '100%';
-    } else {
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.left = '';
-        document.body.style.right = '';
-        document.body.style.width = '';
-        window.scrollTo(0, scrollY);
+        if (scrollLockCount === 0) {
+            scrollY = window.scrollY || window.pageYOffset || 0;
+            previousHtmlOverflow = document.documentElement.style.overflow;
+            previousBodyOverflow = document.body.style.overflow;
+            document.documentElement.style.overflow = 'hidden';
+            document.body.style.overflow = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${scrollY}px`;
+            document.body.style.left = '0';
+            document.body.style.right = '0';
+            document.body.style.width = '100%';
+        }
+        scrollLockCount += 1;
+        return;
     }
+
+    if (scrollLockCount === 0) {
+        return;
+    }
+
+    scrollLockCount -= 1;
+    if (scrollLockCount > 0) {
+        return;
+    }
+
+    document.documentElement.style.overflow = previousHtmlOverflow;
+    document.body.style.overflow = previousBodyOverflow;
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
 };
 
 const resolvePostImageUrl = (image) => {

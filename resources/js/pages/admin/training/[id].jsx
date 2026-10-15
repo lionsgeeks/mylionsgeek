@@ -438,11 +438,11 @@ export default function Show({ training, usersNull, courses = [], coaches = [] }
                         <SelectValue placeholder={placeholder} />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="present">Present</SelectItem>
                         <SelectItem value="absent">Absent</SelectItem>
+                        <SelectItem value="present">Present</SelectItem>
                         <SelectItem value="late">Late</SelectItem>
                         <SelectItem value="excused">Excused</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
                     </SelectContent>
                 </Select>
             </div>

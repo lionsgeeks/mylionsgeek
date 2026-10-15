@@ -64,7 +64,9 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
 
             if (!interactionId || interactionId !== myInteractionId) return;
 
-            setLikedInteractionPostIds((prev) => (liked ? [...new Set([...prev, interactionId])] : prev.filter((id) => Number(id) !== interactionId)));
+            setLikedInteractionPostIds((prev) =>
+                liked ? [...new Set([...prev, interactionId])] : prev.filter((id) => Number(id) !== interactionId),
+            );
         };
 
         window.addEventListener(POST_LIKE_TOGGLED_EVENT, handler);
@@ -176,7 +178,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
             <div
                 className={
                     isFacebook
-                        ? 'flex items-center justify-between border-b border-border/60 px-4 py-2 text-[13px] text-muted-foreground dark:border-white/10 dark:text-light/60'
+                        ? 'flex items-center justify-between border-b border-light/10 px-4 py-2 text-[13px] text-light/70'
                         : `flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-dark_gray/70 ${!PostModal && 'dark:bg-dark'}`
                 }
             >
@@ -189,7 +191,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                 <div className="flex items-center gap-2">
                     <div
                         onClick={() => onCommentPress?.()}
-                        className="cursor-pointer text-xs text-gray-600 hover:underline dark:text-gray-400"
+                        className={`cursor-pointer text-xs hover:underline ${isFacebook ? 'text-light/70' : 'text-gray-600 dark:text-gray-400'}`}
                         role="button"
                         tabIndex={0}
                         onKeyDown={(e) => {
@@ -201,12 +203,10 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                     >
                         {commentCount} {isFacebook ? 'comments' : 'Comments'}
                     </div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400">
-                        <span className="text-xs text-gray-600 dark:text-gray-400">  • </span> {repostCount} {isFacebook ? 'reposts' : 'Reposts'}
+                    <div className={`text-xs ${isFacebook ? 'text-light/70' : 'text-gray-600 dark:text-gray-400'}`}>
+                        <span> • </span> {repostCount} {isFacebook ? 'reposts' : 'Reposts'}
                     </div>
-
                 </div>
-
             </div>
 
             {/* Buttons */}
@@ -224,17 +224,17 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                         onClick={() => toggleLike(interactionPostId)}
                         className={
                             isFacebook
-                                ? `flex flex-1 cursor-pointer items-center justify-center gap-1 py-2.5 text-[15px] font-semibold transition-colors hover:bg-muted/50 dark:hover:bg-dark_gray ${isLiked ? 'text-alpha' : 'text-beta dark:text-light'
-                                }`
-                                : `flex cursor-pointer items-center gap-1 rounded-lg px-4 py-2 transition-colors duration-200 ${isLiked ? 'text-alpha' : 'text-beta hover:text-alpha dark:text-light'
-                                }`
+                                ? `flex flex-1 cursor-pointer items-center justify-center gap-1 py-2.5 text-[15px] font-semibold transition-colors hover:bg-light/10 ${
+                                      isLiked ? 'text-alpha' : 'text-light'
+                                  }`
+                                : `flex cursor-pointer items-center gap-1 rounded-lg px-4 py-2 transition-colors duration-200 ${
+                                      isLiked ? 'text-alpha' : 'text-beta hover:text-alpha dark:text-light'
+                                  }`
                         }
                         aria-pressed={isLiked}
                     >
-                        <LionsGeekLogoIcon className="h-5 w-5 mt-1" />
-                        <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>
-                            {isLiked ? 'Geeked' : 'Geek'}
-                        </span>
+                        <LionsGeekLogoIcon className="mt-1 h-5 w-5" />
+                        <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>{isLiked ? 'Geeked' : 'Geek'}</span>
                     </button>
 
                     {/* Comment Button */}
@@ -242,7 +242,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                         type="button"
                         className={
                             isFacebook
-                                ? 'flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[15px] font-semibold text-beta transition-colors hover:bg-muted/50 dark:text-light dark:hover:bg-dark_gray'
+                                ? 'flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[15px] font-semibold text-light transition-colors hover:bg-light/10'
                                 : 'flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-beta transition-colors duration-200 hover:bg-dark_gray/10 hover:text-beta dark:text-light dark:hover:bg-light/10'
                         }
                         onClick={() => onCommentPress?.()}
@@ -264,7 +264,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                             type="button"
                             className={
                                 isFacebook
-                                    ? `flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[15px] font-semibold transition-colors hover:bg-muted/50 dark:hover:bg-dark_gray ${isReposted ? 'text-alpha' : 'text-beta dark:text-light'}`
+                                    ? `flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[15px] font-semibold transition-colors hover:bg-light/10 ${isReposted ? 'text-alpha' : 'text-light'}`
                                     : `flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 transition-colors duration-200 ${isReposted ? 'text-alpha' : 'text-beta hover:text-alpha dark:text-light'}`
                             }
                             onClick={() => setRepostOpenFor(post?.id)}
@@ -278,9 +278,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                                     d="M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4m14-2v2a4 4 0 01-4 4H3"
                                 />
                             </svg>
-                            <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>
-                                {isReposted ? 'Reposted' : 'Repost'}
-                            </span>
+                            <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>{isReposted ? 'Reposted' : 'Repost'}</span>
                         </button>
                     )}
 
@@ -289,7 +287,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                         type="button"
                         className={
                             isFacebook
-                                ? 'flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[15px] font-semibold text-beta transition-colors hover:bg-muted/50 dark:text-light dark:hover:bg-dark_gray'
+                                ? 'flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[15px] font-semibold text-light transition-colors hover:bg-light/10'
                                 : 'flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-beta transition-colors duration-200 hover:bg-dark_gray/10 hover:text-beta dark:text-light dark:hover:bg-light/10'
                         }
                         onClick={() => setSendOpenFor(post?.id)}

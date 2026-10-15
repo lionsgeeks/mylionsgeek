@@ -31,7 +31,7 @@ class ProfileUpdateRequest extends FormRequest
             'cin' => ['nullable', 'string', 'max:100'],
             'wakatime_api_key' => ['nullable', 'string', 'max:255'],
             'speciality' => ['nullable', 'string', 'max:255'],
-            'image' => ['nullable', 'image', 'max:2048'],
+            'image' => ['nullable', 'image', 'max:10240'],
         ];
     }
 }

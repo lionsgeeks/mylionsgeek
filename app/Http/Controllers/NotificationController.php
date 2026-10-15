@@ -2,35 +2,35 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use App\Models\AttendanceReminderNotification;
-use App\Models\DisciplineNotification;
-use App\Models\ExerciseReviewNotification;
-use App\Models\PostNotification;
-use App\Models\StoryNotification;
-use App\Models\FollowNotification;
-use App\Models\ProjectSubmissionNotification;
-use App\Models\ProjectStatusNotification;
+use Ably\AblyRest;
 use App\Models\AccessRequestNotification;
 use App\Models\AccessRequestResponseNotification;
-use App\Models\TaskAssignmentNotification;
-use App\Models\ProjectMessageNotification;
-use App\Models\JobApplicationNotification;
-use App\Models\PostReportNotification;
-use App\Models\UserReportNotification;
-use App\Models\UserBlockNotification;
-use App\Models\AnnouncementNotification;
 use App\Models\Announcement;
+use App\Models\AnnouncementNotification;
+use App\Models\AttendanceReminderNotification;
+use App\Models\DisciplineNotification;
 use App\Models\EventNotification;
 use App\Models\EventNotificationRead;
+use App\Models\ExerciseReviewNotification;
+use App\Models\FollowNotification;
 use App\Models\Formation;
+use App\Models\JobApplicationNotification;
+use App\Models\Organization;
+use App\Models\PostNotification;
+use App\Models\PostReportNotification;
+use App\Models\ProjectMessageNotification;
+use App\Models\ProjectStatusNotification;
+use App\Models\ProjectSubmissionNotification;
+use App\Models\StoryNotification;
+use App\Models\TaskAssignmentNotification;
 use App\Models\User;
-use Ably\AblyRest;
+use App\Models\UserBlockNotification;
+use App\Models\UserReportNotification;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class NotificationController extends Controller
 {
@@ -41,7 +41,7 @@ class NotificationController extends Controller
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['notifications' => []]);
         }
 
@@ -73,13 +73,13 @@ class NotificationController extends Controller
                     }
 
                     $notifications[] = [
-                        'id' => 'discipline-' . $notif->id,
+                        'id' => 'discipline-'.$notif->id,
                         'type' => 'discipline_change',
                         'sender_name' => $notif->user->name ?? 'Unknown',
                         'sender_image' => $notif->user->image ?? null,
                         'message' => $notif->message_notification ?? '',
                         'link' => $notif->path ?? "/admin/users/{$notif->user_id}",
-                        'mobile_link' => '/profile/' . $notif->user_id,
+                        'mobile_link' => '/profile/'.$notif->user_id,
                         'icon_type' => 'user',
                         'discipline_value' => $notif->discipline_change,
                         'change_type' => $notif->type, // 'increase' or 'decrease'
@@ -105,13 +105,13 @@ class NotificationController extends Controller
                     }
 
                     $notifications[] = [
-                        'id' => 'discipline-' . $notif->id,
+                        'id' => 'discipline-'.$notif->id,
                         'type' => 'discipline_change',
                         'sender_name' => $notif->user->name ?? 'Unknown',
                         'sender_image' => $notif->user->image ?? null,
                         'message' => $notif->message_notification ?? '',
                         'link' => $notif->path ?? "/admin/users/{$notif->user_id}",
-                        'mobile_link' => '/profile/' . $notif->user_id,
+                        'mobile_link' => '/profile/'.$notif->user_id,
                         'icon_type' => 'user',
                         'discipline_value' => $notif->discipline_change,
                         'change_type' => $notif->type,
@@ -132,7 +132,7 @@ class NotificationController extends Controller
 
                     Log::info('Exercise review notifications query', [
                         'coach_id' => $user->id,
-                        'found_count' => $exerciseReviewNotifications->count()
+                        'found_count' => $exerciseReviewNotifications->count(),
                     ]);
 
                     foreach ($exerciseReviewNotifications as $notif) {
@@ -140,7 +140,7 @@ class NotificationController extends Controller
                         if ($notif->user) {
                             // Get training_id from exercice if path doesn't have it
                             $link = $notif->path;
-                            if (!$link || $link === "/admin/exercices" || $link === "/trainings") {
+                            if (! $link || $link === '/admin/exercices' || $link === '/trainings') {
                                 // Get training_id from exercice
                                 $trainingId = null;
                                 if ($notif->exercice) {
@@ -149,12 +149,12 @@ class NotificationController extends Controller
                                 if ($trainingId) {
                                     $link = "/trainings/{$trainingId}";
                                 } else {
-                                    $link = "/trainings";
+                                    $link = '/trainings';
                                 }
                             }
-                            
+
                             $notifications[] = [
-                                'id' => 'exercise-review-' . $notif->id,
+                                'id' => 'exercise-review-'.$notif->id,
                                 'type' => 'exercise_review',
                                 'sender_name' => $notif->user->name ?? 'Unknown',
                                 'sender_image' => $notif->user->image ?? null,
@@ -168,7 +168,7 @@ class NotificationController extends Controller
                         }
                     }
                 } catch (\Exception $e) {
-                    Log::error('Error fetching exercise review notifications: ' . $e->getMessage());
+                    Log::error('Error fetching exercise review notifications: '.$e->getMessage());
                 }
             }
 
@@ -184,9 +184,9 @@ class NotificationController extends Controller
                     foreach ($projectNotifications as $notif) {
                         if ($notif->student && $notif->project) {
                             $link = $notif->path ?? "/students/project/{$notif->project_id}";
-                            
+
                             $notifications[] = [
-                                'id' => 'project-submission-' . $notif->id,
+                                'id' => 'project-submission-'.$notif->id,
                                 'type' => 'project_submission',
                                 'sender_name' => $notif->student->name ?? 'Unknown',
                                 'sender_image' => $notif->student->image ?? null,
@@ -200,7 +200,7 @@ class NotificationController extends Controller
                         }
                     }
                 } catch (\Exception $e) {
-                    Log::error('Error fetching project submission notifications: ' . $e->getMessage());
+                    Log::error('Error fetching project submission notifications: '.$e->getMessage());
                 }
             }
 
@@ -215,15 +215,15 @@ class NotificationController extends Controller
 
                     foreach ($accessRequests as $notif) {
                         if ($notif->user) {
-                            $accessTypeLabel = match($notif->requested_access_type) {
+                            $accessTypeLabel = match ($notif->requested_access_type) {
                                 'studio' => 'Studio',
                                 'cowork' => 'Cowork',
                                 'both' => 'Studio & Cowork',
                                 default => 'Access'
                             };
-                            
+
                             $notifications[] = [
-                                'id' => 'access-request-' . $notif->id,
+                                'id' => 'access-request-'.$notif->id,
                                 'type' => 'access_request',
                                 'sender_name' => $notif->user->name ?? 'Unknown',
                                 'sender_image' => $notif->user->image ?? null,
@@ -239,7 +239,7 @@ class NotificationController extends Controller
                         }
                     }
                 } catch (\Exception $e) {
-                    Log::error('Error fetching access request notifications: ' . $e->getMessage());
+                    Log::error('Error fetching access request notifications: '.$e->getMessage());
                 }
             }
 
@@ -274,7 +274,7 @@ class NotificationController extends Controller
                     }
 
                     $notifications[] = [
-                        'id' => 'reservation-' . $reservation->id,
+                        'id' => 'reservation-'.$reservation->id,
                         'type' => 'reservation',
                         'sender_name' => $reservation->sender_name ?? 'Unknown',
                         'sender_image' => $reservation->sender_image,
@@ -285,8 +285,8 @@ class NotificationController extends Controller
                         'read_at' => $this->isSyntheticNotificationDismissed($user->id, 'reservation', (int) $reservation->id)
                             ? now()->toISOString()
                             : null,
-                        'link' => '/admin/reservations/' . $reservation->id . '/details',
-                        'mobile_link' => '/admin/reservations/' . $reservation->id . '/details',
+                        'link' => '/admin/reservations/'.$reservation->id.'/details',
+                        'mobile_link' => '/admin/reservations/'.$reservation->id.'/details',
                         'icon_type' => 'calendar',
                     ];
                 }
@@ -314,13 +314,13 @@ class NotificationController extends Controller
                         ->get();
 
                     foreach ($pendingAppointments as $appointment) {
-                        $message = "Appointment request";
+                        $message = 'Appointment request';
                         if ($appointment->day && $appointment->start && $appointment->end) {
                             $message .= " - {$appointment->day} {$appointment->start}-{$appointment->end}";
                         }
 
                         $notifications[] = [
-                            'id' => 'appointment-' . $appointment->id,
+                            'id' => 'appointment-'.$appointment->id,
                             'type' => 'appointment',
                             'sender_name' => $appointment->requester_name ?? 'Unknown',
                             'sender_image' => $appointment->requester_image,
@@ -351,14 +351,14 @@ class NotificationController extends Controller
                     foreach ($accessResponseNotifications as $notif) {
                         $reviewerName = $notif->reviewer ? $notif->reviewer->name : 'Admin';
                         $message = $notif->message_notification;
-                        
+
                         // Add denial reason to message if denied
                         if ($notif->status === 'denied' && $notif->denial_reason) {
-                            $message .= ' Reason: ' . $notif->denial_reason;
+                            $message .= ' Reason: '.$notif->denial_reason;
                         }
 
                         $notifications[] = [
-                            'id' => 'access-request-response-' . $notif->id,
+                            'id' => 'access-request-response-'.$notif->id,
                             'type' => 'access_request_response',
                             'sender_name' => $reviewerName,
                             'sender_image' => $notif->reviewer ? $notif->reviewer->image : null,
@@ -373,7 +373,7 @@ class NotificationController extends Controller
                         ];
                     }
                 } catch (\Exception $e) {
-                    Log::error('Error fetching access request response notifications: ' . $e->getMessage());
+                    Log::error('Error fetching access request response notifications: '.$e->getMessage());
                 }
             }
 
@@ -387,7 +387,7 @@ class NotificationController extends Controller
             foreach ($postNotifications as $notif) {
                 $senderName = $notif->sender ? $notif->sender->name : 'Unknown';
                 $senderImage = $notif->sender ? $notif->sender->image : null;
-                
+
                 if ($notif->type === 'like') {
                     $message = "{$senderName} liked your post";
                 } elseif ($notif->type === 'comment') {
@@ -409,13 +409,13 @@ class NotificationController extends Controller
                 }
 
                 $notifications[] = [
-                    'id' => 'post-' . $notif->id,
+                    'id' => 'post-'.$notif->id,
                     'type' => 'post_interaction',
                     'sender_name' => $senderName,
                     'sender_image' => $senderImage,
                     'message' => $message,
-                    'link' => '/students/feed#post-' . $notif->post_id,
-                    'mobile_link' => '/posts/' . $notif->post_id,
+                    'link' => '/students/feed#post-'.$notif->post_id,
+                    'mobile_link' => '/posts/'.$notif->post_id,
                     'post_id' => $notif->post_id,
                     'icon_type' => 'user',
                     'created_at' => $notif->created_at->toISOString(),
@@ -469,16 +469,16 @@ class NotificationController extends Controller
                     foreach ($reportNotifs as $rn) {
                         $report = $rn->report;
                         $reporter = $report?->reporter;
-                        if (!$report || !$reporter) {
+                        if (! $report || ! $reporter) {
                             continue;
                         }
 
                         $notifications[] = [
-                            'id' => 'post-report-' . $rn->id,
+                            'id' => 'post-report-'.$rn->id,
                             'type' => 'post_report',
                             'sender_name' => $reporter->name ?? 'User',
                             'sender_image' => $reporter->image ?? null,
-                            'message' => ($reporter->name ?? 'Someone') . ' reported a post',
+                            'message' => ($reporter->name ?? 'Someone').' reported a post',
                             'link' => "/admin/post-reports/{$report->id}",
                             'mobile_link' => "/posts/{$report->post_id}?reportId={$report->id}",
                             'icon_type' => 'flag',
@@ -490,7 +490,7 @@ class NotificationController extends Controller
                         ];
                     }
                 } catch (\Exception $e) {
-                    Log::error('Error fetching post report notifications: ' . $e->getMessage());
+                    Log::error('Error fetching post report notifications: '.$e->getMessage());
                 }
             }
 
@@ -591,15 +591,15 @@ class NotificationController extends Controller
             foreach ($followNotifications as $notif) {
                 $senderName = $notif->follower ? $notif->follower->name : 'Unknown';
                 $senderImage = $notif->follower ? $notif->follower->image : null;
-                
+
                 $notifications[] = [
-                    'id' => 'follow-' . $notif->id,
+                    'id' => 'follow-'.$notif->id,
                     'type' => 'follow',
                     'sender_name' => $senderName,
                     'sender_image' => $senderImage,
                     'message' => "{$senderName} started following you",
                     'link' => "/students/{$notif->follower_id}",
-                    'mobile_link' => '/profile/' . $notif->follower_id,
+                    'mobile_link' => '/profile/'.$notif->follower_id,
                     'icon_type' => 'user',
                     'created_at' => $notif->created_at->toISOString(),
                     'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
@@ -625,7 +625,7 @@ class NotificationController extends Controller
                         $jobId = $notif->jobApplication?->job_posting_id;
 
                         $notifications[] = [
-                            'id' => 'job-application-' . $notif->id,
+                            'id' => 'job-application-'.$notif->id,
                             'type' => 'job_application',
                             'sender_name' => $applicantName,
                             'sender_image' => $applicant?->image,
@@ -639,7 +639,7 @@ class NotificationController extends Controller
                         ];
                     }
                 } catch (\Exception $e) {
-                    Log::error('Error fetching job application notifications: ' . $e->getMessage());
+                    Log::error('Error fetching job application notifications: '.$e->getMessage());
                 }
             }
 
@@ -656,11 +656,11 @@ class NotificationController extends Controller
                         if ($notif->project) {
                             $link = $notif->path ?? "/students/project/{$notif->project_id}";
                             $reviewerName = $notif->reviewer ? $notif->reviewer->name : 'Admin';
-                            
+
                             $iconType = $notif->status === 'approved' ? 'check-circle' : 'x-circle';
-                            
+
                             $notifications[] = [
-                                'id' => 'project-status-' . $notif->id,
+                                'id' => 'project-status-'.$notif->id,
                                 'type' => 'project_status',
                                 'sender_name' => $reviewerName,
                                 'sender_image' => $notif->reviewer ? $notif->reviewer->image : null,
@@ -676,7 +676,7 @@ class NotificationController extends Controller
                         }
                     }
                 } catch (\Exception $e) {
-                    Log::error('Error fetching project status notifications: ' . $e->getMessage());
+                    Log::error('Error fetching project status notifications: '.$e->getMessage());
                 }
             }
 
@@ -691,10 +691,10 @@ class NotificationController extends Controller
 
                     foreach ($taskAssignmentNotifications as $notif) {
                         if ($notif->assignedByUser) {
-                            $link = $notif->path ?? "/admin/projects";
-                            
+                            $link = $notif->path ?? '/admin/projects';
+
                             $notifications[] = [
-                                'id' => 'task-assignment-' . $notif->id,
+                                'id' => 'task-assignment-'.$notif->id,
                                 'type' => 'task_assignment',
                                 'sender_name' => $notif->assignedByUser->name ?? 'Unknown',
                                 'sender_image' => $notif->assignedByUser->image ?? null,
@@ -708,7 +708,7 @@ class NotificationController extends Controller
                         }
                     }
                 } catch (\Exception $e) {
-                    Log::error('Error fetching task assignment notifications: ' . $e->getMessage());
+                    Log::error('Error fetching task assignment notifications: '.$e->getMessage());
                 }
             }
 
@@ -724,9 +724,9 @@ class NotificationController extends Controller
                     foreach ($projectMessageNotifications as $notif) {
                         if ($notif->sender && $notif->project) {
                             $link = $notif->path ?? "/admin/projects/{$notif->project_id}";
-                            
+
                             $notifications[] = [
-                                'id' => 'project-message-' . $notif->id,
+                                'id' => 'project-message-'.$notif->id,
                                 'type' => 'project_message',
                                 'sender_name' => $notif->sender->name ?? 'Unknown',
                                 'sender_image' => $notif->sender->image ?? null,
@@ -740,12 +740,12 @@ class NotificationController extends Controller
                         }
                     }
                 } catch (\Exception $e) {
-                    Log::error('Error fetching project message notifications: ' . $e->getMessage());
+                    Log::error('Error fetching project message notifications: '.$e->getMessage());
                 }
             }
 
             // Announcements (loaded on bell open / poll — no real-time push)
-            if (Schema::hasTable('announcements')) {
+            if (Schema::hasTable('announcements') && Organization::userReceivesCommunityBroadcasts($user)) {
                 try {
                     $announcements = Announcement::with('creator')
                         ->latest()
@@ -762,7 +762,7 @@ class NotificationController extends Controller
                         $readAt = $readStates->get($announcement->id);
 
                         $notifications[] = [
-                            'id' => 'announcement-' . $announcement->id,
+                            'id' => 'announcement-'.$announcement->id,
                             'type' => 'announcement',
                             'sender_name' => $announcement->title,
                             'sender_image' => $announcement->creator?->image,
@@ -775,7 +775,7 @@ class NotificationController extends Controller
                         ];
                     }
                 } catch (\Exception $e) {
-                    Log::error('Error fetching announcement notifications: ' . $e->getMessage());
+                    Log::error('Error fetching announcement notifications: '.$e->getMessage());
                 }
             }
 
@@ -796,19 +796,19 @@ class NotificationController extends Controller
                         $readAt = $readStates->get($eventNotification->id);
 
                         $notifications[] = [
-                            'id' => 'event-' . $eventNotification->id,
+                            'id' => 'event-'.$eventNotification->id,
                             'type' => 'event',
                             'event_id' => $eventNotification->lionsgeek_event_id,
                             'sender_name' => $eventNotification->title,
                             'message' => $eventNotification->message,
-                            'mobile_link' => '/events/' . $eventNotification->lionsgeek_event_id,
+                            'mobile_link' => '/events/'.$eventNotification->lionsgeek_event_id,
                             'icon_type' => 'calendar',
                             'created_at' => $eventNotification->created_at->toISOString(),
                             'read_at' => $readAt ? $readAt->toISOString() : null,
                         ];
                     }
                 } catch (\Exception $e) {
-                    Log::error('Error fetching event notifications: ' . $e->getMessage());
+                    Log::error('Error fetching event notifications: '.$e->getMessage());
                 }
             }
 
@@ -833,7 +833,7 @@ class NotificationController extends Controller
                             ?: "Check in for {$slotLabel}";
 
                         $notifications[] = [
-                            'id' => 'attendance_reminder-' . $notif->id,
+                            'id' => 'attendance_reminder-'.$notif->id,
                             'type' => 'attendance_reminder',
                             'sender_name' => 'Attendance',
                             'sender_image' => null,
@@ -848,7 +848,7 @@ class NotificationController extends Controller
                         ];
                     }
                 } catch (\Exception $e) {
-                    Log::error('Error fetching attendance reminder notifications: ' . $e->getMessage());
+                    Log::error('Error fetching attendance reminder notifications: '.$e->getMessage());
                 }
             }
 
@@ -860,7 +860,8 @@ class NotificationController extends Controller
             return response()->json(['notifications' => array_slice($notifications, 0, 50)]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to fetch notifications: ' . $e->getMessage());
+            Log::error('Failed to fetch notifications: '.$e->getMessage());
+
             return response()->json(['notifications' => []], 500);
         }
     }
@@ -871,8 +872,8 @@ class NotificationController extends Controller
     public function markAsRead(Request $request, $type, $id)
     {
         $user = $request->user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
@@ -945,9 +946,9 @@ class NotificationController extends Controller
                     $isAdmin = in_array('admin', $roles);
                     $isModerator = in_array('moderateur', $roles);
                     $isCoach = in_array('coach', $roles);
-                    
+
                     $query = DisciplineNotification::where('id', $id);
-                    
+
                     if ($isAdmin || $isModerator) {
                         // Admins/Moderators can mark any discipline notification as read
                         $notification = $query->first();
@@ -960,7 +961,7 @@ class NotificationController extends Controller
                         // Regular users can mark their own discipline notifications
                         $notification = $query->where('user_id', $user->id)->first();
                     }
-                    
+
                     if ($notification) {
                         $notification->read_at = now();
                         $notification->save();
@@ -1063,6 +1064,9 @@ class NotificationController extends Controller
                     }
                     break;
                 case 'announcement':
+                    if (! Organization::userReceivesCommunityBroadcasts($user)) {
+                        break;
+                    }
                     if (Schema::hasTable('announcement_notifications')) {
                         $notification = AnnouncementNotification::firstOrCreate(
                             [
@@ -1110,7 +1114,8 @@ class NotificationController extends Controller
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
-            Log::error('Failed to mark notification as read: ' . $e->getMessage());
+            Log::error('Failed to mark notification as read: '.$e->getMessage());
+
             return response()->json(['error' => 'Failed to mark as read'], 500);
         }
     }
@@ -1121,8 +1126,8 @@ class NotificationController extends Controller
     public function markAllAsRead(Request $request)
     {
         $user = $request->user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
@@ -1201,7 +1206,11 @@ class NotificationController extends Controller
                     ->update(['read_at' => now()]);
             }
 
-            if (Schema::hasTable('announcement_notifications') && Schema::hasTable('announcements')) {
+            if (
+                Organization::userReceivesCommunityBroadcasts($user)
+                && Schema::hasTable('announcement_notifications')
+                && Schema::hasTable('announcements')
+            ) {
                 $announcementIds = Announcement::latest()->limit(50)->pluck('id');
 
                 foreach ($announcementIds as $announcementId) {
@@ -1303,7 +1312,8 @@ class NotificationController extends Controller
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
-            Log::error('Failed to mark all notifications as read: ' . $e->getMessage());
+            Log::error('Failed to mark all notifications as read: '.$e->getMessage());
+
             return response()->json(['error' => 'Failed to mark all as read'], 500);
         }
     }
@@ -1332,14 +1342,14 @@ class NotificationController extends Controller
     public function getAblyToken(Request $request)
     {
         $user = $request->user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
         try {
             $ablyKey = config('services.ably.key');
-            if (!$ablyKey) {
+            if (! $ablyKey) {
                 return response()->json(['error' => 'Ably not configured'], 500);
             }
 
@@ -1360,9 +1370,9 @@ class NotificationController extends Controller
                 'channelName' => "notifications:{$user->id}",
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to generate Ably token for notifications: ' . $e->getMessage());
+            Log::error('Failed to generate Ably token for notifications: '.$e->getMessage());
+
             return response()->json(['error' => 'Failed to generate token'], 500);
         }
     }
 }
-

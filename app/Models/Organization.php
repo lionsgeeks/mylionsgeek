@@ -64,4 +64,12 @@ class Organization extends Model
             ?? $this->contact_name
             ?? $this->email;
     }
+
+    /**
+     * Organisation workspace users (recruiters) must not get student/community announcements or newsletters.
+     */
+    public static function userReceivesCommunityBroadcasts(User $user): bool
+    {
+        return ! $user->isRecruiter();
+    }
 }

@@ -109,6 +109,7 @@ beforeEach(function () {
         'category' => 'coding',
         'start_time' => '2025-01-01',
         'user_id' => null,
+        'is_active' => true,
     ]);
 
     config(['attendance.allowed_ips' => ['203.0.113.1']]);
@@ -269,8 +270,8 @@ test('web check-in saves present during the present window', function () {
             'status' => 'present',
             'row' => [
                 'morning' => 'present',
-                'lunch' => 'pending',
-                'evening' => 'pending',
+                'lunch' => 'absent',
+                'evening' => 'absent',
             ],
         ]);
 
@@ -429,6 +430,31 @@ test('student off-network can read home-slot-status for reminder banner', functi
                 'present_minutes' => 15,
                 'already_marked_slots' => [],
             ],
+        ]);
+});
+
+test('home-slot-status hides the banner when the assigned training is inactive', function () {
+    freezeWebTime('09:42:00');
+    Schema::table('users', function (Blueprint $table) {
+        $table->string('promo')->nullable();
+    });
+
+    $this->formation->update(['is_active' => false, 'promo' => '5']);
+    Formation::create([
+        'name' => 'Promo match only',
+        'promo' => '5',
+        'is_active' => true,
+    ]);
+
+    $student = createWebStudent(['promo' => '5']);
+
+    $this->actingAs($student)
+        ->withServerVariables(['REMOTE_ADDR' => '198.51.100.99'])
+        ->getJson('/students/attendance/home-slot-status')
+        ->assertOk()
+        ->assertJson([
+            'formation' => null,
+            'slot_status' => null,
         ]);
 });
 

@@ -1,8 +1,8 @@
 import { Avatar } from '@/components/ui/avatar';
 import { Link } from '@inertiajs/react';
+import axios from 'axios';
 import { X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
 import { helpers } from '../utils/helpers';
 import PostCardFooter from './PostCardFooter';
 import PostCommentsSection from './PostCommentsSection';
@@ -56,11 +56,13 @@ const PostModal = ({
     }, [isOpen]);
 
     useEffect(() => {
+        if (!isOpen) {
+            return undefined;
+        }
+
         stopScrolling(true);
-        return () => {
-            stopScrolling(false);
-        };
-    });
+        return () => stopScrolling(false);
+    }, [isOpen, stopScrolling]);
 
     useEffect(() => {
         if (!scrollToCommentsOnOpen) {
@@ -138,11 +140,11 @@ const PostModal = ({
     const profileHref = post?.user_id != null ? `/students/${post.user_id}` : '#';
 
     const header = (
-        <div className="flex-shrink-0 border-b border-border/70 bg-light px-4 py-3 dark:border-white/10 dark:bg-dark_gray">
+        <div className="flex-shrink-0 border-b border-light/10 bg-dark px-4 py-3">
             <div className="flex items-start gap-3">
                 <Link
                     href={profileHref}
-                    className="shrink-0 rounded-full ring-2 ring-transparent ring-offset-2 ring-offset-light transition hover:ring-alpha/40 dark:ring-offset-dark_gray"
+                    className="shrink-0 rounded-full ring-2 ring-transparent ring-offset-2 ring-offset-dark transition hover:ring-alpha/40"
                 >
                     <Avatar
                         className="relative z-10 h-10 w-10 overflow-hidden"
@@ -154,7 +156,7 @@ const PostModal = ({
                 </Link>
                 <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                        <Link href={profileHref} className="truncate text-[15px] font-semibold text-beta hover:underline dark:text-light">
+                        <Link href={profileHref} className="truncate text-[15px] font-semibold text-light hover:underline">
                             {post?.user_name}
                         </Link>
                         {user?.id != post.user_id && (
@@ -174,7 +176,7 @@ const PostModal = ({
                             </span>
                         )}
                     </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground dark:text-light/55">{timeAgo(post?.created_at)}</p>
+                    <p className="mt-0.5 text-xs text-light/55">{timeAgo(post?.created_at)}</p>
                 </div>
             </div>
         </div>
@@ -182,15 +184,9 @@ const PostModal = ({
 
     const descriptionBlock = (
         <div className="px-4 py-2">
-            <p className="text-[15px] leading-relaxed break-words whitespace-pre-wrap text-foreground dark:text-light/95">
-                {renderPostText({ text: displayText, post })}
-            </p>
+            <p className="text-[15px] leading-relaxed break-words whitespace-pre-wrap text-light">{renderPostText({ text: displayText, post })}</p>
             {hasMore && (
-                <button
-                    type="button"
-                    onClick={() => toggleDescription(post?.id)}
-                    className="mt-1 text-sm font-medium text-muted-foreground hover:text-alpha dark:text-light/60 dark:hover:text-alpha"
-                >
+                <button type="button" onClick={() => toggleDescription(post?.id)} className="mt-1 text-sm font-medium text-light/60 hover:text-alpha">
                     {isExpanded ? 'See less' : 'See more'}
                 </button>
             )}
@@ -199,16 +195,16 @@ const PostModal = ({
 
     /** Facebook-style: dark stage + light sidebar, or centered card for text-only */
     const shellClass = hasImages
-        ? 'relative flex h-[100dvh] w-full max-w-[1100px] flex-col overflow-hidden rounded-none border border-white/10 bg-light shadow-2xl dark:border-white/10 dark:bg-dark_gray sm:h-[min(92vh,880px)] sm:max-h-[92vh] sm:rounded-xl lg:flex-row'
-        : 'relative flex h-[100dvh] w-full max-w-[500px] flex-col overflow-hidden rounded-none border border-border/80 bg-light shadow-2xl dark:border-white/10 dark:bg-dark_gray sm:h-[min(92vh,800px)] sm:max-h-[92vh] sm:rounded-xl';
+        ? 'relative flex h-[100dvh] w-full max-w-[1100px] flex-col overflow-hidden rounded-none border border-light/10 bg-dark text-light shadow-2xl sm:h-[min(92vh,880px)] sm:max-h-[92vh] sm:rounded-xl lg:flex-row'
+        : 'relative flex h-[100dvh] w-full max-w-[500px] flex-col overflow-hidden rounded-none border border-light/10 bg-dark text-light shadow-2xl sm:h-[min(92vh,800px)] sm:max-h-[92vh] sm:rounded-xl';
 
     const closeBtnClass = hasImages
-        ? 'absolute z-[60] flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white shadow-lg backdrop-blur-md transition hover:bg-white/25'
-        : 'absolute z-[60] flex h-10 w-10 items-center justify-center rounded-full bg-light text-beta shadow-md ring-1 ring-border/80 transition hover:bg-muted/80 dark:bg-dark_gray dark:text-light dark:ring-white/10';
+        ? 'absolute z-[60] flex h-10 w-10 items-center justify-center rounded-full bg-beta text-light shadow-lg transition hover:bg-light/10'
+        : 'absolute z-[60] flex h-10 w-10 items-center justify-center rounded-full bg-beta text-light shadow-md ring-1 ring-light/10 transition hover:bg-light/10';
 
     return (
         <>
-            <div className="fixed inset-0 z-40 bg-black/80" onClick={(e) => changeOpen(e)} role="presentation" />
+            <div className="fixed inset-0 z-40 bg-beta/60" onClick={(e) => changeOpen(e)} role="presentation" />
             <div
                 className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4"
                 onMouseDown={(e) => {
@@ -232,21 +228,19 @@ const PostModal = ({
 
                     {hasImages ? (
                         <>
-                            <div className="relative flex min-h-[38vh] w-full flex-[1.1] items-center justify-center bg-black lg:min-h-0">
+                            <div className="relative flex min-h-[38vh] w-full flex-[1.1] items-center justify-center bg-dark lg:min-h-0">
                                 <div className="flex h-full w-full items-center justify-center p-1 sm:p-2">
                                     <PostImageCarousel images={post?.images} />
                                 </div>
                             </div>
 
-                            <div className="flex h-full min-h-0 w-full flex-col border-t border-white/10 bg-light lg:w-[min(100%,380px)] lg:flex-shrink-0 lg:border-t-0 lg:border-l xl:w-[400px] dark:border-white/10 dark:bg-dark_gray">
+                            <div className="flex h-full min-h-0 w-full flex-col border-t border-light/10 bg-dark lg:w-[min(100%,380px)] lg:flex-shrink-0 lg:border-t-0 lg:border-l xl:w-[400px]">
                                 {header}
                                 <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">
                                     {descriptionBlock}
                                     {commentsSection}
                                 </div>
-                                <div className="flex-shrink-0 border-t border-border/80 bg-muted/20 dark:border-white/10 dark:bg-dark/80">
-                                    {footer}
-                                </div>
+                                <div className="flex-shrink-0 border-t border-light/10 bg-dark">{footer}</div>
                             </div>
                         </>
                     ) : (
@@ -256,7 +250,7 @@ const PostModal = ({
                                 {descriptionBlock}
                                 {commentsSection}
                             </div>
-                            <div className="flex-shrink-0 border-t border-border/80 bg-muted/20 dark:border-white/10 dark:bg-dark/80">{footer}</div>
+                            <div className="flex-shrink-0 border-t border-light/10 bg-dark">{footer}</div>
                         </>
                     )}
                 </div>
@@ -266,18 +260,14 @@ const PostModal = ({
                 <>
                     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
                         {/* Overlay */}
-                        <div
-                            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
-                            onClick={() => setOpenCommentLikes(false)}
-                            role="presentation"
-                        />
+                        <div className="absolute inset-0 bg-beta/60" onClick={() => setOpenCommentLikes(false)} role="presentation" />
 
                         {/* Modal */}
-                        <div className="relative z-10 mx-auto flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-alpha/30 bg-light shadow-2xl transition-all duration-300 dark:bg-dark_gray">
+                        <div className="relative z-10 mx-auto flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-alpha/30 bg-dark text-light shadow-2xl">
                             {/* Header */}
-                            <div className="relative border-b border-alpha/30 bg-gradient-to-r from-alpha/10 to-alpha/5 px-6 py-4">
+                            <div className="relative border-b border-alpha/30 bg-dark px-6 py-4">
                                 <div className="flex items-center justify-center gap-2">
-                                    <h2 className="text-lg font-semibold text-beta dark:text-alpha">Liked by</h2>
+                                    <h2 className="text-lg font-semibold text-light">Liked by</h2>
                                 </div>
                                 <p className="mt-1 text-center text-sm text-gray-500 dark:text-gray-400">
                                     {commentLikesLoading ? 'Loading...' : `${commentLikes.length} people`}
@@ -285,7 +275,7 @@ const PostModal = ({
                                 <button
                                     type="button"
                                     onClick={() => setOpenCommentLikes(false)}
-                                    className="absolute top-1/2 right-4 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-gray-500 transition hover:bg-alpha/10 hover:text-dark dark:text-gray-400"
+                                    className="absolute top-1/2 right-4 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-light transition hover:bg-light/10"
                                     aria-label="Close likes"
                                 >
                                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -314,7 +304,7 @@ const PostModal = ({
                                         return (
                                             <div
                                                 key={like.id ?? `${like.user_id}-${like.created_at ?? ''}`}
-                                                className="flex items-center gap-3 rounded-2xl border border-alpha/10 bg-gray-50 p-3 transition duration-200 hover:border-alpha/30 hover:shadow-md dark:bg-beta"
+                                                className="flex items-center gap-3 rounded-2xl border border-light/10 bg-beta p-3 transition duration-200 hover:border-alpha/30"
                                             >
                                                 <Link
                                                     href={profileHref}
@@ -330,7 +320,7 @@ const PostModal = ({
 
                                                     <div className="flex flex-1 items-start justify-between">
                                                         <div className="flex flex-col">
-                                                            <span className="max-w-[150px] truncate font-medium text-dark dark:text-light">
+                                                            <span className="max-w-[150px] truncate font-medium text-light">
                                                                 {like?.user_name || 'User'}
                                                             </span>
                                                         </div>

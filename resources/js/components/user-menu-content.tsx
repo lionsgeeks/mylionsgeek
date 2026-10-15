@@ -68,7 +68,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                     className="flex cursor-pointer items-center"
                 >
                     <Dock className="mr-2" />
-                    Add document
+                    {userRoles(user).includes('student') ? 'My documents' : 'Add document'}
                 </DropdownMenuItem>
 
                 <DropdownMenuItem

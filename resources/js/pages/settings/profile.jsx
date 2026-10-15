@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useInitials } from '@/hooks/use-initials';
+import { resolveUserAvatarSrc } from '@/lib/userAvatar';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { edit } from '@/routes/profile';
@@ -69,8 +70,11 @@ export default function Profile({ mustVerifyEmail, status }) {
     const [editingSocial, setEditingSocial] = useState(null);
     const [openDeleteSocial, setOpenDeleteSocial] = useState(false);
     const [deletingSocial, setDeletingSocial] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
     const links = auth?.user?.social_links || [];
     const visibleLinks = links.slice(0, 2);
+    const avatarSrc = resolveUserAvatarSrc(auth?.user);
+    const profileDisplayName = auth?.user?.name || auth?.user?.email || 'User';
 
     // Filter out platforms that are already added
     const availablePlatforms = platforms.filter((platform) => !links.some((link) => link.title === platform.value));
@@ -96,17 +100,39 @@ export default function Profile({ mustVerifyEmail, status }) {
                                 <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                                     <div className="md:col-span-1">
                                         <div className="flex flex-col items-center gap-3 rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
-                                            <Avatar
-                                                className="h-24 w-24 overflow-hidden rounded-full"
-                                                image={auth.user.image}
-                                                name={auth.user.name}
-                                                lastActivity={auth.user.last_login ?? auth.user.last_online ?? auth.user.last_activity ?? null}
-                                                onlineCircleClass="w-6 h-6"
-                                            />
+                                            {imagePreview ? (
+                                                <img
+                                                    src={imagePreview}
+                                                    alt="Preview"
+                                                    className="h-24 w-24 overflow-hidden rounded-full object-cover"
+                                                />
+                                            ) : (
+                                                <Avatar
+                                                    className="h-24 w-24 overflow-hidden rounded-full"
+                                                    src={avatarSrc}
+                                                    name={profileDisplayName}
+                                                    lastActivity={auth.user.last_login ?? auth.user.last_online ?? auth.user.last_activity ?? null}
+                                                    onlineCircleClass="w-6 h-6"
+                                                />
+                                            )}
 
                                             <div className="w-full">
                                                 <Label htmlFor="image">Avatar</Label>
-                                                <Input id="image" name="image" type="file" accept="image/*" className="mt-1 block w-full" />
+                                                <Input
+                                                    id="image"
+                                                    name="image"
+                                                    type="file"
+                                                    accept="image/jpeg,image/png,image/jpg,image/webp,image/gif"
+                                                    className="mt-1 block w-full"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            setImagePreview(URL.createObjectURL(file));
+                                                        } else {
+                                                            setImagePreview(null);
+                                                        }
+                                                    }}
+                                                />
                                                 <InputError className="mt-2" message={errors.image} />
                                             </div>
                                         </div>
