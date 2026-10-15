@@ -86,6 +86,7 @@ beforeEach(function () {
         'category' => 'coding',
         'start_time' => '2025-01-01',
         'user_id' => null,
+        'is_active' => true,
     ]);
 
     config(['attendance.allowed_ips' => ['203.0.113.1']]);
@@ -142,8 +143,8 @@ test('check-in saves present during the present window', function () {
             'status' => 'present',
             'row' => [
                 'morning' => 'present',
-                'lunch' => 'pending',
-                'evening' => 'pending',
+                'lunch' => 'absent',
+                'evening' => 'absent',
             ],
         ]);
 
@@ -166,8 +167,8 @@ test('check-in saves late after the present window', function () {
             'status' => 'late',
             'row' => [
                 'morning' => 'late',
-                'lunch' => 'pending',
-                'evening' => 'pending',
+                'lunch' => 'absent',
+                'evening' => 'absent',
             ],
         ]);
 });
@@ -230,7 +231,7 @@ test('check-in for an already marked slot returns 409 with no database writes', 
     expect(AttendanceListe::count())->toBe($countBefore);
 });
 
-test('coach absent without notes blocks student check-in with 409', function () {
+test('default absent on the open slot does not block student check-in', function () {
     freezeCheckInTime('09:40:00');
     bindVerifiedFaceVerifier();
 
@@ -245,18 +246,23 @@ test('coach absent without notes blocks student check-in with 409', function () 
         'attendance_id' => $attendance->id,
         'attendance_day' => Carbon::now()->toDateString(),
         'morning' => 'absent',
-        'lunch' => 'pending',
-        'evening' => 'pending',
+        'lunch' => 'absent',
+        'evening' => 'absent',
     ]);
 
-    $countBefore = AttendanceListe::count();
-
     postCheckIn($this, $student, '203.0.113.1')
-        ->assertStatus(409)
-        ->assertJson(['message' => "You've already marked attendance for this slot."]);
+        ->assertOk()
+        ->assertJson([
+            'slot' => 'morning',
+            'status' => 'present',
+            'row' => [
+                'morning' => 'present',
+                'lunch' => 'absent',
+                'evening' => 'absent',
+            ],
+        ]);
 
-    expect(AttendanceListe::count())->toBe($countBefore);
-    expect(AttendanceListe::first()->morning)->toBe('absent');
+    expect(AttendanceListe::first()->morning)->toBe('present');
 });
 
 test('later check-in preserves an earlier marked slot', function () {
@@ -285,12 +291,12 @@ test('later check-in preserves an earlier marked slot', function () {
             'row' => [
                 'morning' => 'present',
                 'lunch' => 'present',
-                'evening' => 'pending',
+                'evening' => 'absent',
             ],
         ]);
 });
 
-test('lunch-only check-in finalizes morning as absent and leaves evening pending', function () {
+test('lunch-only check-in finalizes morning as absent and leaves evening absent', function () {
     freezeCheckInTime('11:35:00');
     bindVerifiedFaceVerifier();
 
@@ -303,7 +309,7 @@ test('lunch-only check-in finalizes morning as absent and leaves evening pending
             'row' => [
                 'morning' => 'absent',
                 'lunch' => 'present',
-                'evening' => 'pending',
+                'evening' => 'absent',
             ],
         ]);
 });
@@ -355,6 +361,24 @@ test('slot-status reflects active morning slot from server time', function () {
             'present_minutes' => 15,
             'already_marked_slots' => [],
             'label_key' => 'attendance.check_in.present',
+        ]);
+});
+
+test('slot-status stays closed when the training is inactive', function () {
+    freezeCheckInTime('09:42:00');
+    $this->formation->update(['is_active' => false]);
+
+    $student = createCheckInStudent();
+
+    $this->actingAs($student, 'sanctum')
+        ->withServerVariables(['REMOTE_ADDR' => '203.0.113.1'])
+        ->getJson('/api/mobile/attendance/slot-status?'.http_build_query([
+            'formation_id' => $this->formation->id,
+        ]))
+        ->assertOk()
+        ->assertJson([
+            'current_slot' => null,
+            'phase' => 'closed',
         ]);
 });
 

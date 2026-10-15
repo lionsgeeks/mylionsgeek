@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\ProfileController;
+use App\Http\Controllers\API\ProfileEducationController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -15,6 +16,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile/experiences', ['App\\Http\\Controllers\\API\\ProfileExperienceController', 'store']);
     Route::put('/profile/experiences/{id}', ['App\\Http\\Controllers\\API\\ProfileExperienceController', 'update'])->whereNumber('id');
     Route::delete('/profile/experiences/{id}', ['App\\Http\\Controllers\\API\\ProfileExperienceController', 'destroy'])->whereNumber('id');
+
+    // Education (same ordering rule as experiences)
+    Route::post('/profile/education', [ProfileEducationController::class, 'store']);
+    Route::put('/profile/education/{id}', [ProfileEducationController::class, 'update'])->whereNumber('id');
+    Route::delete('/profile/education/{id}', [ProfileEducationController::class, 'destroy'])->whereNumber('id');
 
     Route::get('/profile/{userId}', [ProfileController::class, 'show']);
     Route::get('/profile/{userId}/followers', [ProfileController::class, 'listFollowers']);

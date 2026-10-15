@@ -16,7 +16,7 @@ class DisciplineService
      */
     private const WEIGHT_MAP = [
         'present' => 1.0,
-        'pending' => 1.0, // unresolved — no score loss until finalized
+        'pending' => 1.0, // legacy unresolved rows — no score loss
         'excused' => 0.9,
         'late' => 0.7,
         'absent' => 0.0,
@@ -73,22 +73,70 @@ class DisciplineService
     public function countAbsentSlots(User $user): float
     {
         $attendance = AttendanceListe::where('user_id', $user->id)
-            ->get(['morning', 'lunch', 'evening']);
+            ->get(['attendance_day', 'morning', 'lunch', 'evening']);
 
         if ($attendance->isEmpty()) {
             return 0;
         }
 
         $lostScore = 0;
+        $now = Carbon::now();
 
         foreach ($attendance as $row) {
-            // Each slot that isn't 'present' loses some score
-            $lostScore += (1.0 - (self::WEIGHT_MAP[strtolower($row->morning ?? 'present')] ?? 0.7));
-            $lostScore += (1.0 - (self::WEIGHT_MAP[strtolower($row->lunch ?? 'present')] ?? 0.7));
-            $lostScore += (1.0 - (self::WEIGHT_MAP[strtolower($row->evening ?? 'present')] ?? 0.7));
+            foreach (['morning', 'lunch', 'evening'] as $slot) {
+                $lostScore += (1.0 - $this->slotWeight($row->attendance_day, $slot, $row->{$slot}, $now));
+            }
         }
 
         return $lostScore;
+    }
+
+    /**
+     * Absent on a slot whose window has not opened yet is the stored default, not a missed slot.
+     * Legacy pending never reduces the score. Every other status uses WEIGHT_MAP.
+     */
+    private function slotWeight(?string $attendanceDay, string $slot, ?string $value, Carbon $now): float
+    {
+        $normalized = strtolower(trim((string) ($value ?? '')));
+        if ($normalized === '') {
+            $normalized = 'present';
+        }
+
+        if ($normalized === 'absent' && ! $this->slotWindowHasOpened($attendanceDay, $slot, $now)) {
+            return 1.0;
+        }
+
+        return self::WEIGHT_MAP[$normalized] ?? 0.7;
+    }
+
+    private function slotWindowHasOpened(?string $attendanceDay, string $slot, Carbon $now): bool
+    {
+        if ($attendanceDay === null || trim($attendanceDay) === '') {
+            return true;
+        }
+
+        try {
+            $day = Carbon::parse($attendanceDay, $now->timezone)->startOfDay();
+        } catch (\Throwable) {
+            return true;
+        }
+
+        $today = $now->copy()->startOfDay();
+        if ($day->lt($today)) {
+            return true;
+        }
+        if ($day->gt($today)) {
+            return false;
+        }
+
+        $window = config("attendance.slots.{$slot}");
+        if (! is_array($window) || ! isset($window['opens'])) {
+            return true;
+        }
+
+        $minutes = ($now->hour * 60) + $now->minute;
+
+        return $minutes >= (int) $window['opens'];
     }
 
     /**
