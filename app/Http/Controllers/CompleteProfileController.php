@@ -43,6 +43,7 @@ class CompleteProfileController extends Controller
                 'is_recruiter' => in_array('recruiter', $user->normalizedRoles(), true),
                 'require_phone' => ! $fromLionsgeek,
                 'show_cin' => $inviteSource !== 'lionsgeek_children',
+                'require_cin' => $inviteSource === 'lionsgeek_adult',
             ],
         ]);
     }
@@ -99,10 +100,10 @@ class CompleteProfileController extends Controller
             $rules['phone'] = 'required|string|max:15';
         }
 
-        if ($isChildren) {
+        if (! $fromLionsgeek || $isChildren) {
             $rules['cin'] = 'nullable|string|max:10|unique:users,cin,'.$user->id;
         } else {
-            $rules['cin'] = 'required|string|max:10|unique:users,cin,' . $user->id;
+            $rules['cin'] = 'required|string|max:10|unique:users,cin,'.$user->id;
         }
 
         $messages = [];

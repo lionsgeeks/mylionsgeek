@@ -303,6 +303,28 @@ class User extends Authenticatable
         return $flag === 1 || $flag === true || $flag === '1';
     }
 
+    /**
+     * Whether this actor may create users via /admin/users/store.
+     * Admins always can; coaches only when an admin granted can_add_users.
+     * Reads the authenticated user record only — never request body flags.
+     */
+    public function canAddUsers(): bool
+    {
+        $roles = $this->normalizedRoles();
+
+        if ((bool) array_intersect($roles, self::PRIVILEGED_ROLES)) {
+            return true;
+        }
+
+        if (! in_array('coach', $roles, true)) {
+            return false;
+        }
+
+        $flag = $this->can_add_users;
+
+        return $flag === 1 || $flag === true || $flag === '1';
+    }
+
     /** Private disk — never serve resumes via /storage symlink. */
     public const RESUME_DISK = 'documents';
 

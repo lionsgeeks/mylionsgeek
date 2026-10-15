@@ -16,6 +16,10 @@ const Header = ({ trainings, filteredUsers }) => {
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role].filter(Boolean);
     const canExportSensitiveFields = userRoles.includes('admin') || userRoles.includes('super_admin');
     const hiddenExportFields = canExportSensitiveFields ? [] : ['cin', 'phone', 'role', 'has_handicap'];
+    const canAddUsers =
+        userRoles.includes('admin') ||
+        userRoles.includes('super_admin') ||
+        (userRoles.includes('coach') && Number(auth?.user?.can_add_users) === 1);
 
     const emailsToCopy = useMemo(() => {
         return filteredUsers
@@ -82,17 +86,18 @@ const Header = ({ trainings, filteredUsers }) => {
                         </Button>
                     </Rolegard>
 
-                    <Rolegard authorized={['admin', 'super_admin']}>
-                        {/* Add User Dialog */}
-                        <AddUserDialog open={isAddUserOpen} setOpen={setIsAddUserOpen} trainings={trainings} />
+                    {canAddUsers && (
+                        <>
+                            <AddUserDialog open={isAddUserOpen} setOpen={setIsAddUserOpen} trainings={trainings} />
 
-                        <Button
-                            className="flex cursor-pointer gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-7 py-4 text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
-                            onClick={() => setIsAddUserOpen(true)}
-                        >
-                            <Plus /> Add User
-                        </Button>
-                    </Rolegard>
+                            <Button
+                                className="flex cursor-pointer gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-7 py-4 text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
+                                onClick={() => setIsAddUserOpen(true)}
+                            >
+                                <Plus /> Add User
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
         </>

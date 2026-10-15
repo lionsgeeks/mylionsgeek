@@ -44,6 +44,7 @@ const KNOWN_FIELD_ERRORS = new Set([
     'access_studio',
     'access_cowork',
     'access_scan',
+    'can_add_users',
     'roles',
 ]);
 
@@ -108,6 +109,28 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     const [socialLinks, setSocialLinks] = useState(editedUser?.social_links || []);
     const canManageSocials = auth?.user?.id === editedUser?.id;
     const isEditingSelf = auth?.user?.id === editedUser?.id;
+    const editedUserRoles = useMemo(() => {
+        if (Array.isArray(editedUser?.role)) {
+            return editedUser.role.map((r) => String(r).toLowerCase());
+        }
+        if (typeof editedUser?.role === 'string' && editedUser.role.length > 0) {
+            try {
+                const parsed = JSON.parse(editedUser.role);
+                if (Array.isArray(parsed)) {
+                    return parsed.map((r) => String(r).toLowerCase());
+                }
+            } catch {
+                // fall through to comma-split
+            }
+            return editedUser.role
+                .split(',')
+                .map((r) => r.trim().toLowerCase())
+                .filter(Boolean);
+        }
+        return [];
+    }, [editedUser?.role]);
+    const isEditingCoach = editedUserRoles.includes('coach');
+    const canToggleAddUsersPermission = canGrantStaffRoles && isEditingCoach && !isEditingSelf;
     const isStudying = editedUser?.status?.toLowerCase() === 'studying';
     const showStatusField = canEditOthers || !isEditingSelf || !isStudying;
 
@@ -168,6 +191,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         access_studio: editedUser?.access_studio === 1 ? 'Yes' : 'No',
         access_cowork: editedUser?.access_cowork === 1 ? 'Yes' : 'No',
         access_scan: editedUser?.access_scan === 1 ? 'Yes' : 'No',
+        can_add_users: Number(editedUser?.can_add_users) === 1 ? 'Yes' : 'No',
     });
 
     const currentTrainingLabel = useMemo(() => {
@@ -226,6 +250,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
             access_studio: editedUser.access_studio === 1 ? 'Yes' : 'No',
             access_cowork: editedUser.access_cowork === 1 ? 'Yes' : 'No',
             access_scan: editedUser.access_scan === 1 ? 'Yes' : 'No',
+            can_add_users: Number(editedUser.can_add_users) === 1 ? 'Yes' : 'No',
         });
         setSocialLinks(editedUser?.social_links || []);
     }, [open, editedUser, canEditOthers, status]);
@@ -312,6 +337,10 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                 access_cowork: current.access_cowork === 'Yes' ? 1 : 0,
                 access_scan: current.access_scan === 'Yes' ? 1 : 0,
             };
+
+            if (canToggleAddUsersPermission) {
+                payload.can_add_users = current.can_add_users === 'Yes' ? 1 : 0;
+            }
 
             // Never send roles when editing yourself — another admin must change them.
             if (!isEditingSelf) {
@@ -648,6 +677,28 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                 Mobile Scan tab (events and info sessions)
                             </p>
                             <InputError className="mt-1" message={fieldMessage(errors, 'access_scan')} />
+                        </div>
+                    )}
+                    {canToggleAddUsersPermission && (
+                        <div className="col-span-1">
+                            <Label htmlFor="can-add-users">Can Add Users</Label>
+                            <Select
+                                id="can-add-users"
+                                value={formData.can_add_users}
+                                onValueChange={(v) => setFormData({ ...formData, can_add_users: v })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Can Add Users" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={'Yes'}>Yes</SelectItem>
+                                    <SelectItem value={'No'}>No</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="mt-1 text-xs text-neutral-500">
+                                Allow this coach to use Add User on Members
+                            </p>
+                            <InputError className="mt-1" message={fieldMessage(errors, 'can_add_users')} />
                         </div>
                     )}
                     {/* Right Column - Roles (never editable on your own account) */}
