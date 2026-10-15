@@ -1101,6 +1101,7 @@ class UsersController extends Controller
             'access_cowork' => 'nullable|integer|in:0,1',
             'access_studio' => 'nullable|integer|in:0,1',
             'access_scan' => 'nullable|integer|in:0,1',
+            'can_add_users' => 'nullable|integer|in:0,1',
         ]);
 
         // Gender / handicap / program_status: staff-only; handicap is admin-only health data.
@@ -1194,8 +1195,16 @@ class UsersController extends Controller
 
         $previousProgramStatus = $user->program_status;
 
+        // Only admin / super_admin may grant or revoke the Add User capability.
+        $canManageAddUsersPermission = (bool) array_intersect($actorRolesLower, ['admin', 'super_admin']);
+        if (! $canManageAddUsersPermission || ! $request->exists('can_add_users')) {
+            unset($validated['can_add_users']);
+        } elseif (array_key_exists('can_add_users', $validated)) {
+            $validated['can_add_users'] = (int) $validated['can_add_users'];
+        }
+
         $privileged = [];
-        foreach (['role', 'access_cowork', 'access_studio', 'access_scan', 'formation_id'] as $field) {
+        foreach (['role', 'access_cowork', 'access_studio', 'access_scan', 'can_add_users', 'formation_id'] as $field) {
             if (array_key_exists($field, $validated)) {
                 $privileged[$field] = $validated[$field];
                 unset($validated[$field]);
@@ -1242,6 +1251,9 @@ class UsersController extends Controller
     // ! store function
     public function store(Request $request, ProgramStatusService $programStatusService)
     {
+        $actor = $request->user();
+        abort_unless($actor && $actor->canAddUsers(), 403, 'You are not allowed to create users.');
+
         $validated = $request->validate([
             'name' => 'required|string',
             'email' => 'required|string|email|unique:users,email',
@@ -1259,6 +1271,9 @@ class UsersController extends Controller
             'roles.*' => 'required|string|in:'.implode(',', User::ASSIGNABLE_ROLES),
             'entreprise' => 'nullable|string|max:255',
         ]);
+
+        $actor->assertMayAssignRoles($validated['roles']);
+
         $existing = User::query()->where('email', $validated['email'])->first();
         if ($existing) {
             return Inertia::render('admin/users/partials/Header', [

@@ -403,6 +403,26 @@ const User = ({ user, trainings, close, open }) => {
                                                 {(user?.access?.access_scan ?? user?.access_scan) ? 'Granted' : 'No Access'}
                                             </span>
                                         </div>
+                                        {(Array.isArray(user?.role)
+                                            ? user.role.map((r) => String(r).toLowerCase())
+                                            : String(user?.role || '')
+                                                  .toLowerCase()
+                                                  .split(',')
+                                                  .map((r) => r.trim())
+                                        ).includes('coach') && (
+                                            <div className="flex items-center justify-between rounded-lg border border-alpha/10 bg-white/60 p-3 backdrop-blur dark:bg-neutral-900/60">
+                                                <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Add Users</span>
+                                                <span
+                                                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                                        Number(user?.can_add_users) === 1
+                                                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                            : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-400'
+                                                    }`}
+                                                >
+                                                    {Number(user?.can_add_users) === 1 ? 'Granted' : 'No Access'}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 

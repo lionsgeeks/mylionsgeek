@@ -1,20 +1,66 @@
 import { Avatar } from '@/components/ui/avatar';
-import { router } from '@inertiajs/react';
+import { Label } from '@/components/ui/label';
+import { router, usePage } from '@inertiajs/react';
 import { Award, Calendar, Camera, Edit3, Github, Globe, Linkedin, Twitter } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ADMIN_USER_STATUSES } from '@/components/helpers/userStatuses';
 import { genderLabel, programStatusLabel } from '@/components/helpers/userDemographics';
 import EditUserModal from '../EditModal';
 import DownloadCertificateDialog, { resolveCertificateTrack } from './DownloadCertificateDialog';
 
+const normalizeRoles = (role) => {
+    if (Array.isArray(role)) {
+        return role.map((r) => String(r).toLowerCase());
+    }
+    if (typeof role === 'string' && role.length > 0) {
+        try {
+            const parsed = JSON.parse(role);
+            if (Array.isArray(parsed)) {
+                return parsed.map((r) => String(r).toLowerCase());
+            }
+        } catch {
+            // fall through
+        }
+        return role
+            .split(',')
+            .map((r) => r.trim().toLowerCase())
+            .filter(Boolean);
+    }
+    return [];
+};
+
 const ProfileHeader = ({ user, trainings, roles }) => {
+    const { auth } = usePage().props;
     const [open, setOpen] = useState(false);
     const [certDialogOpen, setCertDialogOpen] = useState(false);
+    const [togglingAddUsers, setTogglingAddUsers] = useState(false);
     const hasCertificateTrack = resolveCertificateTrack(user?.field) !== null;
     const onlineColor = user?.is_online ? 'bg-green-500' : 'bg-neutral-500';
     const lastLoginRaw = user?.last_login ?? user?.last_online ?? user?.last_activity ?? null;
     const lastLogin = lastLoginRaw ? new Date(lastLoginRaw).toLocaleString() : 'No last login available';
     const socials = user?.socials || {};
+    const actorRoles = useMemo(() => normalizeRoles(auth?.user?.role), [auth?.user?.role]);
+    const profileRoles = useMemo(() => normalizeRoles(user?.role), [user?.role]);
+    const isAdminActor = actorRoles.includes('admin') || actorRoles.includes('super_admin');
+    const isCoachProfile = profileRoles.includes('coach');
+    const canManageAddUsersPermission = isAdminActor && isCoachProfile && auth?.user?.id !== user?.id;
+    const canAddUsersEnabled = Number(user?.can_add_users) === 1;
+
+    const toggleCanAddUsers = () => {
+        if (!canManageAddUsersPermission || togglingAddUsers) {
+            return;
+        }
+
+        setTogglingAddUsers(true);
+        router.put(
+            `/students/update/${user.id}`,
+            { can_add_users: canAddUsersEnabled ? 0 : 1 },
+            {
+                preserveScroll: true,
+                onFinish: () => setTogglingAddUsers(false),
+            },
+        );
+    };
 
     const changeCover = (event, userId) => {
         const file = event.target.files[0]; // Get the first file
@@ -172,6 +218,36 @@ const ProfileHeader = ({ user, trainings, roles }) => {
                                             {/* Divider */}
                                             {(socials.github || socials.linkedin || socials.twitter || socials.website) && (
                                                 <div className="h-6 w-px bg-neutral-200 dark:bg-neutral-700" />
+                                            )}
+
+                                            {canManageAddUsersPermission && (
+                                                <div className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900">
+                                                    <div className="min-w-0">
+                                                        <Label htmlFor="coach-can-add-users" className="text-xs font-semibold text-neutral-800 dark:text-neutral-100">
+                                                            Can add users
+                                                        </Label>
+                                                        <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                                                            Members → Add User
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        id="coach-can-add-users"
+                                                        type="button"
+                                                        role="switch"
+                                                        aria-checked={canAddUsersEnabled}
+                                                        disabled={togglingAddUsers}
+                                                        onClick={toggleCanAddUsers}
+                                                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-alpha disabled:cursor-not-allowed disabled:opacity-60 ${
+                                                            canAddUsersEnabled ? 'bg-alpha' : 'bg-neutral-300 dark:bg-neutral-600'
+                                                        }`}
+                                                    >
+                                                        <span
+                                                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                                                                canAddUsersEnabled ? 'translate-x-5' : 'translate-x-0'
+                                                            }`}
+                                                        />
+                                                    </button>
+                                                </div>
                                             )}
 
                                             {/* Certificate download button — visible only for students with a recognised field */}

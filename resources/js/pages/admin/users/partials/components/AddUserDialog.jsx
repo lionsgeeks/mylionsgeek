@@ -3,9 +3,11 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useForm } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
+import { useMemo } from 'react';
 
-const availableRoles = ['admin', 'studio_responsable', 'student', 'coworker', 'coach', 'pro', 'moderateur', 'recruiter'];
+const adminAvailableRoles = ['admin', 'studio_responsable', 'student', 'coworker', 'coach', 'pro', 'moderateur', 'recruiter'];
+const staffAvailableRoles = ['student', 'coworker'];
 
 const formatRoleLabel = (role) => (role === 'studio_responsable' ? 'Responsable Studio' : role);
 
@@ -22,6 +24,13 @@ const defaultForm = {
 };
 
 export default function AddUserDialog({ open, setOpen, trainings }) {
+    const { auth } = usePage().props;
+    const actorRoles = useMemo(() => {
+        const role = auth?.user?.role;
+        return Array.isArray(role) ? role.map((r) => String(r).toLowerCase()) : [String(role || '').toLowerCase()].filter(Boolean);
+    }, [auth?.user?.role]);
+    const canGrantStaffRoles = actorRoles.includes('admin') || actorRoles.includes('super_admin');
+    const availableRoles = canGrantStaffRoles ? adminAvailableRoles : staffAvailableRoles;
     const { data, setData, post, processing } = useForm(defaultForm);
 
     const inputClass = 'bg-[#e5e5e5] dark:bg-[#262626] text-black dark:text-white focus:ring-2 focus:ring-alpha';

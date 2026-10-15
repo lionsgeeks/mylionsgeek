@@ -105,3 +105,77 @@ test('admin create stores the company name for a recruiter', function () {
         ->and($created->entreprise)->toBe('LionsGeek')
         ->and((int) $created->account_state)->toBe(0);
 });
+
+test('coach without can_add_users cannot create a user', function () {
+    $coach = addUserActor(['coach']);
+    $formation = Formation::query()->create(['name' => 'Coding', 'start_time' => null]);
+
+    $this->actingAs($coach)
+        ->from('/admin/users')
+        ->post('/admin/users/store', addUserPayload($formation))
+        ->assertForbidden();
+
+    expect(User::query()->where('email', 'new.student@example.com')->exists())->toBeFalse();
+});
+
+test('coach with can_add_users can create a student', function () {
+    $coach = addUserActor(['coach']);
+    $coach->forceFill(['can_add_users' => 1])->save();
+    $formation = Formation::query()->create(['name' => 'Coding', 'start_time' => null]);
+
+    $this->actingAs($coach)
+        ->from('/admin/users')
+        ->post('/admin/users/store', addUserPayload($formation))
+        ->assertRedirect('/admin/users');
+
+    $created = User::query()->where('email', 'new.student@example.com')->first();
+
+    expect($created)->not->toBeNull()
+        ->and($created->normalizedRoles())->toBe(['student']);
+});
+
+test('coach with can_add_users cannot create an admin', function () {
+    $coach = addUserActor(['coach']);
+    $coach->forceFill(['can_add_users' => 1])->save();
+    $formation = Formation::query()->create(['name' => 'Coding', 'start_time' => null]);
+
+    $this->actingAs($coach)
+        ->from('/admin/users')
+        ->post('/admin/users/store', addUserPayload($formation, [
+            'email' => 'elevated@example.com',
+            'roles' => ['admin'],
+        ]))
+        ->assertForbidden();
+
+    expect(User::query()->where('email', 'elevated@example.com')->exists())->toBeFalse();
+});
+
+test('admin can grant can_add_users on a coach profile', function () {
+    $admin = addUserActor(['admin']);
+    $coach = addUserActor(['coach']);
+
+    $this->actingAs($admin)
+        ->from('/admin/users/'.$coach->id)
+        ->put('/students/update/'.$coach->id, [
+            'can_add_users' => 1,
+        ])
+        ->assertRedirect();
+
+    expect((int) $coach->fresh()->can_add_users)->toBe(1)
+        ->and($coach->fresh()->canAddUsers())->toBeTrue();
+});
+
+test('coach cannot grant can_add_users on another coach', function () {
+    $coach = addUserActor(['coach']);
+    $coach->forceFill(['can_add_users' => 1])->save();
+    $otherCoach = addUserActor(['coach']);
+
+    $this->actingAs($coach)
+        ->from('/admin/users/'.$otherCoach->id)
+        ->put('/students/update/'.$otherCoach->id, [
+            'can_add_users' => 1,
+        ])
+        ->assertRedirect();
+
+    expect((int) $otherCoach->fresh()->can_add_users)->toBe(0);
+});
