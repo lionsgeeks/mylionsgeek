@@ -5,8 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Computer;
 use App\Models\User;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\StudentTrainingDocumentService;
 use Illuminate\Http\RedirectResponse;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
@@ -175,18 +176,12 @@ class ComputersController extends Controller
 
 
 
-    public function computerStartContract(Computer $computer)
+    public function computerStartContract(Computer $computer, StudentTrainingDocumentService $documents)
     {
-        $user = User::where('id', $computer->user_id)->first();
-        $data = compact('user', 'computer');
-        // dd($user->id);
-
-
-        $name = $user->name;
-
-        $pdf = Pdf::loadView("pdf.computer_start", $data);
-
-        return $pdf->download("$name Start.pdf");
+        return response($documents->computerPdf($computer), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_ATTACHMENT, $documents->computerFileName($computer)),
+        ]);
     }
     public function destroy(Computer $computer)
     {

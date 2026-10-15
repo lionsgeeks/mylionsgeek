@@ -5,6 +5,7 @@ use App\Models\AttendanceListe;
 use App\Models\Formation;
 use App\Models\User;
 use App\Services\DisciplineService;
+use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
@@ -102,6 +103,8 @@ test('pending future slots do not reduce discipline score', function () {
 });
 
 test('absent slots reduce discipline score while pending does not', function () {
+    Carbon::setTestNow(Carbon::parse(now()->toDateString().' 14:00:00', config('app.timezone')));
+
     $formation = Formation::create([
         'name' => 'Coding',
         'category' => 'coding',
@@ -132,4 +135,49 @@ test('absent slots reduce discipline score while pending does not', function () 
     $service = new DisciplineService;
 
     expect($service->countAbsentSlots($user))->toBe(1.0);
+
+    Carbon::setTestNow();
+});
+
+test('absent on slots that have not opened yet does not reduce discipline score', function () {
+    $formation = Formation::create([
+        'name' => 'Coding',
+        'category' => 'coding',
+        'start_time' => now()->subDays(10)->toDateString(),
+        'end_time' => now()->addDays(10)->toDateString(),
+    ]);
+
+    $user = User::factory()->create([
+        'role' => ['student'],
+        'formation_id' => $formation->id,
+    ]);
+
+    $attendance = Attendance::create([
+        'formation_id' => $formation->id,
+        'attendance_day' => now()->toDateString(),
+        'staff_name' => 'System',
+    ]);
+
+    AttendanceListe::create([
+        'user_id' => $user->id,
+        'attendance_id' => $attendance->id,
+        'attendance_day' => now()->toDateString(),
+        'morning' => 'present',
+        'lunch' => 'absent',
+        'evening' => 'absent',
+    ]);
+
+    $service = new DisciplineService;
+    $day = now()->toDateString();
+
+    Carbon::setTestNow(Carbon::parse($day.' 09:42:00', config('app.timezone')));
+    expect($service->countAbsentSlots($user))->toBe(0.0);
+
+    Carbon::setTestNow(Carbon::parse($day.' 12:00:00', config('app.timezone')));
+    expect($service->countAbsentSlots($user))->toBe(1.0);
+
+    Carbon::setTestNow(Carbon::parse($day.' 17:05:00', config('app.timezone')));
+    expect($service->countAbsentSlots($user))->toBe(2.0);
+
+    Carbon::setTestNow();
 });

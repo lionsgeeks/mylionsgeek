@@ -130,7 +130,7 @@ test('09:45:00 is late boundary', function () {
     expect(slotService()->gradeStatus($now, 'morning'))->toBe('late');
 });
 
-test('buildCheckInSlots preserves earlier marks and defaults future to pending', function () {
+test('buildCheckInSlots preserves earlier marks and defaults future to absent', function () {
     $slots = slotService()->buildCheckInSlots(
         ['morning' => 'present', 'lunch' => null, 'evening' => null],
         'lunch',
@@ -140,7 +140,7 @@ test('buildCheckInSlots preserves earlier marks and defaults future to pending',
     expect($slots)->toBe([
         'morning' => 'present',
         'lunch' => 'late',
-        'evening' => 'pending',
+        'evening' => 'absent',
     ]);
 });
 
@@ -194,7 +194,7 @@ test('buildCheckInSlots does not overwrite a coach absent on later check-in of a
     ]);
 });
 
-test('buildCheckInSlots overwrites pending on later check-in', function () {
+test('buildCheckInSlots overwrites pending on later check-in and defaults the rest to absent', function () {
     $slots = slotService()->buildCheckInSlots(
         ['morning' => 'present', 'lunch' => 'pending', 'evening' => 'pending'],
         'lunch',
@@ -204,15 +204,45 @@ test('buildCheckInSlots overwrites pending on later check-in', function () {
     expect($slots)->toBe([
         'morning' => 'present',
         'lunch' => 'late',
-        'evening' => 'pending',
+        'evening' => 'absent',
     ]);
 });
 
-test('buildFinalizeSlots writes absent for closed and past, pending for future', function () {
+test('buildCheckInSlots overwrites default absent on the current slot and keeps other absences', function () {
+    $slots = slotService()->buildCheckInSlots(
+        ['morning' => 'present', 'lunch' => 'absent', 'evening' => 'absent'],
+        'lunch',
+        'present',
+    );
+
+    expect($slots)->toBe([
+        'morning' => 'present',
+        'lunch' => 'present',
+        'evening' => 'absent',
+    ]);
+});
+
+test('blocksStudentCheckIn locks present late and excused only', function () {
+    expect(slotService()->blocksStudentCheckIn(null))->toBeFalse();
+    expect(slotService()->blocksStudentCheckIn(''))->toBeFalse();
+    expect(slotService()->blocksStudentCheckIn('pending'))->toBeFalse();
+    expect(slotService()->blocksStudentCheckIn('absent'))->toBeFalse();
+    expect(slotService()->blocksStudentCheckIn('present'))->toBeTrue();
+    expect(slotService()->blocksStudentCheckIn('late'))->toBeTrue();
+    expect(slotService()->blocksStudentCheckIn('excused'))->toBeTrue();
+    expect(slotService()->slotsBlockingCheckIn([
+        'morning' => 'absent',
+        'lunch' => 'present',
+        'evening' => 'pending',
+    ]))->toBe(['lunch']);
+    expect(slotService()->defaultSlotValue())->toBe('absent');
+});
+
+test('buildFinalizeSlots writes absent for closed and not-yet-opened slots', function () {
     expect(slotService()->buildFinalizeSlots('morning', null))->toBe([
         'morning' => 'absent',
-        'lunch' => 'pending',
-        'evening' => 'pending',
+        'lunch' => 'absent',
+        'evening' => 'absent',
     ]);
 
     expect(slotService()->buildFinalizeSlots('lunch', [
@@ -222,18 +252,18 @@ test('buildFinalizeSlots writes absent for closed and past, pending for future',
     ]))->toBe([
         'morning' => 'present',
         'lunch' => 'absent',
-        'evening' => 'pending',
+        'evening' => 'absent',
     ]);
 });
 
-test('buildFinalizeSlots skips already resolved closed slot', function () {
+test('buildFinalizeSlots skips already resolved closed slot and fills the rest with absent', function () {
     expect(slotService()->buildFinalizeSlots('morning', [
         'morning' => 'late',
         'lunch' => 'pending',
         'evening' => 'pending',
     ]))->toBe([
         'morning' => 'late',
-        'lunch' => 'pending',
-        'evening' => 'pending',
+        'lunch' => 'absent',
+        'evening' => 'absent',
     ]);
 });

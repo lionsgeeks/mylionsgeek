@@ -104,8 +104,8 @@ class FinalizeSlotAttendance implements ShouldQueue
 
                     $mergedSlots = $slotService->buildFinalizeSlots($this->slot, $existingSlots);
 
-                    // Idempotent: skip only when merge changes nothing (still backfills earlier pendings
-                    // even if the closed slot itself is already present/late/excused/absent)
+                    // Idempotent: skip only when merge changes nothing (still backfills earlier
+                    // unresolved slots even if the closed slot itself is already present/late/excused/absent)
                     if ($existingSlots !== null
                         && ($existingSlots['morning'] ?? null) === $mergedSlots['morning']
                         && ($existingSlots['lunch'] ?? null) === $mergedSlots['lunch']

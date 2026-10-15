@@ -12,6 +12,8 @@ use App\Services\FaceVerification\FaceVerificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
 
 class AttendanceCheckInService
@@ -55,6 +57,10 @@ class AttendanceCheckInService
     {
         $this->assertEnrolled($user, $formationId);
 
+        if (! $this->formationIsActive($formationId)) {
+            return $this->inactiveFormationSlotStatus($attendanceDay);
+        }
+
         $now = Carbon::now();
         $currentSlot = $this->slotService->currentSlot($now);
         $phase = $this->slotService->phase($now);
@@ -87,7 +93,7 @@ class AttendanceCheckInService
             }
         }
 
-        $alreadyMarked = $this->slotService->markedSlots($existingSlots);
+        $alreadyMarked = $this->slotService->slotsBlockingCheckIn($existingSlots);
 
         return [
             'attendance_day' => $attendanceDay,
@@ -153,7 +159,7 @@ class AttendanceCheckInService
             ]
             : null;
 
-        if ($this->slotService->isSlotMarked($existingSlots[$currentSlot] ?? null)) {
+        if ($this->slotService->blocksStudentCheckIn($existingSlots[$currentSlot] ?? null)) {
             $this->failJson("You've already marked attendance for this slot.", Response::HTTP_CONFLICT, 'ALREADY_CHECKED_IN');
         }
 
@@ -209,19 +215,97 @@ class AttendanceCheckInService
      */
     public function resolvePrimaryFormation(User $user): ?array
     {
-        $formationId = $user->primaryFormationId();
-        if ($formationId === null) {
+        $activeFormationId = $this->activeAssignedFormationId($user);
+        if ($activeFormationId === null) {
             return null;
         }
 
-        $formation = Formation::query()->find($formationId);
-        if (! $formation) {
+        $formation = Formation::query()->find($activeFormationId);
+        if (! $formation || ! $formation->is_active) {
             return null;
         }
 
         return [
             'id' => (int) $formation->id,
             'name' => $formation->name,
+        ];
+    }
+
+    /**
+     * First directly assigned formation that staff marked active.
+     * Promo-only matches are not an assignment.
+     */
+    private function activeAssignedFormationId(User $user): ?int
+    {
+        $candidateIds = [];
+
+        if (! empty($user->formation_id)) {
+            $candidateIds[] = (int) $user->formation_id;
+        }
+
+        if (Schema::hasTable('formation_user')) {
+            $pivotIds = DB::table('formation_user')
+                ->where('user_id', $user->id)
+                ->pluck('formation_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+            $candidateIds = array_merge($candidateIds, $pivotIds);
+        }
+
+        $candidateIds = array_values(array_unique(array_filter($candidateIds, fn ($id) => $id > 0)));
+        if ($candidateIds === []) {
+            return null;
+        }
+
+        $activeLookup = array_fill_keys(
+            Formation::query()
+                ->whereIn('id', $candidateIds)
+                ->where('is_active', true)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all(),
+            true,
+        );
+
+        foreach ($candidateIds as $id) {
+            if (isset($activeLookup[$id])) {
+                return $id;
+            }
+        }
+
+        return null;
+    }
+
+    private function formationIsActive(int $formationId): bool
+    {
+        return (bool) Formation::query()->whereKey($formationId)->value('is_active');
+    }
+
+    /**
+     * @return array{
+     *     attendance_day: string,
+     *     current_slot: null,
+     *     phase: string,
+     *     minutes_into_slot: null,
+     *     present_minutes: int,
+     *     already_marked_slots: list<string>,
+     *     label_key: string,
+     *     next_slot: null,
+     *     row: null
+     * }
+     */
+    private function inactiveFormationSlotStatus(string $attendanceDay): array
+    {
+        return [
+            'attendance_day' => $attendanceDay,
+            'current_slot' => null,
+            'phase' => 'closed',
+            'minutes_into_slot' => null,
+            'present_minutes' => (int) config('attendance.present_minutes', 15),
+            'already_marked_slots' => [],
+            'label_key' => 'attendance.closed',
+            'next_slot' => null,
+            'row' => null,
         ];
     }
 
