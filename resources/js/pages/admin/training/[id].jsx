@@ -1,3 +1,4 @@
+import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -761,9 +762,7 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                 className="flex flex-1 cursor-pointer items-center space-x-3 rounded-lg p-2 transition-colors hover:bg-alpha/5"
                                                 onClick={() => router.visit(`/admin/users/${user.id}`)}
                                             >
-                                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-alpha font-bold text-black">
-                                                    {user.name.charAt(0).toUpperCase()}
-                                                </div>
+                                                <Avatar className="h-10 w-10" image={user.image} name={user.name} onlineCircleClass="hidden" />
                                                 <div>
                                                     <p className="font-semibold text-dark dark:text-light">{user.name}</p>
                                                     <p className="text-sm text-dark/70 dark:text-light/70">{user.email}</p>
@@ -796,15 +795,12 @@ export default function Show({ training, usersNull, courses = [] }) {
                     <div className="space-y-6">
                         {/* Coach Card */}
                         <div className="flex items-center space-x-4 rounded-2xl border border-alpha/20 bg-light p-6 dark:bg-dark">
-                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-alpha text-lg font-bold text-black">
-                                {training.coach
-                                    ? training.coach.name
-                                          .split(' ')
-                                          .map((n) => n[0])
-                                          .join('')
-                                          .toUpperCase()
-                                    : 'C'}
-                            </div>
+                            <Avatar
+                                className="h-14 w-14"
+                                image={training.coach?.image}
+                                name={training.coach?.name || 'Coach'}
+                                onlineCircleClass="hidden"
+                            />
                             <div>
                                 <p className="font-bold text-dark dark:text-light">{training.coach?.name || 'Expert Instructor'}</p>
                                 <p className="text-sm text-dark/70 dark:text-light/70">{training.coach?.speciality || 'Professional Mentor'}</p>
@@ -926,9 +922,7 @@ export default function Show({ training, usersNull, courses = [] }) {
                                             onClick={() => router.visit(`/students/${user.id}`)}
                                         >
                                             <div className="flex items-center space-x-3">
-                                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-alpha font-bold text-black">
-                                                    {user.name.charAt(0).toUpperCase()}
-                                                </div>
+                                                <Avatar className="h-10 w-10" image={user.image} name={user.name} onlineCircleClass="hidden" />
                                                 <div>
                                                     <p className="font-semibold text-dark dark:text-light">{user.name}</p>
                                                 </div>
@@ -1097,9 +1091,7 @@ export default function Show({ training, usersNull, courses = [] }) {
                                         return (
                                             <div key={student.id} className="rounded-lg border border-alpha/20 p-3">
                                                 <div className="mb-3 flex items-center gap-3">
-                                                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-alpha font-bold text-black">
-                                                        {student.name.charAt(0).toUpperCase()}
-                                                    </div>
+                                                    <Avatar className="h-9 w-9" image={student.image} name={student.name} onlineCircleClass="hidden" />
                                                     <div className="min-w-0">
                                                         <p className="truncate font-semibold text-dark dark:text-light">{student.name}</p>
                                                         <p className="truncate text-xs text-dark/70 dark:text-light/70">{student.email}</p>
@@ -1183,9 +1175,12 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                         <tr key={student.id} className="transition-colors hover:bg-accent/30">
                                                             <td className="px-4 py-3">
                                                                 <div className="flex items-center space-x-3">
-                                                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-alpha font-bold text-black">
-                                                                        {student.name.charAt(0).toUpperCase()}
-                                                                    </div>
+                                                                    <Avatar
+                                                                        className="h-10 w-10"
+                                                                        image={student.image}
+                                                                        name={student.name}
+                                                                        onlineCircleClass="hidden"
+                                                                    />
                                                                     <div>
                                                                         <p className="text-base font-bold text-dark dark:text-light">
                                                                             {student.name}
@@ -1371,9 +1366,7 @@ export default function Show({ training, usersNull, courses = [] }) {
                                             }}
                                         />
                                         <div className="flex flex-1 items-center space-x-3">
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-alpha font-bold text-black">
-                                                {student.name.charAt(0).toUpperCase()}
-                                            </div>
+                                            <Avatar className="h-10 w-10" image={student.image} name={student.name} onlineCircleClass="hidden" />
                                             <div>
                                                 <p className="font-semibold text-dark dark:text-light">{student.name}</p>
                                                 <p className="text-xs text-dark/70 dark:text-light/70">{student.email}</p>

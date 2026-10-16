@@ -323,7 +323,7 @@ export default function ProjectShow({ project }) {
                                 <div className="flex items-center gap-3">
                                     <Avatar
                                         className="h-10 w-10"
-                                        image={project.user.image ? `/storage/${project.user.image}` : null}
+                                        image={project.user.image}
                                         name={project.user.name}
                                     />
                                     <div>
@@ -342,7 +342,7 @@ export default function ProjectShow({ project }) {
                                     <div className="flex items-center gap-3">
                                         <Avatar
                                             className="h-10 w-10"
-                                            image={project.approved_by.image ? `/storage/${project.approved_by.image}` : null}
+                                            image={project.approved_by.image}
                                             name={project.approved_by.name}
                                         />
                                         <div>

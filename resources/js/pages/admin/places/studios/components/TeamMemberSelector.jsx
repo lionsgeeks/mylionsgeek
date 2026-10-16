@@ -1,3 +1,4 @@
+import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -65,24 +66,9 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
-    const normalizeImage = (image) => {
-        if (!image) return null;
-        if (image.startsWith('http://') || image.startsWith('https://')) return image;
-        if (image.startsWith('/')) return image;
-        if (image.startsWith('storage/')) return `/${image}`;
-        if (image.startsWith('public/')) return `/${image.replace(/^public\//, 'storage/')}`;
-        if (image.startsWith('img/')) return `/storage/${image}`;
-        return `/storage/${image.replace(/^\/?/, '')}`;
-    };
-
     const users = useMemo(() => {
         if (!Array.isArray(teamMemberOptions)) return [];
-        return teamMemberOptions
-            .filter((user) => viewerIsAdmin || !hasAdminRole(user?.role ?? user?.roles))
-            .map((user) => ({
-                ...user,
-                image: normalizeImage(user.image),
-            }));
+        return teamMemberOptions.filter((user) => viewerIsAdmin || !hasAdminRole(user?.role ?? user?.roles));
     }, [teamMemberOptions, viewerIsAdmin]);
 
     useEffect(() => {
@@ -111,15 +97,6 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
     const handleRemove = (userId) => {
         onSelect(selected.filter((m) => m.id !== userId));
     };
-    const getInitials = (name) => {
-        if (!name) return 'U';
-        return name
-            .split(' ')
-            .map((n) => n[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2);
-    };
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -139,23 +116,14 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
             {selected.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2">
                     {selected.map((member) => {
-                        const image = normalizeImage(member?.image);
                         return (
                             <div key={member.id} className="flex items-center gap-2 rounded-lg border border-border bg-white/80 p-2 dark:bg-[#111]">
-                                <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-muted text-[11px] font-semibold text-muted-foreground uppercase">
-                                    {image ? (
-                                        <img
-                                            src={image}
-                                            alt={member?.name || 'Member'}
-                                            loading="lazy"
-                                            decoding="async"
-                                            className="h-full w-full object-cover"
-                                            onError={(e) => e.currentTarget.remove()}
-                                        />
-                                    ) : (
-                                        getInitials(member?.name)
-                                    )}
-                                </div>
+                                <Avatar
+                                    className="h-10 w-10"
+                                    image={member?.image}
+                                    name={member?.name || 'Member'}
+                                    onlineCircleClass="hidden"
+                                />
                                 <span className="flex-1 text-sm">{member.name}</span>
                                 <Button
                                     type="button"
@@ -197,22 +165,12 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
                                 {filteredUsers.map((user) => {
                                     const isSelected = selected.some((m) => m.id === user.id);
                                     const avatar = (
-                                        <div className="team-avatar relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-muted text-[11px] font-semibold text-muted-foreground uppercase">
-                                            {user?.image ? (
-                                                <img
-                                                    src={user.image}
-                                                    alt={user?.name || 'Team member'}
-                                                    loading="lazy"
-                                                    decoding="async"
-                                                    className="h-full w-full object-cover"
-                                                    onError={(e) => {
-                                                        e.currentTarget.remove();
-                                                    }}
-                                                />
-                                            ) : (
-                                                getInitials(user?.name)
-                                            )}
-                                        </div>
+                                        <Avatar
+                                            className="h-10 w-10"
+                                            image={user?.image}
+                                            name={user?.name || 'Team member'}
+                                            onlineCircleClass="hidden"
+                                        />
                                     );
                                     return (
                                         <div
