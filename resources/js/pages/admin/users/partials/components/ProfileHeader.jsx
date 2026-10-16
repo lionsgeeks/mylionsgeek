@@ -1,3 +1,4 @@
+import ProcessingDialog from '@/components/ProcessingDialog';
 import { Avatar } from '@/components/ui/avatar';
 import { coverPublicUrl } from '@/lib/coverUrl';
 import { router, usePage } from '@inertiajs/react';
@@ -10,6 +11,7 @@ import DownloadCertificateDialog, { resolveCertificateTrack } from './DownloadCe
 
 const ProfileHeader = ({ user, trainings, roles }) => {
     const [open, setOpen] = useState(false);
+    const [coverUploading, setCoverUploading] = useState(false);
     const [certDialogOpen, setCertDialogOpen] = useState(false);
     const hasCertificateTrack = resolveCertificateTrack(user?.field) !== null;
     const onlineColor = user?.is_online ? 'bg-green-500' : 'bg-neutral-500';
@@ -27,9 +29,11 @@ const ProfileHeader = ({ user, trainings, roles }) => {
         formData.append('cover', file); // Append the selected file to FormData
 
         // Send the POST request with the form data
+        setCoverUploading(true);
         router.post(`/students/changeCover/${userId}`, formData, {
             preserveScroll: true,
             forceFormData: true,
+            onFinish: () => setCoverUploading(false),
         });
         event.target.value = '';
     };
@@ -203,6 +207,7 @@ const ProfileHeader = ({ user, trainings, roles }) => {
                 </div>
             </div>
             <EditUserModal open={!!open} onClose={() => setOpen(false)} editedUser={user} roles={roles} status={ADMIN_USER_STATUSES} trainings={trainings} />
+            <ProcessingDialog open={coverUploading} title="Updating cover" description="Your cover photo is being uploaded." />
             {hasCertificateTrack && (
                 <DownloadCertificateDialog open={certDialogOpen} onOpenChange={setCertDialogOpen} user={user} />
             )}

@@ -1,3 +1,4 @@
+import ProcessingDialog from '@/components/ProcessingDialog';
 import { Avatar } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Link, router, usePage } from '@inertiajs/react';
@@ -17,6 +18,7 @@ const Header = ({ user }) => {
     const [openEdit, setOpenEdit] = useState(false);
     const [openFollowModal, setOpenFollowModal] = useState([]);
     const [openProfilePicture, setOpenProfilePicture] = useState(false);
+    const [coverUploading, setCoverUploading] = useState(false);
     const { auth, errors } = usePage().props;
     const coverUrl = coverPublicUrl(user?.cover);
     const { addOrRemoveFollow } = helpers();
@@ -73,9 +75,11 @@ const Header = ({ user }) => {
         formData.append('cover', file); // Append the selected file to FormData
 
         // Send the POST request with the form data
+        setCoverUploading(true);
         router.post(`/students/changeCover/${userId}`, formData, {
             preserveScroll: true,
             forceFormData: true,
+            onFinish: () => setCoverUploading(false),
         });
         event.target.value = '';
     };
@@ -330,6 +334,7 @@ const Header = ({ user }) => {
             )}
             {openFollowModal[0] && <FollowModal student={user} onOpenChange={setOpenFollowModal} openChange={openFollowModal} />}
             <ProfilePictureModal open={openProfilePicture} onOpenChange={setOpenProfilePicture} user={user} />
+            <ProcessingDialog open={coverUploading} title="Updating cover" description="Your cover photo is being uploaded." />
         </>
     );
 };
