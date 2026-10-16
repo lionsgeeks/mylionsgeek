@@ -38,7 +38,7 @@ test('reset password link is sent when the account exists', function () {
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertSessionHas('status', 'If this email has an account, we sent a reset link.');
+        ->assertSessionHas('status', 'A reset link will be sent if the account exists.');
 
     Mail::assertSent(ForgotPasswordLinkMail::class, function (ForgotPasswordLinkMail $mail) use ($user) {
         return $mail->hasTo($user->email);
@@ -52,13 +52,13 @@ test('unknown email gets the same message and no extra reset mail is sent', func
 
     $this->post(route('password.email'), ['email' => $user->email])
         ->assertSessionHasNoErrors()
-        ->assertSessionHas('status', 'If this email has an account, we sent a reset link.');
+        ->assertSessionHas('status', 'A reset link will be sent if the account exists.');
 
     $this->post(route('password.email'), [
         'email' => 'missing-account@example.com',
     ])
         ->assertSessionHasNoErrors()
-        ->assertSessionHas('status', 'If this email has an account, we sent a reset link.');
+        ->assertSessionHas('status', 'A reset link will be sent if the account exists.');
 
     Mail::assertSent(ForgotPasswordLinkMail::class, 1);
 });
@@ -69,13 +69,13 @@ test('a second reset request within the throttle window shows the same message',
     $user = User::factory()->create();
 
     $this->post(route('password.email'), ['email' => $user->email])
-        ->assertSessionHas('status', 'If this email has an account, we sent a reset link.');
+        ->assertSessionHas('status', 'A reset link will be sent if the account exists.');
 
     $response = $this->post(route('password.email'), ['email' => $user->email]);
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertSessionHas('status', 'If this email has an account, we sent a reset link.');
+        ->assertSessionHas('status', 'A reset link will be sent if the account exists.');
 
     Mail::assertSentCount(1);
 });
