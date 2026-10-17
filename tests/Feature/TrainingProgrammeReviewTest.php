@@ -155,18 +155,14 @@ test('external coach creation: does not create fake student or duplicate account
         ])
         ->assertRedirect();
 
-    expect(User::count())->toBe($initialUsersCount + 1);
+    // Verify NO User record was created in the database
+    expect(User::count())->toBe($initialUsersCount)
+        ->and(User::where('name', 'Jane External Expert')->exists())->toBeFalse();
 
-    $externalCoach = User::where('name', 'Jane External Expert')->first();
-    expect($externalCoach)->not->toBeNull()
-        ->and($externalCoach->email)->toBeNull() // No fake email address generated
-        ->and($externalCoach->role)->toBe(['coach']) // Strictly coach role, NOT student
-        ->and($externalCoach->is_external)->toBeTrue();
-
-    // Verify session attached to external coach
-    $session = TrainingSession::where('title', 'External Workshop')->first();
-    expect($session)->not->toBeNull()
-        ->and($session->coaches->pluck('id')->all())->toContain($externalCoach->id);
+    // Verify session stores external coach name directly
+    $session = TrainingSession::where('title', 'External Workshop')->firstOrFail();
+    expect($session->external_coach_name)->toBe('Jane External Expert')
+        ->and($session->coaches->count())->toBe(0);
 
     // 2. Update the programme item multiple times (e.g. repeated save / edit)
     $this->actingAs($admin)
@@ -177,18 +173,17 @@ test('external coach creation: does not create fake student or duplicate account
             'startDay' => 0,
             'endDay' => 3,
             'coach' => [
-                'id' => $externalCoach->id,
                 'name' => 'Jane External Expert',
                 'type' => 'External',
             ],
         ])
         ->assertRedirect();
 
-    // Assert NO duplicate user was created
-    expect(User::where('name', 'Jane External Expert')->count())->toBe(1)
-        ->and(User::count())->toBe($initialUsersCount + 1);
+    // Assert STILL NO user was created
+    expect(User::count())->toBe($initialUsersCount)
+        ->and(User::where('name', 'Jane External Expert')->exists())->toBeFalse();
 
-    // Even if coach is submitted as a new name object matching the existing external coach
+    // Even if coach is submitted as a new name object
     $this->actingAs($admin)
         ->put('/trainings/' . $training->id . '/programme-items/' . $session->id, [
             'title' => 'External Workshop Updated Again',
@@ -203,14 +198,14 @@ test('external coach creation: does not create fake student or duplicate account
         ])
         ->assertRedirect();
 
-    expect(User::where('name', 'Jane External Expert')->count())->toBe(1);
+    expect(User::count())->toBe($initialUsersCount);
 
     // 3. Verify external coach is excluded from student lists (usersNull)
     $response = $this->actingAs($admin)->get('/trainings/' . $training->id);
-    $response->assertInertia(function (Assert $page) use ($externalCoach) {
-        $page->where('usersNull', function ($usersNull) use ($externalCoach) {
-            $ids = collect($usersNull)->pluck('id')->all();
-            return ! in_array($externalCoach->id, $ids, true);
+    $response->assertInertia(function (Assert $page) {
+        $page->where('usersNull', function ($usersNull) {
+            $names = collect($usersNull)->pluck('name')->all();
+            return ! in_array('Jane External Expert', $names, true);
         });
     });
 });
@@ -612,11 +607,9 @@ test('coach assignment validation: rejected update does not silently detach curr
 test('coach assignment validation: valid internal and external coaches can still be assigned by ID', function () {
     $admin = createReviewUser(['admin']);
     $internalCoach = createReviewUser(['coach'], ['name' => 'Internal Expert']);
-    $externalCoach = User::create([
+    $externalCoach = createReviewUser(['coach'], [
         'name' => 'External Specialist',
         'email' => null,
-        'password' => \Illuminate\Support\Facades\Hash::make('password123'),
-        'role' => ['coach'],
         'speciality' => 'External',
         'status' => 'External',
         'is_external' => true,
@@ -651,7 +644,8 @@ test('coach assignment validation: valid internal and external coaches can still
         ->assertRedirect();
 
     $session2 = TrainingSession::where('title', 'External Coach Session')->firstOrFail();
-    expect($session2->coaches->pluck('id')->all())->toBe([$externalCoach->id]);
+    expect($session2->external_coach_name)->toBe('External Specialist')
+        ->and($session2->coaches->count())->toBe(0);
 });
 
 test('week deletion: deleting a non-existent week returns error and preserves subsequent weeks', function () {
@@ -690,4 +684,390 @@ test('week deletion: deleting a non-existent week returns error and preserves su
     // Ensure weeks 29 and 30 are completely intact and were not renumbered
     expect(TrainingWeek::where('formation_id', $training->id)->where('week_number', 29)->exists())->toBeTrue()
         ->and(TrainingWeek::where('formation_id', $training->id)->where('week_number', 30)->exists())->toBeTrue();
+});
+
+test('main training coach selector rejects external coaches', function () {
+    $admin = createReviewUser(['admin']);
+    $externalCoach = createReviewUser(['coach'], [
+        'name' => 'Legacy Karim External',
+        'email' => null,
+        'is_external' => true,
+    ]);
+
+    // Attempt to create a formation with an external coach as main coach
+    $response = $this->actingAs($admin)
+        ->post('/admin/training', [
+            'name' => 'New Web Bootcamp',
+            'category' => 'coding',
+            'start_time' => '2026-10-06',
+            'user_id' => $externalCoach->id,
+        ]);
+
+    $response->assertSessionHasErrors('user_id');
+
+    // Attempt to update existing formation setting external coach as main coach
+    $internalCoach = createReviewUser(['coach']);
+    $training = createReviewFormation(['user_id' => $internalCoach->id]);
+
+    $updateResponse = $this->actingAs($admin)
+        ->put('/trainings/' . $training->id, [
+            'name' => 'Updated Web Bootcamp',
+            'category' => 'coding',
+            'start_time' => '2026-10-06',
+            'user_id' => $externalCoach->id,
+        ]);
+
+    $updateResponse->assertSessionHasErrors('user_id');
+});
+
+test('members page and mobile coach list exclude external coaches', function () {
+    $admin = createReviewUser(['admin']);
+    $internalCoach = createReviewUser(['coach'], ['name' => 'Active Internal Coach']);
+    $externalCoach = User::create([
+        'name' => 'External Placeholder User',
+        'email' => null,
+        'password' => \Illuminate\Support\Facades\Hash::make('secret'),
+        'role' => ['coach'],
+        'is_external' => true,
+    ]);
+
+    // 1. Members page (admin/users/index)
+    $response = $this->actingAs($admin)->get('/admin/users');
+    $response->assertOk();
+    $response->assertInertia(function (Assert $page) {
+        $page->where('users', function ($users) {
+            $names = collect($users)->pluck('name')->all();
+            expect($names)->toContain('Active Internal Coach')
+                ->and($names)->not->toContain('External Placeholder User');
+            return true;
+        });
+    });
+
+    // 2. Mobile training catalog coaches list
+    $apiResponse = $this->actingAs($admin)->getJson('/api/mobile/trainings');
+    $apiResponse->assertOk();
+    $coaches = collect($apiResponse->json('coaches', []))->pluck('name')->all();
+    expect($coaches)->toContain('Active Internal Coach')
+        ->and($coaches)->not->toContain('External Placeholder User');
+});
+
+test('safe migration of legacy external coach data without deleting legitimate or referenced users', function () {
+    $admin = createReviewUser(['admin']);
+    $student = createReviewUser(['student'], ['name' => 'Real Student']);
+    $internalCoach = createReviewUser(['coach'], ['name' => 'Real Coach']);
+
+    // 1. Create legacy unreferenced external coach user (should be cleaned up)
+    $legacyExternalUser = User::create([
+        'name' => 'Dr. Legacy Coach',
+        'email' => null,
+        'password' => \Illuminate\Support\Facades\Hash::make('temp123'),
+        'role' => ['coach'],
+        'is_external' => true,
+    ]);
+
+    // 2. Create legacy external coach user that IS referenced elsewhere (e.g. as training main coach)
+    // This user must NOT be deleted even if is_external = true and email is null!
+    $referencedExternalCoach = User::create([
+        'name' => 'Referenced External Coach',
+        'email' => null,
+        'password' => \Illuminate\Support\Facades\Hash::make('temp123'),
+        'role' => ['coach'],
+        'is_external' => true,
+    ]);
+    $referencedTraining = createReviewFormation(['user_id' => $referencedExternalCoach->id]);
+
+    $training = createReviewFormation(['user_id' => $internalCoach->id]);
+    $week = TrainingWeek::create([
+        'formation_id' => $training->id,
+        'week_number' => 1,
+        'title' => 'Week 1',
+        'start_date' => '2026-10-06',
+        'end_date' => '2026-10-10',
+    ]);
+
+    $session = TrainingSession::create([
+        'training_week_id' => $week->id,
+        'formation_id' => $training->id,
+        'date' => '2026-10-06',
+        'start_time' => '0',
+        'end_time' => '1:0',
+        'title' => 'Legacy Session',
+    ]);
+    $session->coaches()->attach($legacyExternalUser->id);
+
+    // Run the migration logic
+    $migration = require database_path('migrations/2026_09_23_000000_add_external_coach_name_to_training_sessions_table.php');
+    $migration->up();
+
+    // Verify session now has external_coach_name populated
+    $session->refresh();
+    expect($session->external_coach_name)->toBe('Dr. Legacy Coach')
+        ->and($session->coaches->count())->toBe(0);
+
+    // Verify unreferenced legacy placeholder user was safely removed
+    expect(User::where('id', $legacyExternalUser->id)->exists())->toBeFalse();
+
+    // Verify REFERENCED external user was NOT deleted (foreign key protection)
+    expect(User::where('id', $referencedExternalCoach->id)->exists())->toBeTrue();
+
+    // Verify legitimate internal users were completely untouched
+    expect(User::where('id', $student->id)->exists())->toBeTrue()
+        ->and(User::where('id', $internalCoach->id)->exists())->toBeTrue()
+        ->and(User::where('id', $admin->id)->exists())->toBeTrue();
+
+    // 3. Test rollback drops external_coach_name column cleanly
+    expect(function () use ($migration) {
+        $migration->down();
+    })->not->toThrow(\Throwable::class);
+
+    expect(\Illuminate\Support\Facades\Schema::hasColumn('training_sessions', 'external_coach_name'))->toBeFalse();
+
+    // 4. Test reapplication works cleanly
+    expect(function () use ($migration) {
+        $migration->up();
+    })->not->toThrow(\Throwable::class);
+
+    expect(\Illuminate\Support\Facades\Schema::hasColumn('training_sessions', 'external_coach_name'))->toBeTrue();
+});
+
+test('validation: session ending before it starts is rejected with 422', function () {
+    $admin = createReviewUser(['admin']);
+    $training = createReviewFormation();
+
+    $initialSessionCount = TrainingSession::count();
+
+    // 1. Reversed weeks: startWeek 4, endWeek 2
+    $responseReversedWeek = $this->actingAs($admin)
+        ->post('/trainings/' . $training->id . '/programme-items', [
+            'title' => 'Reversed Week Session',
+            'startWeek' => 4,
+            'endWeek' => 2,
+            'startDay' => 1,
+            'endDay' => 1,
+        ]);
+
+    $responseReversedWeek->assertSessionHasErrors('endWeek');
+    expect(TrainingSession::count())->toBe($initialSessionCount);
+
+    // 2. Reversed days within the same week: startDay 3 (Thu), endDay 1 (Tue)
+    $responseReversedDay = $this->actingAs($admin)
+        ->post('/trainings/' . $training->id . '/programme-items', [
+            'title' => 'Reversed Day Session',
+            'startWeek' => 2,
+            'endWeek' => 2,
+            'startDay' => 3,
+            'endDay' => 1,
+        ]);
+
+    $responseReversedDay->assertSessionHasErrors('endDay');
+    expect(TrainingSession::count())->toBe($initialSessionCount);
+
+    // 3. Rejected update on reversed session
+    $validSession = TrainingSession::create([
+        'formation_id' => $training->id,
+        'training_week_id' => TrainingWeek::create([
+            'formation_id' => $training->id,
+            'week_number' => 2,
+            'title' => 'Week 2',
+            'start_date' => '2026-10-13',
+            'end_date' => '2026-10-17',
+        ])->id,
+        'date' => '2026-10-13',
+        'start_time' => '1',
+        'end_time' => '2:3',
+        'title' => 'Valid Session',
+    ]);
+
+    $responseUpdate = $this->actingAs($admin)
+        ->put('/trainings/' . $training->id . '/programme-items/' . $validSession->id, [
+            'title' => 'Tampered Inverted Session',
+            'startWeek' => 3,
+            'endWeek' => 1,
+            'startDay' => 1,
+            'endDay' => 1,
+        ]);
+
+    $responseUpdate->assertSessionHasErrors('endWeek');
+    expect($validSession->fresh()->title)->toBe('Valid Session');
+});
+
+test('validation: week numbers outside real supported programme duration are rejected', function () {
+    $admin = createReviewUser(['admin']);
+    // Standard training without extended end_time (duration is baseline 28 weeks)
+    $training = createReviewFormation([
+        'start_time' => '2026-10-06',
+        'end_time' => '2027-04-20', // exactly 28 weeks
+    ]);
+
+    // 1. Extreme week number 5000 in storeWeek
+    $respExtremeWeek = $this->actingAs($admin)
+        ->post('/trainings/' . $training->id . '/weeks', [
+            'week_number' => 5000,
+        ]);
+
+    $respExtremeWeek->assertSessionHasErrors('week_number');
+    expect(TrainingWeek::where('formation_id', $training->id)->where('week_number', 5000)->exists())->toBeFalse();
+
+    // 2. Week 0 in storeWeek
+    $respZeroWeek = $this->actingAs($admin)
+        ->post('/trainings/' . $training->id . '/weeks', [
+            'week_number' => 0,
+        ]);
+
+    $respZeroWeek->assertSessionHasErrors('week_number');
+
+    // 3. Week 30 (skipping ahead when current max is 28, next allowed is 29) in storeWeek
+    $respSkipWeek = $this->actingAs($admin)
+        ->post('/trainings/' . $training->id . '/weeks', [
+            'week_number' => 30,
+        ]);
+
+    $respSkipWeek->assertSessionHasErrors('week_number');
+
+    // 4. Extreme week number 5000 in storeProgrammeItem
+    $respExtremeItem = $this->actingAs($admin)
+        ->post('/trainings/' . $training->id . '/programme-items', [
+            'title' => 'Extreme Week Item',
+            'startWeek' => 5000,
+            'endWeek' => 5000,
+            'startDay' => 0,
+            'endDay' => 1,
+        ]);
+
+    $respExtremeItem->assertSessionHasErrors(['startWeek', 'endWeek']);
+
+    // 5. Extreme week number 5000 in updateProgrammeItem
+    $week1 = TrainingWeek::create([
+        'formation_id' => $training->id,
+        'week_number' => 1,
+        'title' => 'Week 1',
+        'start_date' => '2026-10-06',
+        'end_date' => '2026-10-10',
+    ]);
+    $existingSession = TrainingSession::create([
+        'formation_id' => $training->id,
+        'training_week_id' => $week1->id,
+        'date' => '2026-10-06',
+        'start_time' => '0',
+        'end_time' => '1:0',
+        'title' => 'Session To Update',
+    ]);
+    $respUpdateExtreme = $this->actingAs($admin)
+        ->put('/trainings/' . $training->id . '/programme-items/' . $existingSession->id, [
+            'title' => 'Updated Session',
+            'startWeek' => 5000,
+            'endWeek' => 5000,
+            'startDay' => 0,
+            'endDay' => 1,
+        ]);
+    $respUpdateExtreme->assertSessionHasErrors(['startWeek', 'endWeek']);
+
+    // 6. Week 0 in storeProgrammeItem
+    $respZeroItem = $this->actingAs($admin)
+        ->post('/trainings/' . $training->id . '/programme-items', [
+            'title' => 'Zero Week Item',
+            'startWeek' => 0,
+            'endWeek' => 1,
+            'startDay' => 0,
+            'endDay' => 1,
+        ]);
+
+    $respZeroItem->assertSessionHasErrors('startWeek');
+
+    // 7. Week 29 in storeProgrammeItem BEFORE week 29 is created
+    $respPrematureItem = $this->actingAs($admin)
+        ->post('/trainings/' . $training->id . '/programme-items', [
+            'title' => 'Premature Week 29 Item',
+            'startWeek' => 29,
+            'endWeek' => 29,
+            'startDay' => 0,
+            'endDay' => 1,
+        ]);
+
+    $respPrematureItem->assertSessionHasErrors(['startWeek', 'endWeek']);
+});
+
+test('validation: valid boundaries for week numbers and sessions are accepted', function () {
+    $admin = createReviewUser(['admin']);
+    $training = createReviewFormation();
+
+    // 1. Single day session at week 1, day 0 (Mon)
+    $this->actingAs($admin)
+        ->post('/trainings/' . $training->id . '/programme-items', [
+            'title' => 'Single Day Boundary',
+            'startWeek' => 1,
+            'endWeek' => 1,
+            'startDay' => 0,
+            'endDay' => 0,
+        ])
+        ->assertRedirect();
+
+    $item1 = TrainingSession::where('title', 'Single Day Boundary')->firstOrFail();
+    expect($item1->start_time)->toBe('0')
+        ->and($item1->end_time)->toBe('1:0');
+
+    // 2. Full 28-week calendar default boundary (actual maximum of standard training)
+    $this->actingAs($admin)
+        ->post('/trainings/' . $training->id . '/programme-items', [
+            'title' => 'Default 28 Weeks Span',
+            'startWeek' => 1,
+            'endWeek' => 28,
+            'startDay' => 0,
+            'endDay' => 4,
+        ])
+        ->assertRedirect();
+
+    expect(TrainingSession::where('title', 'Default 28 Weeks Span')->exists())->toBeTrue();
+
+    // 3. Dynamically adding next sequential week (Week 29)
+    $this->actingAs($admin)
+        ->post('/trainings/' . $training->id . '/weeks', [
+            'week_number' => 29,
+        ])
+        ->assertRedirect();
+
+    expect(TrainingWeek::where('formation_id', $training->id)->where('week_number', 29)->exists())->toBeTrue();
+
+    // 4. Session at dynamically extended maximum boundary (Week 29)
+    $this->actingAs($admin)
+        ->post('/trainings/' . $training->id . '/programme-items', [
+            'title' => 'Final Capstone Week 29',
+            'startWeek' => 29,
+            'endWeek' => 29,
+            'startDay' => 0,
+            'endDay' => 4,
+        ])
+        ->assertRedirect();
+
+    expect(TrainingSession::where('title', 'Final Capstone Week 29')->exists())->toBeTrue();
+
+    // 5. Training with custom configured duration (e.g. 35 weeks)
+    $customTraining = createReviewFormation([
+        'start_time' => '2026-10-06',
+        'end_time' => \Carbon\Carbon::parse('2026-10-06')->addWeeks(35)->format('Y-m-d'),
+    ]);
+    $this->actingAs($admin)
+        ->post('/trainings/' . $customTraining->id . '/programme-items', [
+            'title' => 'Week 35 Custom Duration Session',
+            'startWeek' => 35,
+            'endWeek' => 35,
+            'startDay' => 0,
+            'endDay' => 4,
+        ])
+        ->assertRedirect();
+
+    expect(TrainingSession::where('title', 'Week 35 Custom Duration Session')->exists())->toBeTrue();
+
+    // 6. Multi-week session spanning across days (Wed Week 2 to Tue Week 4)
+    $this->actingAs($admin)
+        ->post('/trainings/' . $training->id . '/programme-items', [
+            'title' => 'Cross Week Span',
+            'startWeek' => 2,
+            'endWeek' => 4,
+            'startDay' => 2,
+            'endDay' => 1,
+        ])
+        ->assertRedirect();
+
+    expect(TrainingSession::where('title', 'Cross Week Span')->exists())->toBeTrue();
 });

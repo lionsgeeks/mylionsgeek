@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import {
@@ -170,16 +170,27 @@ export default function TrainingProgrammeGrid({
                         desc = desc.replace(/\[color:[a-z]+\]/, '').trim();
                     }
 
+                    let coachObj = null;
+                    if (firstCoach) {
+                        coachObj = {
+                            id: firstCoach.id,
+                            name: firstCoach.name,
+                            type: firstCoach.speciality || (firstCoach.status === 'External' ? 'External' : 'Internal'),
+                        };
+                    } else if (session.external_coach_name) {
+                        coachObj = {
+                            id: null,
+                            name: session.external_coach_name,
+                            type: 'External',
+                        };
+                    }
+
                     loadedItems.push({
                         id: session.id,
                         title: session.title,
                         description: desc,
                         color: color,
-                        coach: firstCoach ? {
-                            id: firstCoach.id,
-                            name: firstCoach.name,
-                            type: firstCoach.speciality || (firstCoach.status === 'External' ? 'External' : 'Internal'),
-                        } : null,
+                        coach: coachObj,
                         startWeek: week.week_number,
                         endWeek: endWeek,
                         startDay: startDay,

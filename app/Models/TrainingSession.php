@@ -19,6 +19,7 @@ class TrainingSession extends Model
         'end_time',
         'title',
         'description',
+        'external_coach_name',
     ];
 
     protected function casts(): array

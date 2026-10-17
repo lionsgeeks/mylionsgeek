@@ -122,7 +122,13 @@ class TrainingController extends Controller
             $coaches = collect();
             if ($isStaff) {
                 try {
-                    $coaches = User::whereJsonContains('role', 'coach')->get()->map(function ($coach) {
+                    $coaches = User::whereJsonContains('role', 'coach')
+                        ->where(function ($q) {
+                            if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'is_external')) {
+                                $q->where('is_external', false)->orWhereNull('is_external');
+                            }
+                        })
+                        ->get()->map(function ($coach) {
                         return [
                             'id' => $coach->id,
                             'name' => $coach->name,
@@ -130,8 +136,15 @@ class TrainingController extends Controller
                         ];
                     });
                 } catch (\Exception $e) {
-                    $coaches = User::where('role', 'coach')
-                        ->orWhere('role', 'like', '%coach%')
+                    $coaches = User::where(function ($q) {
+                            $q->where('role', 'coach')
+                              ->orWhere('role', 'like', '%coach%');
+                        })
+                        ->where(function ($q) {
+                            if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'is_external')) {
+                                $q->where('is_external', false)->orWhereNull('is_external');
+                            }
+                        })
                         ->get()
                         ->map(function ($coach) {
                             return [
