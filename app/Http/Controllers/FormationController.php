@@ -74,11 +74,6 @@ class FormationController extends Controller
         $trainings = $query->orderBy('created_at', 'desc')->get();
 
         $coaches = User::whereJsonContains('role', 'coach')
-            ->where(function ($q) {
-                if (Schema::hasColumn('users', 'is_external')) {
-                    $q->where('is_external', false)->orWhereNull('is_external');
-                }
-            })
             ->select(['id', 'name', 'image', 'speciality'])
             ->get()
             ->map(fn ($c) => [
@@ -107,11 +102,6 @@ class FormationController extends Controller
     public function show(Formation $training)
     {
         $usersNull = User::whereNull('formation_id')
-            ->where(function ($q) {
-                if (Schema::hasColumn('users', 'is_external')) {
-                    $q->where('is_external', false)->orWhereNull('is_external');
-                }
-            })
             ->where(function ($q) {
                 $q->whereJsonContains('role', 'student')
                   ->orWhereNull('role');
@@ -160,14 +150,7 @@ class FormationController extends Controller
             });
         }
 
-        $internalCoaches = User::where(function ($q) {
-            $q->whereJsonContains('role', 'coach');
-        })
-        ->where(function ($q) {
-            if (Schema::hasColumn('users', 'is_external')) {
-                $q->where('is_external', false)->orWhereNull('is_external');
-            }
-        })
+        $internalCoaches = User::whereJsonContains('role', 'coach')
         ->select(['id', 'name', 'image', 'speciality'])
         ->get()
         ->map(function ($c) {
@@ -396,10 +379,6 @@ class FormationController extends Controller
                 ]);
             }
 
-            if ((bool) ($coach->is_external ?? false)) {
-                return ['user_id' => null, 'external_name' => $coach->name];
-            }
-
             return ['user_id' => (int) $coach->id, 'external_name' => null];
         }
 
@@ -411,11 +390,6 @@ class FormationController extends Controller
 
             $internalCoach = User::where('name', $name)
                 ->whereJsonContains('role', 'coach')
-                ->where(function ($q) {
-                    if (Schema::hasColumn('users', 'is_external')) {
-                        $q->where('is_external', false)->orWhereNull('is_external');
-                    }
-                })
                 ->first();
 
             if ($internalCoach) {
@@ -449,21 +423,12 @@ class FormationController extends Controller
                 ]);
             }
 
-            if ((bool) ($coach->is_external ?? false)) {
-                return ['user_id' => null, 'external_name' => $coach->name];
-            }
-
             return ['user_id' => (int) $coach->id, 'external_name' => null];
         }
 
         if ($name !== '') {
             $internalCoach = User::where('name', $name)
                 ->whereJsonContains('role', 'coach')
-                ->where(function ($q) {
-                    if (Schema::hasColumn('users', 'is_external')) {
-                        $q->where('is_external', false)->orWhereNull('is_external');
-                    }
-                })
                 ->first();
 
             if ($internalCoach) {
@@ -676,7 +641,7 @@ class FormationController extends Controller
                 'exists:users,id',
                 function ($attribute, $value, $fail) {
                     $u = User::find($value);
-                    if (! $u || ! in_array('coach', $u->normalizedRoles(), true) || (bool) ($u->is_external ?? false)) {
+                    if (! $u || ! in_array('coach', $u->normalizedRoles(), true)) {
                         $fail('The selected main coach must be an active internal coach.');
                     }
                 },
@@ -976,7 +941,7 @@ class FormationController extends Controller
                 function ($attribute, $value, $fail) {
                     if ($value) {
                         $u = User::find($value);
-                        if (! $u || ! in_array('coach', $u->normalizedRoles(), true) || (bool) ($u->is_external ?? false)) {
+                        if (! $u || ! in_array('coach', $u->normalizedRoles(), true)) {
                             $fail('The selected main coach must be an active internal coach.');
                         }
                     }

@@ -60,17 +60,9 @@ class UsersController extends Controller
         // Privileged actors (admin / super_admin) must see other admins so they can
         // manage their roles. Non-privileged staff still cannot browse elevated accounts.
         $allUsers = User::query()
-            ->where(function ($q) {
-                if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'is_external')) {
-                    $q->where('is_external', false)->orWhereNull('is_external');
-                }
-            })
             ->orderByDesc('created_at')
             ->get()
             ->filter(function (User $user) use ($actor) {
-                if ((bool) ($user->is_external ?? false)) {
-                    return false;
-                }
                 if ($user->isRecruiter()) {
                     return false;
                 }

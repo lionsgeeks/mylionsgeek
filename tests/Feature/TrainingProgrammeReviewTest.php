@@ -457,54 +457,25 @@ test('week deletion intersecting multi-week block: removes intersecting block an
         ->and($shiftedSession->training_week_id)->toBe($shiftedWeek->id);
 });
 
-test('isolated database migration verification: retains user data, handles null email coach, and rolls back safely', function () {
-    $migration = require database_path('migrations/2026_09_22_100000_make_user_email_nullable_and_add_is_external.php');
+test('database migration verification: adds external_coach_name to training_sessions and rolls back cleanly', function () {
+    $migration = require database_path('migrations/2026_09_23_000000_add_external_coach_name_to_training_sessions_table.php');
 
-    // 1. Existing user retains data and is_external defaults to false
-    $normalUser = createReviewUser(['student'], [
-        'name' => 'Alice Normal',
-        'email' => 'alice@example.com',
-    ]);
-    expect($normalUser->fresh()->is_external)->toBeFalse();
+    // 1. Column exists after migration
+    expect(\Illuminate\Support\Facades\Schema::hasColumn('training_sessions', 'external_coach_name'))->toBeTrue();
 
-    // 2. External coach can be stored with null email
-    $externalCoach = User::create([
-        'name' => 'Dr. Bob External',
-        'email' => null,
-        'password' => \Illuminate\Support\Facades\Hash::make('secret_pass'),
-        'role' => ['coach'],
-        'speciality' => 'Machine Learning',
-        'status' => 'External',
-        'is_external' => true,
-    ]);
-    expect($externalCoach->fresh()->email)->toBeNull()
-        ->and($externalCoach->fresh()->is_external)->toBeTrue();
-
-    // 3. Rollback when an external coach with null email exists -> fails safely with descriptive RuntimeException
-    expect(function () use ($migration) {
-        $migration->down();
-    })->toThrow(\RuntimeException::class, 'Cannot rollback migration');
-
-    // Verify external coach was NOT deleted or corrupted
-    expect(User::whereKey($externalCoach->id)->exists())->toBeTrue()
-        ->and(User::whereKey($normalUser->id)->exists())->toBeTrue();
-
-    // 4. When no users have null email/password, rollback succeeds cleanly
-    $externalCoach->delete(); // safely remove coach for clean rollback test
+    // 2. Rollback drops external_coach_name cleanly
     expect(function () use ($migration) {
         $migration->down();
     })->not->toThrow(\Throwable::class);
 
-    // Verify is_external column was dropped on rollback
-    expect(\Illuminate\Support\Facades\Schema::hasColumn('users', 'is_external'))->toBeFalse();
+    expect(\Illuminate\Support\Facades\Schema::hasColumn('training_sessions', 'external_coach_name'))->toBeFalse();
 
-    // 5. Reapplication of migration after rollback works cleanly
+    // 3. Reapplication works cleanly
     expect(function () use ($migration) {
         $migration->up();
     })->not->toThrow(\Throwable::class);
 
-    expect(\Illuminate\Support\Facades\Schema::hasColumn('users', 'is_external'))->toBeTrue();
-    expect($normalUser->fresh()->is_external)->toBeFalse();
+    expect(\Illuminate\Support\Facades\Schema::hasColumn('training_sessions', 'external_coach_name'))->toBeTrue();
 });
 
 test('coach assignment validation: student ID cannot be assigned as coach', function () {
@@ -604,16 +575,9 @@ test('coach assignment validation: rejected update does not silently detach curr
         ->and($freshSession->coaches->pluck('id')->all())->toBe([$coach->id]);
 });
 
-test('coach assignment validation: valid internal and external coaches can still be assigned by ID', function () {
+test('coach assignment validation: valid internal and external coaches can still be assigned', function () {
     $admin = createReviewUser(['admin']);
     $internalCoach = createReviewUser(['coach'], ['name' => 'Internal Expert']);
-    $externalCoach = createReviewUser(['coach'], [
-        'name' => 'External Specialist',
-        'email' => null,
-        'speciality' => 'External',
-        'status' => 'External',
-        'is_external' => true,
-    ]);
     $training = createReviewFormation(['user_id' => $internalCoach->id]);
 
     // 1. Assign valid internal coach by numeric ID
@@ -631,7 +595,7 @@ test('coach assignment validation: valid internal and external coaches can still
     $session1 = TrainingSession::where('title', 'Internal Coach Session')->firstOrFail();
     expect($session1->coaches->pluck('id')->all())->toBe([$internalCoach->id]);
 
-    // 2. Assign valid external coach by object with ID
+    // 2. Assign valid external coach by object
     $this->actingAs($admin)
         ->post('/trainings/' . $training->id . '/programme-items', [
             'title' => 'External Coach Session',
@@ -639,7 +603,7 @@ test('coach assignment validation: valid internal and external coaches can still
             'endWeek' => 1,
             'startDay' => 2,
             'endDay' => 4,
-            'coach' => ['id' => $externalCoach->id, 'name' => $externalCoach->name],
+            'coach' => ['name' => 'External Specialist', 'type' => 'External'],
         ])
         ->assertRedirect();
 
@@ -686,26 +650,22 @@ test('week deletion: deleting a non-existent week returns error and preserves su
         ->and(TrainingWeek::where('formation_id', $training->id)->where('week_number', 30)->exists())->toBeTrue();
 });
 
-test('main training coach selector rejects external coaches', function () {
+test('main training coach selector requires an active coach user', function () {
     $admin = createReviewUser(['admin']);
-    $externalCoach = createReviewUser(['coach'], [
-        'name' => 'Legacy Karim External',
-        'email' => null,
-        'is_external' => true,
-    ]);
+    $student = createReviewUser(['student'], ['name' => 'Student Person']);
 
-    // Attempt to create a formation with an external coach as main coach
+    // Attempt to create a formation with a non-coach as main coach
     $response = $this->actingAs($admin)
         ->post('/admin/training', [
             'name' => 'New Web Bootcamp',
             'category' => 'coding',
             'start_time' => '2026-10-06',
-            'user_id' => $externalCoach->id,
+            'user_id' => $student->id,
         ]);
 
     $response->assertSessionHasErrors('user_id');
 
-    // Attempt to update existing formation setting external coach as main coach
+    // Attempt to update existing formation setting non-coach as main coach
     $internalCoach = createReviewUser(['coach']);
     $training = createReviewFormation(['user_id' => $internalCoach->id]);
 
@@ -714,21 +674,33 @@ test('main training coach selector rejects external coaches', function () {
             'name' => 'Updated Web Bootcamp',
             'category' => 'coding',
             'start_time' => '2026-10-06',
-            'user_id' => $externalCoach->id,
+            'user_id' => $student->id,
         ]);
 
     $updateResponse->assertSessionHasErrors('user_id');
 });
 
-test('members page and mobile coach list exclude external coaches', function () {
+test('external coach names do not pollute members page or mobile coach lists', function () {
     $admin = createReviewUser(['admin']);
     $internalCoach = createReviewUser(['coach'], ['name' => 'Active Internal Coach']);
-    $externalCoach = User::create([
-        'name' => 'External Placeholder User',
-        'email' => null,
-        'password' => \Illuminate\Support\Facades\Hash::make('secret'),
-        'role' => ['coach'],
-        'is_external' => true,
+    $training = createReviewFormation(['user_id' => $internalCoach->id]);
+
+    $week = TrainingWeek::create([
+        'formation_id' => $training->id,
+        'week_number' => 1,
+        'title' => 'Week 1',
+        'start_date' => '2026-10-06',
+        'end_date' => '2026-10-10',
+    ]);
+
+    TrainingSession::create([
+        'training_week_id' => $week->id,
+        'formation_id' => $training->id,
+        'date' => '2026-10-06',
+        'start_time' => '0',
+        'end_time' => '1:0',
+        'title' => 'Guest Workshop',
+        'external_coach_name' => 'Guest External Keynote',
     ]);
 
     // 1. Members page (admin/users/index)
@@ -738,7 +710,7 @@ test('members page and mobile coach list exclude external coaches', function () 
         $page->where('users', function ($users) {
             $names = collect($users)->pluck('name')->all();
             expect($names)->toContain('Active Internal Coach')
-                ->and($names)->not->toContain('External Placeholder User');
+                ->and($names)->not->toContain('Guest External Keynote');
             return true;
         });
     });
@@ -748,86 +720,39 @@ test('members page and mobile coach list exclude external coaches', function () 
     $apiResponse->assertOk();
     $coaches = collect($apiResponse->json('coaches', []))->pluck('name')->all();
     expect($coaches)->toContain('Active Internal Coach')
-        ->and($coaches)->not->toContain('External Placeholder User');
+        ->and($coaches)->not->toContain('Guest External Keynote');
 });
 
-test('safe migration of legacy external coach data without deleting legitimate or referenced users', function () {
+test('external coach sessions store external_coach_name and do not create user records', function () {
     $admin = createReviewUser(['admin']);
-    $student = createReviewUser(['student'], ['name' => 'Real Student']);
     $internalCoach = createReviewUser(['coach'], ['name' => 'Real Coach']);
-
-    // 1. Create legacy unreferenced external coach user (should be cleaned up)
-    $legacyExternalUser = User::create([
-        'name' => 'Dr. Legacy Coach',
-        'email' => null,
-        'password' => \Illuminate\Support\Facades\Hash::make('temp123'),
-        'role' => ['coach'],
-        'is_external' => true,
-    ]);
-
-    // 2. Create legacy external coach user that IS referenced elsewhere (e.g. as training main coach)
-    // This user must NOT be deleted even if is_external = true and email is null!
-    $referencedExternalCoach = User::create([
-        'name' => 'Referenced External Coach',
-        'email' => null,
-        'password' => \Illuminate\Support\Facades\Hash::make('temp123'),
-        'role' => ['coach'],
-        'is_external' => true,
-    ]);
-    $referencedTraining = createReviewFormation(['user_id' => $referencedExternalCoach->id]);
-
     $training = createReviewFormation(['user_id' => $internalCoach->id]);
-    $week = TrainingWeek::create([
-        'formation_id' => $training->id,
-        'week_number' => 1,
-        'title' => 'Week 1',
-        'start_date' => '2026-10-06',
-        'end_date' => '2026-10-10',
-    ]);
 
-    $session = TrainingSession::create([
-        'training_week_id' => $week->id,
-        'formation_id' => $training->id,
-        'date' => '2026-10-06',
-        'start_time' => '0',
-        'end_time' => '1:0',
-        'title' => 'Legacy Session',
-    ]);
-    $session->coaches()->attach($legacyExternalUser->id);
+    $initialUsersCount = User::count();
 
-    // Run the migration logic
-    $migration = require database_path('migrations/2026_09_23_000000_add_external_coach_name_to_training_sessions_table.php');
-    $migration->up();
+    // Store a programme session with external coach
+    $this->actingAs($admin)
+        ->post('/trainings/' . $training->id . '/programme-items', [
+            'title' => 'Advanced AI Masterclass',
+            'startWeek' => 1,
+            'endWeek' => 1,
+            'startDay' => 1,
+            'endDay' => 3,
+            'coach' => [
+                'name' => 'Dr. External Specialist',
+                'type' => 'External',
+            ],
+        ])
+        ->assertRedirect();
 
-    // Verify session now has external_coach_name populated
-    $session->refresh();
-    expect($session->external_coach_name)->toBe('Dr. Legacy Coach')
+    // Verify session has external_coach_name and 0 coach relations
+    $session = TrainingSession::where('title', 'Advanced AI Masterclass')->firstOrFail();
+    expect($session->external_coach_name)->toBe('Dr. External Specialist')
         ->and($session->coaches->count())->toBe(0);
 
-    // Verify unreferenced legacy placeholder user was safely removed
-    expect(User::where('id', $legacyExternalUser->id)->exists())->toBeFalse();
-
-    // Verify REFERENCED external user was NOT deleted (foreign key protection)
-    expect(User::where('id', $referencedExternalCoach->id)->exists())->toBeTrue();
-
-    // Verify legitimate internal users were completely untouched
-    expect(User::where('id', $student->id)->exists())->toBeTrue()
-        ->and(User::where('id', $internalCoach->id)->exists())->toBeTrue()
-        ->and(User::where('id', $admin->id)->exists())->toBeTrue();
-
-    // 3. Test rollback drops external_coach_name column cleanly
-    expect(function () use ($migration) {
-        $migration->down();
-    })->not->toThrow(\Throwable::class);
-
-    expect(\Illuminate\Support\Facades\Schema::hasColumn('training_sessions', 'external_coach_name'))->toBeFalse();
-
-    // 4. Test reapplication works cleanly
-    expect(function () use ($migration) {
-        $migration->up();
-    })->not->toThrow(\Throwable::class);
-
-    expect(\Illuminate\Support\Facades\Schema::hasColumn('training_sessions', 'external_coach_name'))->toBeTrue();
+    // Verify no user was created and user count did not increase
+    expect(User::count())->toBe($initialUsersCount)
+        ->and(User::where('name', 'Dr. External Specialist')->exists())->toBeFalse();
 });
 
 test('validation: session ending before it starts is rejected with 422', function () {
