@@ -43,12 +43,14 @@ import ExercicesModal from "@/components/EXP'S/exersices_modal";
 import { Checkbox } from '@/components/ui/checkbox';
 import RolesMultiSelect from '@/pages/admin/users/partials/RolesMultiSelect';
 import CertificateModal from './partials/CertificateModal';
+import TrainingProgrammeGrid from './components/TrainingProgrammeGrid';
 import GeekyWheel from './partials/geekyWheel';
 import TrainingStatsCards from './partials/TrainingStatsCards';
 
 const MIXED_SELECT_VALUE = '__mixed__';
 
-export default function Show({ training, usersNull, courses = [] }) {
+
+export default function Show({ training, usersNull, courses = [], coaches = [] }) {
     const { auth } = usePage().props;
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role].filter(Boolean);
     const isCoachRole = userRoles.includes('coach');
@@ -167,7 +169,7 @@ export default function Show({ training, usersNull, courses = [] }) {
                 if (Array.isArray(data.events)) {
                     setEvents(data.events.map((e) => ({ ...e })));
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
         fetchEvents();
     }, [training.id]);
@@ -269,7 +271,7 @@ export default function Show({ training, usersNull, courses = [] }) {
             setAttendanceData((prev) => ({ ...prev, ...initialized }));
 
             setShowAttendanceList(true);
-        } catch (err) {}
+        } catch (err) { }
     }
 
     //   atteandacelist
@@ -318,8 +320,8 @@ export default function Show({ training, usersNull, courses = [] }) {
                 const evRes = await fetch(`/training/${training.id}/attendance-events`);
                 const evData = await evRes.json();
                 if (Array.isArray(evData.events)) setEvents(evData.events);
-            } catch {}
-        } catch (err) {}
+            } catch { }
+        } catch (err) { }
     }
 
     // Wheel functions
@@ -477,8 +479,8 @@ export default function Show({ training, usersNull, courses = [] }) {
             const existingNotes = Array.isArray(prevForStudent.notes)
                 ? [...prevForStudent.notes]
                 : prevForStudent.notes
-                  ? [prevForStudent.notes]
-                  : [];
+                    ? [prevForStudent.notes]
+                    : [];
 
             if (isStudentCheckInNote(existingNotes[index])) {
                 return prev;
@@ -646,10 +648,10 @@ export default function Show({ training, usersNull, courses = [] }) {
                                 training.category?.toLowerCase() === 'coding'
                                     ? '/assets/images/training/coding.jpg'
                                     : training.category?.toLowerCase() === 'media'
-                                      ? '/assets/images/training/media.jpg'
-                                      : training.img
-                                        ? `/storage/img/training/${training.img}`
-                                        : '/assets/images/training/default.jpg'
+                                        ? '/assets/images/training/media.jpg'
+                                        : training.img
+                                            ? `/storage/img/training/${training.img}`
+                                            : '/assets/images/training/default.jpg'
                             }
                             alt={training.name}
                             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
@@ -661,78 +663,14 @@ export default function Show({ training, usersNull, courses = [] }) {
                     )}
                 </div>
 
-                {/* Courses Section */}
-                <div className="mb-8 rounded-2xl border border-alpha/20 bg-light p-6 text-dark dark:bg-dark dark:text-light">
-                    <div className="mb-6 flex items-center justify-between">
-                        <h2 className="text-xl font-bold">Courses ({courses.length})</h2>
-                        <CoursesModal />
-                    </div>
 
-                    {courses.length > 0 ? (
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {courses.map((course) => (
-                                <div
-                                    key={course.id}
-                                    className="rounded-xl border border-alpha/10 bg-light/50 p-4 transition-colors hover:border-alpha/30 dark:bg-dark/50"
-                                >
-                                    <div className="mb-3 flex items-start justify-between">
-                                        <div>
-                                            <h3 className="text-lg font-semibold text-dark dark:text-light">{course.name}</h3>
-                                            {course.description && (
-                                                <p className="mt-1 line-clamp-2 text-sm text-dark/70 dark:text-light/70">{course.description}</p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Badges Display */}
-                                    <div className="mt-3 flex items-center gap-2">
-                                        {course.badge1 && (
-                                            <img
-                                                src={`/storage/img/courses/${course.badge1}`}
-                                                alt="Badge 1"
-                                                className="h-8 w-8 rounded-full border border-alpha/20 object-cover"
-                                            />
-                                        )}
-                                        {course.badge2 && (
-                                            <img
-                                                src={`/storage/img/courses/${course.badge2}`}
-                                                alt="Badge 2"
-                                                className="h-8 w-8 rounded-full border border-alpha/20 object-cover"
-                                            />
-                                        )}
-                                        {course.badge3 && (
-                                            <img
-                                                src={`/storage/img/courses/${course.badge3}`}
-                                                alt="Badge 3"
-                                                className="h-8 w-8 rounded-full border border-alpha/20 object-cover"
-                                            />
-                                        )}
-                                        {!course.badge1 && !course.badge2 && !course.badge3 && (
-                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-alpha/10">
-                                                <Award className="h-4 w-4 text-alpha" />
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Exercises Count */}
-                                    {course.exercices && course.exercices.length > 0 && (
-                                        <div className="mt-3 text-xs text-dark/60 dark:text-light/60">
-                                            {course.exercices.length} exercise{course.exercices.length > 1 ? 's' : ''}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="py-8 text-center">
-                            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-alpha/10">
-                                <BookOpen className="h-8 w-8 text-alpha" />
-                            </div>
-                            <p className="text-dark/70 dark:text-light/70">No courses assigned to this training yet.</p>
-                            <p className="mt-1 text-sm text-dark/50 dark:text-light/50">Add exercises and assign them to courses to see them here.</p>
-                        </div>
-                    )}
-                </div>
+                {/* Class Training Programme (Appears ABOVE Enrolled Students) */}
+                <TrainingProgrammeGrid
+                    trainingTitle={training?.name}
+                    startDate={training?.start_time}
+                    training={training}
+                    coaches={coaches}
+                />
 
                 {students.length > 0 && <TrainingStatsCards students={students} />}
 
@@ -799,10 +737,10 @@ export default function Show({ training, usersNull, courses = [] }) {
                             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-alpha text-lg font-bold text-black">
                                 {training.coach
                                     ? training.coach.name
-                                          .split(' ')
-                                          .map((n) => n[0])
-                                          .join('')
-                                          .toUpperCase()
+                                        .split(' ')
+                                        .map((n) => n[0])
+                                        .join('')
+                                        .toUpperCase()
                                     : 'C'}
                             </div>
                             <div>

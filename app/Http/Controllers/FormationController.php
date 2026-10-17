@@ -8,6 +8,9 @@ use App\Models\AttendanceListe;
 use App\Models\Formation;
 use App\Models\Note;
 use App\Models\User;
+use App\Models\TrainingSession;
+use App\Models\TrainingWeek;
+use Illuminate\Support\Facades\Hash;
 use App\Services\AttendanceLegacyIdService;
 use App\Services\AttendanceNoteService;
 use App\Services\CertificatePdfGenerator;
@@ -19,12 +22,14 @@ use App\Services\ProgramStatusService;
 use App\Services\StudentCheckInSlotService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use ZipArchive;
@@ -68,7 +73,15 @@ class FormationController extends Controller
 
         $trainings = $query->orderBy('created_at', 'desc')->get();
 
-        $coaches = User::whereJsonContains('role', 'coach')->get();
+        $coaches = User::whereJsonContains('role', 'coach')
+            ->select(['id', 'name', 'image', 'speciality'])
+            ->get()
+            ->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'image' => $c->image,
+                'speciality' => $c->speciality,
+            ]);
         $tracks = Formation::select('category')->distinct()->pluck('category');
         $promos = Formation::select('promo')->distinct()->pluck('promo');
 
@@ -88,14 +101,87 @@ class FormationController extends Controller
     // //////////////////////////////////////////
     public function show(Formation $training)
     {
-        $usersNull = User::whereNull('formation_id')->get();
+        $usersNull = User::whereNull('formation_id')
+            ->where(function ($q) {
+                $q->whereJsonContains('role', 'student')
+                  ->orWhereNull('role');
+            })
+            ->where(function ($q) {
+                $q->whereJsonDoesntContain('role', 'coach')
+                  ->whereJsonDoesntContain('role', 'admin')
+                  ->whereJsonDoesntContain('role', 'super_admin')
+                  ->whereJsonDoesntContain('role', 'moderateur');
+            })
+            ->get();
 
         // Get courses that belong to this training through exercises
         $courses = \App\Models\Course::whereHas('exercices', function ($query) use ($training) {
             $query->where('training_id', $training->id);
         })->with('exercices')->get();
 
-        $training->load('coach', 'users');
+        $training->load([
+            'coach' => function ($query) {
+                $query->select(['id', 'name', 'image', 'speciality']);
+            },
+            'users',
+            'trainingWeeks' => function ($query) {
+                $query->orderBy('week_number');
+            },
+            'trainingWeeks.sessions.coaches' => function ($query) {
+                $query->select(['users.id', 'users.name', 'users.image', 'users.speciality', 'users.status']);
+            },
+        ]);
+
+        if ($training->coach) {
+            $training->coach->setVisible(['id', 'name', 'image', 'speciality']);
+        }
+
+        if ($training->relationLoaded('trainingWeeks')) {
+            $training->trainingWeeks->each(function ($week) {
+                if ($week->relationLoaded('sessions')) {
+                    $week->sessions->each(function ($session) {
+                        if ($session->relationLoaded('coaches')) {
+                            $session->coaches->each(function ($coach) {
+                                $coach->setVisible(['id', 'name', 'image', 'speciality', 'status']);
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        $internalCoaches = User::whereJsonContains('role', 'coach')
+        ->select(['id', 'name', 'image', 'speciality'])
+        ->get()
+        ->map(function ($c) {
+            return [
+                'id' => $c->id,
+                'name' => $c->name,
+                'image' => $c->image,
+                'speciality' => $c->speciality,
+                'type' => $c->speciality ?: 'Internal',
+                'is_external' => false,
+            ];
+        });
+
+        $externalCoachNames = TrainingSession::where('formation_id', $training->id)
+            ->whereNotNull('external_coach_name')
+            ->where('external_coach_name', '!=', '')
+            ->distinct()
+            ->pluck('external_coach_name');
+
+        $externalCoaches = $externalCoachNames->map(function ($name) {
+            return [
+                'id' => 'ext_' . md5($name),
+                'name' => $name,
+                'image' => null,
+                'speciality' => 'External',
+                'type' => 'External',
+                'is_external' => true,
+            ];
+        });
+
+        $coaches = $internalCoaches->concat($externalCoaches)->values();
 
         // Attach the discipline score to every enrolled user so the frontend
         // can display the attendance percentage without extra API calls.
@@ -115,7 +201,430 @@ class FormationController extends Controller
             'training' => $training,
             'usersNull' => $usersNull,
             'courses' => $courses,
+            'coaches' => $coaches,
         ]);
+    }
+
+    public function getTrainingMaxSupportedWeek(Formation $training): int
+    {
+        $configuredWeeks = null;
+        if (! empty($training->start_time) && ! empty($training->end_time) && $training->end_time !== 'NULL') {
+            try {
+                $start = Carbon::parse($training->start_time);
+                $end = Carbon::parse($training->end_time);
+                if ($end->gt($start)) {
+                    $configuredWeeks = (int) ceil($start->diffInDays($end) / 7);
+                }
+            } catch (\Throwable $e) {
+                // Ignore parse errors, fallback to default
+            }
+        }
+
+        $baseWeeks = max(28, (int) ($configuredWeeks ?? 0));
+        $maxCreatedWeek = (int) $training->trainingWeeks()->max('week_number');
+
+        return max($baseWeeks, $maxCreatedWeek);
+    }
+
+    public function storeWeek(Formation $training, Request $request)
+    {
+        $maxSupported = $this->getTrainingMaxSupportedWeek($training);
+        $nextAllowedWeek = $maxSupported + 1;
+
+        $validated = $request->validate([
+            'week_number' => ['nullable', 'integer', 'min:1', "max:{$nextAllowedWeek}"],
+            'title' => 'nullable|string|max:255',
+        ]);
+
+        $maxExisting = $training->trainingWeeks()->max('week_number') ?? 28;
+        $weekNumber = (int) ($validated['week_number'] ?? ($maxExisting + 1));
+
+        if ($weekNumber > $nextAllowedWeek) {
+            throw ValidationException::withMessages([
+                'week_number' => ["The week number cannot exceed the next sequential week ({$nextAllowedWeek})."],
+            ]);
+        }
+
+        $baseDate = $training->start_time ? Carbon::parse($training->start_time) : Carbon::parse('2026-10-06');
+        $weekStartDate = $baseDate->copy()->addWeeks($weekNumber - 1);
+        $weekEndDate = $weekStartDate->copy()->addDays(4);
+
+        $trainingWeek = TrainingWeek::firstOrCreate(
+            [
+                'formation_id' => $training->id,
+                'week_number' => $weekNumber,
+            ],
+            [
+                'title' => $validated['title'] ?? "Week {$weekNumber}",
+                'start_date' => $weekStartDate->format('Y-m-d'),
+                'end_date' => $weekEndDate->format('Y-m-d'),
+            ]
+        );
+
+        return back()->with('success', 'Week created successfully.');
+    }
+
+    public function destroyWeek(Formation $training, int $weekNumber)
+    {
+        if ($weekNumber <= 28) {
+            return back()->with('error', 'Default weeks cannot be deleted.');
+        }
+
+        $targetWeek = TrainingWeek::where('formation_id', $training->id)
+            ->where('week_number', $weekNumber)
+            ->first();
+
+        $allSessions = TrainingSession::where('formation_id', $training->id)
+            ->with('trainingWeek')
+            ->get();
+
+        $sessionsToDelete = $allSessions->filter(function ($session) use ($targetWeek, $weekNumber) {
+            if ($targetWeek && (int) $session->training_week_id === (int) $targetWeek->id) {
+                return true;
+            }
+
+            $startWk = $session->trainingWeek?->week_number;
+            $rawEnd = (string) ($session->end_time ?? '');
+            $endWk = $startWk;
+            if (str_contains($rawEnd, ':')) {
+                $parts = explode(':', $rawEnd);
+                $ew = (int) $parts[0];
+                if ($ew >= 1) {
+                    $endWk = $ew;
+                }
+            }
+
+            if ($startWk !== null && $endWk !== null) {
+                return $startWk <= $weekNumber && $endWk >= $weekNumber;
+            }
+
+            return false;
+        });
+
+        if (! $targetWeek && $sessionsToDelete->isEmpty()) {
+            return back()->with('error', 'Week not found.');
+        }
+
+        DB::transaction(function () use ($training, $weekNumber, $targetWeek, $sessionsToDelete) {
+            foreach ($sessionsToDelete as $session) {
+                $session->coaches()->detach();
+                $session->delete();
+            }
+
+            if ($targetWeek) {
+                $targetWeek->delete();
+            }
+
+            // Renumber subsequent weeks
+            $subsequentWeeks = TrainingWeek::where('formation_id', $training->id)
+                ->where('week_number', '>', $weekNumber)
+                ->orderBy('week_number', 'asc')
+                ->get();
+
+            $baseDate = $training->start_time ? Carbon::parse($training->start_time) : Carbon::parse('2026-10-06');
+
+            foreach ($subsequentWeeks as $subWeek) {
+                $oldNum = $subWeek->week_number;
+                $newNum = $oldNum - 1;
+
+                $weekStartDate = $baseDate->copy()->addWeeks($newNum - 1);
+                $weekEndDate = $weekStartDate->copy()->addDays(4);
+
+                $newTitle = $subWeek->title;
+                if ($subWeek->title === "Week {$oldNum}") {
+                    $newTitle = "Week {$newNum}";
+                }
+
+                // Adjust sessions ending in or beyond this week
+                $subSessions = TrainingSession::where('training_week_id', $subWeek->id)->get();
+                foreach ($subSessions as $subSession) {
+                    $rawEnd = (string) ($subSession->end_time ?? '');
+                    if (str_contains($rawEnd, ':')) {
+                        [$ew, $ed] = explode(':', $rawEnd);
+                        $ew = (int) $ew;
+                        if ($ew > $weekNumber) {
+                            $subSession->end_time = ($ew - 1).':'.$ed;
+                            $subSession->save();
+                        }
+                    }
+                }
+
+                $subWeek->update([
+                    'week_number' => $newNum,
+                    'title' => $newTitle,
+                    'start_date' => $weekStartDate->format('Y-m-d'),
+                    'end_date' => $weekEndDate->format('Y-m-d'),
+                ]);
+            }
+        });
+
+        return back()->with('success', 'Week deleted successfully.');
+    }
+
+    private function resolveCoach(mixed $coachData): array
+    {
+        if (empty($coachData)) {
+            return ['user_id' => null, 'external_name' => null];
+        }
+
+        if (is_object($coachData)) {
+            $coachData = (array) $coachData;
+        }
+
+        if (is_numeric($coachData)) {
+            $coach = User::find((int) $coachData);
+            if (! $coach || ! in_array('coach', $coach->normalizedRoles(), true)) {
+                throw ValidationException::withMessages([
+                    'coach' => ['The selected coach is invalid.'],
+                ]);
+            }
+
+            return ['user_id' => (int) $coach->id, 'external_name' => null];
+        }
+
+        if (is_string($coachData)) {
+            $name = trim($coachData);
+            if ($name === '' || $name === 'none') {
+                return ['user_id' => null, 'external_name' => null];
+            }
+
+            $internalCoach = User::where('name', $name)
+                ->whereJsonContains('role', 'coach')
+                ->first();
+
+            if ($internalCoach) {
+                return ['user_id' => (int) $internalCoach->id, 'external_name' => null];
+            }
+
+            return ['user_id' => null, 'external_name' => $name];
+        }
+
+        if (! is_array($coachData)) {
+            return ['user_id' => null, 'external_name' => null];
+        }
+
+        $rawId = $coachData['id'] ?? null;
+        $name = trim($coachData['name'] ?? '');
+        $type = $coachData['type'] ?? '';
+
+        if ($type === 'External' || ! empty($coachData['isCustom']) || (is_string($rawId) && (str_starts_with($rawId, 'new_') || str_starts_with($rawId, 'ext_')))) {
+            if ($name === '') {
+                return ['user_id' => null, 'external_name' => null];
+            }
+
+            return ['user_id' => null, 'external_name' => $name];
+        }
+
+        if (is_numeric($rawId)) {
+            $coach = User::find((int) $rawId);
+            if (! $coach || ! in_array('coach', $coach->normalizedRoles(), true)) {
+                throw ValidationException::withMessages([
+                    'coach' => ['The selected coach is invalid.'],
+                ]);
+            }
+
+            return ['user_id' => (int) $coach->id, 'external_name' => null];
+        }
+
+        if ($name !== '') {
+            $internalCoach = User::where('name', $name)
+                ->whereJsonContains('role', 'coach')
+                ->first();
+
+            if ($internalCoach) {
+                return ['user_id' => (int) $internalCoach->id, 'external_name' => null];
+            }
+
+            return ['user_id' => null, 'external_name' => $name];
+        }
+
+        return ['user_id' => null, 'external_name' => null];
+    }
+
+    public function storeProgrammeItem(Formation $training, Request $request)
+    {
+        $maxSupported = $this->getTrainingMaxSupportedWeek($training);
+
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'color' => 'nullable|string|max:50',
+            'startWeek' => ['required', 'integer', 'min:1', "max:{$maxSupported}"],
+            'endWeek' => ['required', 'integer', 'min:1', "max:{$maxSupported}"],
+            'startDay' => 'required|integer|min:0|max:4',
+            'endDay' => 'required|integer|min:0|max:4',
+            'coach' => 'nullable',
+        ]);
+
+        $validator->after(function ($validator) use ($request) {
+            $startWeek = (int) $request->input('startWeek');
+            $endWeek = (int) $request->input('endWeek');
+            $startDay = (int) $request->input('startDay');
+            $endDay = (int) $request->input('endDay');
+
+            if ($endWeek < $startWeek) {
+                $validator->errors()->add('endWeek', 'The session cannot end before it starts (end week is before start week).');
+            } elseif ($endWeek === $startWeek && $endDay < $startDay) {
+                $validator->errors()->add('endDay', 'The session cannot end before it starts (end day is before start day within the same week).');
+            }
+        });
+
+        $validated = $validator->validate();
+
+        $resolvedCoach = $this->resolveCoach($request->input('coach'));
+        $coachUserId = $resolvedCoach['user_id'];
+        $externalCoachName = $resolvedCoach['external_name'];
+
+        $startWeekNum = (int) $validated['startWeek'];
+        $endWeekNum = (int) $validated['endWeek'];
+        $startDay = (int) $validated['startDay'];
+        $endDay = (int) $validated['endDay'];
+
+        $baseDate = $training->start_time ? Carbon::parse($training->start_time) : Carbon::parse('2026-10-06');
+        $weekStartDate = $baseDate->copy()->addWeeks($startWeekNum - 1);
+        $weekEndDate = $weekStartDate->copy()->addDays(4);
+
+        $trainingWeek = TrainingWeek::firstOrCreate(
+            [
+                'formation_id' => $training->id,
+                'week_number' => $startWeekNum,
+            ],
+            [
+                'title' => "Week {$startWeekNum}",
+                'start_date' => $weekStartDate->format('Y-m-d'),
+                'end_date' => $weekEndDate->format('Y-m-d'),
+            ]
+        );
+
+        $sessionDate = $weekStartDate->copy()->addDays($startDay)->format('Y-m-d');
+        $startTimeStr = (string) $startDay;
+        $endTimeStr = "{$endWeekNum}:{$endDay}";
+
+        $description = $validated['description'] ?? '';
+        if (!empty($validated['color']) && $validated['color'] !== 'blue') {
+            $description .= " [color:{$validated['color']}]";
+        }
+
+        $session = TrainingSession::create([
+            'training_week_id' => $trainingWeek->id,
+            'formation_id' => $training->id,
+            'date' => $sessionDate,
+            'start_time' => $startTimeStr,
+            'end_time' => $endTimeStr,
+            'title' => $validated['title'],
+            'description' => trim($description),
+            'external_coach_name' => $externalCoachName,
+        ]);
+
+        if ($coachUserId) {
+            $session->coaches()->sync([$coachUserId]);
+        } else {
+            $session->coaches()->detach();
+        }
+
+        return back()->with('success', 'Programme item created successfully.');
+    }
+
+    public function updateProgrammeItem(Formation $training, TrainingSession $session, Request $request)
+    {
+        if ((int) $session->formation_id !== (int) $training->id) {
+            abort(403, 'Session does not belong to this training.');
+        }
+
+        $maxSupported = $this->getTrainingMaxSupportedWeek($training);
+
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'color' => 'nullable|string|max:50',
+            'startWeek' => ['required', 'integer', 'min:1', "max:{$maxSupported}"],
+            'endWeek' => ['required', 'integer', 'min:1', "max:{$maxSupported}"],
+            'startDay' => 'required|integer|min:0|max:4',
+            'endDay' => 'required|integer|min:0|max:4',
+            'coach' => 'nullable',
+        ]);
+
+        $validator->after(function ($validator) use ($request) {
+            $startWeek = (int) $request->input('startWeek');
+            $endWeek = (int) $request->input('endWeek');
+            $startDay = (int) $request->input('startDay');
+            $endDay = (int) $request->input('endDay');
+
+            if ($endWeek < $startWeek) {
+                $validator->errors()->add('endWeek', 'The session cannot end before it starts (end week is before start week).');
+            } elseif ($endWeek === $startWeek && $endDay < $startDay) {
+                $validator->errors()->add('endDay', 'The session cannot end before it starts (end day is before start day within the same week).');
+            }
+        });
+
+        $validated = $validator->validate();
+
+        $resolvedCoach = $this->resolveCoach($request->input('coach'));
+        $coachUserId = $resolvedCoach['user_id'];
+        $externalCoachName = $resolvedCoach['external_name'];
+
+        $startWeekNum = (int) $validated['startWeek'];
+        $endWeekNum = (int) $validated['endWeek'];
+        $startDay = (int) $validated['startDay'];
+        $endDay = (int) $validated['endDay'];
+
+        $baseDate = $training->start_time ? Carbon::parse($training->start_time) : Carbon::parse('2026-10-06');
+        $weekStartDate = $baseDate->copy()->addWeeks($startWeekNum - 1);
+        $weekEndDate = $weekStartDate->copy()->addDays(4);
+
+        $trainingWeek = TrainingWeek::firstOrCreate(
+            [
+                'formation_id' => $training->id,
+                'week_number' => $startWeekNum,
+            ],
+            [
+                'title' => "Week {$startWeekNum}",
+                'start_date' => $weekStartDate->format('Y-m-d'),
+                'end_date' => $weekEndDate->format('Y-m-d'),
+            ]
+        );
+
+        $sessionDate = $weekStartDate->copy()->addDays($startDay)->format('Y-m-d');
+        $startTimeStr = (string) $startDay;
+        $endTimeStr = "{$endWeekNum}:{$endDay}";
+
+        $description = $validated['description'] ?? '';
+        $description = preg_replace('/\[color:[a-z]+\]/', '', $description);
+        $description = trim($description);
+
+        if (!empty($validated['color']) && $validated['color'] !== 'blue') {
+            $description .= " [color:{$validated['color']}]";
+        }
+
+        $session->update([
+            'training_week_id' => $trainingWeek->id,
+            'date' => $sessionDate,
+            'start_time' => $startTimeStr,
+            'end_time' => $endTimeStr,
+            'title' => $validated['title'],
+            'description' => trim($description),
+            'external_coach_name' => $externalCoachName,
+        ]);
+
+        if ($coachUserId) {
+            $session->coaches()->sync([$coachUserId]);
+        } else {
+            $session->coaches()->detach();
+        }
+
+        return back()->with('success', 'Programme item updated successfully.');
+    }
+
+    public function destroyProgrammeItem(Formation $training, TrainingSession $session)
+    {
+        if ((int) $session->formation_id !== (int) $training->id) {
+            abort(403, 'Session does not belong to this training.');
+        }
+
+        $session->coaches()->detach();
+        $session->delete();
+
+        return back()->with('success', 'Programme item deleted successfully.');
     }
 
     public function store(Request $request)
@@ -127,7 +636,16 @@ class FormationController extends Controller
             'category' => 'required|string|max:100',
             'start_time' => 'required|date',
             'end_time' => 'nullable|date',
-            'user_id' => 'required|exists:users,id',
+                        'user_id' => [
+                'required',
+                'exists:users,id',
+                function ($attribute, $value, $fail) {
+                    $u = User::find($value);
+                    if (! $u || ! in_array('coach', $u->normalizedRoles(), true)) {
+                        $fail('The selected main coach must be an active internal coach.');
+                    }
+                },
+            ],
             'promo' => 'nullable|string|max:50',
         ]);
         // dd($request->all());
@@ -417,7 +935,18 @@ class FormationController extends Controller
             'category' => 'required|string|max:100',
             'start_time' => 'required|date',
             'end_time' => 'nullable|date',
-            'user_id' => 'nullable|exists:users,id',
+                        'user_id' => [
+                'nullable',
+                'exists:users,id',
+                function ($attribute, $value, $fail) {
+                    if ($value) {
+                        $u = User::find($value);
+                        if (! $u || ! in_array('coach', $u->normalizedRoles(), true)) {
+                            $fail('The selected main coach must be an active internal coach.');
+                        }
+                    }
+                },
+            ],
             'promo' => 'nullable|string|max:50',
             'is_active' => 'sometimes|boolean',
         ]);
