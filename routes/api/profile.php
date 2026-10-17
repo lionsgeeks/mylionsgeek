@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\PostController;
 use App\Http\Controllers\API\ProfileController;
 use App\Http\Controllers\API\ProfileEducationController;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +23,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile/education/{id}', [ProfileEducationController::class, 'update'])->whereNumber('id');
     Route::delete('/profile/education/{id}', [ProfileEducationController::class, 'destroy'])->whereNumber('id');
 
+    Route::get('/profile/{userId}/posts', [PostController::class, 'userPosts'])->whereNumber('userId');
+    Route::get('/profile/{userId}/reposts', [PostController::class, 'userReposts'])->whereNumber('userId');
     Route::get('/profile/{userId}', [ProfileController::class, 'show']);
     Route::get('/profile/{userId}/followers', [ProfileController::class, 'listFollowers']);
     Route::get('/profile/{userId}/following', [ProfileController::class, 'listFollowing']);
@@ -32,4 +35,3 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/users/{userId}/block', [\App\Http\Controllers\API\UserModerationController::class, 'unblock'])->whereNumber('userId');
     Route::post('/users/{userId}/report', [\App\Http\Controllers\API\UserModerationController::class, 'report'])->whereNumber('userId');
 });
-

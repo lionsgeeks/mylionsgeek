@@ -10,7 +10,6 @@ use App\Services\FaceVerification\FaceVerificationService;
 use App\Services\FaceVerification\RekognitionFaceVerificationService;
 use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Tests\Support\FakeRekognitionClient;
@@ -100,7 +99,7 @@ beforeEach(function () {
         'user_id' => null,
     ]);
 
-    config(['attendance.allowed_ips' => ['203.0.113.1']]);
+    allowSchoolNetwork(['203.0.113.1']);
 
     $this->withoutMiddleware([
         \App\Http\Middleware\HandleInertiaRequests::class,

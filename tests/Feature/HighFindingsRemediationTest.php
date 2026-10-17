@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\Contract;
 use App\Models\Medical;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -222,7 +221,7 @@ test('H5 viewDocument streams owned private file', function () {
 });
 
 test('H7 spoofed X-Forwarded-For does not bypass school network', function () {
-    config(['attendance.allowed_ips' => ['203.0.113.1']]);
+    allowSchoolNetwork(['203.0.113.1']);
 
     $student = hUser(['student'], [
         'email' => 'h7.student@example.com',
@@ -238,7 +237,7 @@ test('H7 spoofed X-Forwarded-For does not bypass school network', function () {
 });
 
 test('H7 real allowed REMOTE_ADDR passes network check', function () {
-    config(['attendance.allowed_ips' => ['203.0.113.1']]);
+    allowSchoolNetwork(['203.0.113.1']);
 
     $student = hUser(['student'], ['email' => 'h7.ok@example.com']);
 

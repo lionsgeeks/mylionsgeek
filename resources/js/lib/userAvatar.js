@@ -20,7 +20,12 @@ export function resolveUserAvatarSrc(user) {
         return undefined;
     }
 
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    if (
+        trimmed.startsWith('http://') ||
+        trimmed.startsWith('https://') ||
+        trimmed.startsWith('blob:') ||
+        trimmed.startsWith('data:')
+    ) {
         return trimmed;
     }
 

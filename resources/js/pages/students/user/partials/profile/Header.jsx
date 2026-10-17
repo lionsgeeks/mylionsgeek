@@ -1,3 +1,4 @@
+import ProcessingDialog from '@/components/ProcessingDialog';
 import { Avatar } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Link, router, usePage } from '@inertiajs/react';
@@ -8,6 +9,7 @@ import ProfilePictureModal from '../../../../../components/ProfilePictureModal';
 import Rolegard from '../../../../../components/rolegard';
 import { helpers } from '../../../../../components/utils/helpers';
 import { STUDENT_EDITABLE_STATUSES } from '@/components/helpers/userStatuses';
+import { coverPublicUrl } from '@/lib/coverUrl';
 import EditUserModal from '../../../../admin/users/partials/EditModal';
 
 const Header = ({ user }) => {
@@ -16,7 +18,9 @@ const Header = ({ user }) => {
     const [openEdit, setOpenEdit] = useState(false);
     const [openFollowModal, setOpenFollowModal] = useState([]);
     const [openProfilePicture, setOpenProfilePicture] = useState(false);
-    const { auth } = usePage().props;
+    const [coverUploading, setCoverUploading] = useState(false);
+    const { auth, errors } = usePage().props;
+    const coverUrl = coverPublicUrl(user?.cover);
     const { addOrRemoveFollow } = helpers();
 
     const handleProfilePictureClick = () => {
@@ -71,17 +75,13 @@ const Header = ({ user }) => {
         formData.append('cover', file); // Append the selected file to FormData
 
         // Send the POST request with the form data
+        setCoverUploading(true);
         router.post(`/students/changeCover/${userId}`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data', // Make sure the request is sent as multipart
-            },
-            onSuccess: () => {
-                //('Cover changed successfully');
-            },
-            onError: (error) => {
-                //('Cover not changed', error);
-            },
+            preserveScroll: true,
+            forceFormData: true,
+            onFinish: () => setCoverUploading(false),
         });
+        event.target.value = '';
     };
 
     // Profile image is updated via the Edit Profile modal or the Settings page only.
@@ -91,9 +91,12 @@ const Header = ({ user }) => {
             <div className="mb-4 overflow-hidden rounded-lg bg-white shadow dark:bg-dark_gray">
                 {/* Cover Photo */}
                 <div className="relative h-64 overflow-hidden md:h-80">
-                    <img src={`/storage/${user?.cover}`} alt="Cover" className="h-full w-full object-cover" />
+                    {coverUrl ? <img src={coverUrl} alt="Cover" className="h-full w-full object-cover" /> : null}
                     {/* Mesh gradient overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                    {errors?.cover ? (
+                        <p className="absolute bottom-4 left-4 z-10 max-w-[70%] rounded-md bg-black/75 px-3 py-2 text-sm text-white">{errors.cover}</p>
+                    ) : null}
 
                     {/* Change Cover Icon */}
                     {auth.user.id == user.id && (
@@ -104,7 +107,7 @@ const Header = ({ user }) => {
                             <Camera size={24} className="cursor-pointer text-white" />
                             <input
                                 type="file"
-                                accept="image/*"
+                                accept="image/jpeg,image/png,image/jpg,image/webp,image/gif"
                                 className="absolute inset-0 cursor-pointer opacity-0"
                                 onChange={(e) => changeCover(e, user?.id)}
                             />
@@ -326,11 +329,13 @@ const Header = ({ user }) => {
                         status={STUDENT_EDITABLE_STATUSES}
                         roles={['student', 'admin', 'coach', 'studio_responsable']}
                         trainings={[]}
+                        showSocials={false}
                     />
                 </>
             )}
             {openFollowModal[0] && <FollowModal student={user} onOpenChange={setOpenFollowModal} openChange={openFollowModal} />}
             <ProfilePictureModal open={openProfilePicture} onOpenChange={setOpenProfilePicture} user={user} />
+            <ProcessingDialog open={coverUploading} title="Updating cover" description="Your cover photo is being uploaded." />
         </>
     );
 };

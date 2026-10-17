@@ -251,6 +251,159 @@ class PostController extends Controller
         ];
     }
 
+    /**
+     * Every post a profile wrote, newest first.
+     * Pages stay small; the client follows next_offset until it is null.
+     */
+    public function userPosts(Request $request, int $userId)
+    {
+        $viewer = Auth::guard('sanctum')->user();
+
+        if (! $viewer) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $profile = User::query()->find($userId);
+
+        if (! $profile) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+
+        $offset = max(0, (int) $request->query('offset', 0));
+        $limit = min(50, max(1, (int) $request->query('limit', 20)));
+
+        if (in_array((int) $profile->id, $viewer->excludedAuthorIds(), true)) {
+            return response()->json([
+                'posts' => [],
+                'next_offset' => null,
+            ]);
+        }
+
+        $posts = Post::with(['user', 'likes', 'comments'])
+            ->withCount(['reposts'])
+            ->where('user_id', $profile->id)
+            ->where(function ($hidden) {
+                $hidden->whereNull('is_hidden')->orWhere('is_hidden', false);
+            })
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->offset($offset)
+            ->limit($limit + 1)
+            ->get();
+
+        $hasMore = $posts->count() > $limit;
+        $page = $posts->take($limit)->values();
+
+        $savedInteractionIds = [];
+        $pageIds = $page->pluck('id')->map(fn ($id) => (int) $id)->all();
+        if ($pageIds !== []) {
+            $savedInteractionIds = DB::table('post_saves')
+                ->where('user_id', $viewer->id)
+                ->whereIn('post_id', $pageIds)
+                ->pluck('post_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+        }
+
+        return response()->json([
+            'posts' => $page
+                ->map(fn (Post $post) => $this->mapPostForMobileFeed($post, $viewer, $savedInteractionIds))
+                ->values()
+                ->all(),
+            'next_offset' => $hasMore ? $offset + $page->count() : null,
+        ]);
+    }
+
+    /**
+     * Every post a profile has reposted, newest first.
+     * Pages stay small; the client follows next_offset until it is null.
+     */
+    public function userReposts(Request $request, int $userId)
+    {
+        $viewer = Auth::guard('sanctum')->user();
+
+        if (! $viewer) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $profile = User::query()->find($userId);
+
+        if (! $profile) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+
+        $offset = max(0, (int) $request->query('offset', 0));
+        $limit = min(50, max(1, (int) $request->query('limit', 20)));
+
+        if (in_array((int) $profile->id, $viewer->excludedAuthorIds(), true)) {
+            return response()->json([
+                'reposts' => [],
+                'next_offset' => null,
+            ]);
+        }
+
+        $excludedAuthorIds = array_values(array_filter(
+            $viewer->excludedAuthorIds(),
+            fn (int $id) => $id !== (int) $profile->id,
+        ));
+
+        $query = DB::table('reposts_posts')
+            ->where('reposts_posts.user_id', $profile->id)
+            ->whereIn('reposts_posts.post_id', function ($sub) {
+                $sub->select('id')
+                    ->from('posts')
+                    ->where(function ($hidden) {
+                        $hidden->whereNull('is_hidden')->orWhere('is_hidden', false);
+                    });
+            })
+            ->orderByDesc('reposts_posts.created_at')
+            ->orderByDesc('reposts_posts.id');
+
+        if ($excludedAuthorIds !== []) {
+            $query->whereNotIn('reposts_posts.post_id', function ($sub) use ($excludedAuthorIds) {
+                $sub->select('id')->from('posts')->whereIn('user_id', $excludedAuthorIds);
+            });
+        }
+
+        $rows = $query->offset($offset)->limit($limit + 1)->get();
+        $hasMore = $rows->count() > $limit;
+        $page = $rows->take($limit)->values();
+
+        $originalPostsById = Post::with(['user', 'likes', 'comments'])
+            ->withCount(['reposts'])
+            ->whereIn('id', $page->pluck('post_id')->all())
+            ->get()
+            ->keyBy('id');
+
+        $savedInteractionIds = [];
+        $originalIds = $originalPostsById->keys()->map(fn ($id) => (int) $id)->all();
+        if ($originalIds !== []) {
+            $savedInteractionIds = DB::table('post_saves')
+                ->where('user_id', $viewer->id)
+                ->whereIn('post_id', $originalIds)
+                ->pluck('post_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+        }
+
+        $reposts = $page
+            ->map(function ($row) use ($originalPostsById, $profile, $viewer, $savedInteractionIds) {
+                $original = $originalPostsById[(int) $row->post_id] ?? null;
+                if (! $original) {
+                    return null;
+                }
+
+                return $this->mapRepostForMobileFeed($row, $original, $profile, $viewer, $savedInteractionIds);
+            })
+            ->filter()
+            ->values();
+
+        return response()->json([
+            'reposts' => $reposts,
+            'next_offset' => $hasMore ? $offset + $page->count() : null,
+        ]);
+    }
+
     public function index(Request $request)
     {
         try {
@@ -957,11 +1110,16 @@ class PostController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
+        $offset = max(0, (int) $request->query('offset', 0));
+        $limit = min(50, max(1, (int) $request->query('limit', 20)));
         $blockedIds = $user->blockedUserIds();
 
         $savedQuery = $user->savedPosts()
             ->with(['user', 'likes', 'comments'])
-            ->withCount(['reposts']);
+            ->withCount(['reposts'])
+            ->where(function ($hidden) {
+                $hidden->whereNull('posts.is_hidden')->orWhere('posts.is_hidden', false);
+            });
 
         if ($blockedIds !== []) {
             $savedQuery->whereNotIn('posts.user_id', $blockedIds);
@@ -969,23 +1127,28 @@ class PostController extends Controller
 
         $saved = $savedQuery
             ->orderByPivot('created_at', 'desc')
-            ->limit(60)
+            ->offset($offset)
+            ->limit($limit + 1)
             ->get();
 
-        $savedInteractionIds = $saved
+        $hasMore = $saved->count() > $limit;
+        $page = $saved->take($limit)->values();
+
+        $savedInteractionIds = $page
             ->map(fn ($p) => (int) $this->resolveInteractionPost($p)->id)
             ->filter()
             ->unique()
             ->values()
             ->all();
 
-        $feed = $saved
+        $feed = $page
             ->map(fn ($post) => $this->mapPostForMobileFeed($post, $user, $savedInteractionIds))
             ->values()
-            ->toArray();
+            ->all();
 
         return response()->json([
             'posts' => $feed,
+            'next_offset' => $hasMore ? $offset + $page->count() : null,
         ]);
     }
 

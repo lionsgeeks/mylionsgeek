@@ -1,4 +1,5 @@
 import { Avatar } from '@/components/ui/avatar';
+import { coverPublicUrl } from '@/lib/coverUrl';
 import { Link } from '@inertiajs/react';
 
 const LeftSideBar = ({ user }) => {
@@ -17,7 +18,9 @@ const LeftSideBar = ({ user }) => {
                 {/* Profile Card */}
                 <div className="overflow-hidden rounded-lg bg-white dark:bg-dark_gray">
                     <div className="h-16 bg-dark dark:bg-light">
-                        <img src={`/storage/${user.cover}`} alt={user.name} className="bg h-full w-full object-cover" />
+                        {coverPublicUrl(user?.cover) ? (
+                            <img src={coverPublicUrl(user.cover)} alt={user.name} className="bg h-full w-full object-cover" />
+                        ) : null}
                     </div>
                     <div className="px-4 pb-4">
                         <div className="relative -mt-8 mb-4">

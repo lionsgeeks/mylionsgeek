@@ -1,4 +1,5 @@
 import InputError from '@/components/input-error';
+import ProcessingDialog from '@/components/ProcessingDialog';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -87,7 +88,7 @@ const platforms = [
     { value: 'portfolio', label: 'Portfolio', domains: [] }, // Portfolio doesn't require specific domains
 ];
 
-const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], trainings = [] }) => {
+const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], trainings = [], showSocials = true }) => {
     const getInitials = useInitials();
     const { auth } = usePage().props;
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
@@ -106,6 +107,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     const [newSocialUrl, setNewSocialUrl] = useState('');
     const [socialValidationError, setSocialValidationError] = useState('');
     const [socialLinks, setSocialLinks] = useState(editedUser?.social_links || []);
+    const [imagePreview, setImagePreview] = useState(null);
     const canManageSocials = auth?.user?.id === editedUser?.id;
     const isEditingSelf = auth?.user?.id === editedUser?.id;
     const isStudying = editedUser?.status?.toLowerCase() === 'studying';
@@ -228,7 +230,16 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
             access_scan: editedUser.access_scan === 1 ? 'Yes' : 'No',
         });
         setSocialLinks(editedUser?.social_links || []);
+        setImagePreview(null);
     }, [open, editedUser, canEditOthers, status]);
+
+    useEffect(() => {
+        return () => {
+            if (imagePreview) {
+                URL.revokeObjectURL(imagePreview);
+            }
+        };
+    }, [imagePreview]);
 
     useEffect(() => {
         if (!open) {
@@ -367,8 +378,11 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         });
     };
 
+    const storedImage = typeof formData?.image === 'string' ? formData.image : editedUser?.image;
+
     return (
-        <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
+        <>
+        <Dialog open={open} onOpenChange={(val) => !val && !processing && onClose()}>
             <DialogContent className="max-h-[80vh] overflow-y-auto bg-light text-dark sm:max-w-[720px] dark:bg-dark dark:text-light">
                 <DialogHeader>
                     <DialogTitle>{editedUser ? getInitials(editedUser.name) : 'Modify user'}</DialogTitle>
@@ -378,7 +392,8 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                     <div className="col-span-1 mb-4 flex flex-col items-center gap-4 md:col-span-2">
                         <div className="relative h-24 w-24">
                             <Avatar
-                                image={formData?.image instanceof File ? URL.createObjectURL(formData?.image) : formData?.image || editedUser?.image}
+                                src={imagePreview || undefined}
+                                image={imagePreview ? undefined : storedImage}
                                 name={formData?.name}
                                 lastActivity={editedUser?.last_login ?? editedUser?.last_online ?? editedUser?.last_activity ?? null}
                                 className="h-24 w-24 overflow-hidden rounded-full"
@@ -394,6 +409,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                     onChange={(e) => {
                                         const file = e.target.files?.[0] || null;
                                         setFormData({ ...formData, image: file });
+                                        setImagePreview(file ? URL.createObjectURL(file) : null);
                                     }}
                                 />
                             </label>
@@ -687,7 +703,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         )}
                     </Rolegard>
                     {/* Socials Section */}
-                    {canManageSocials && (
+                    {canManageSocials && showSocials && (
                         <div className="col-span-1 md:col-span-2">
                             <Label>Socials</Label>
 
@@ -812,6 +828,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                     type="button"
                                     className="flex w-fit cursor-pointer items-center gap-2 rounded-lg bg-[#e5e5e5] px-2 py-1 text-[#0a0a0a] hover:bg-[#e5e5e5] hover:text-[#0a0a0a] dark:bg-[#262626] dark:text-white"
                                     onClick={onClose}
+                                    disabled={processing}
                                 >
                                     Cancel
                                 </Button>
@@ -824,6 +841,8 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                 </form>
             </DialogContent>
         </Dialog>
+        <ProcessingDialog open={processing} title="Saving changes" description="Your profile is being updated." />
+        </>
     );
 };
 

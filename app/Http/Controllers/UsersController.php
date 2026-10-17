@@ -17,6 +17,7 @@ use App\Models\Note;
 use App\Models\Post;
 use App\Models\Reservation;
 use App\Models\User;
+use App\Services\CoverImageStore;
 use App\Services\DisciplineService;
 use App\Services\ExportService;
 use App\Services\ProfileImageStore;
@@ -1096,7 +1097,7 @@ class UsersController extends Controller
             'program_status' => 'nullable|in:active,certified,not_certified,left',
             'speciality' => 'nullable|string|max:255',
             'image' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif',
-            'cover' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif', // <-- allow cover image
+            'cover' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif|max:10240',
             'resume' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
             'access_cowork' => 'nullable|integer|in:0,1',
             'access_studio' => 'nullable|integer|in:0,1',
@@ -1139,16 +1140,16 @@ class UsersController extends Controller
         }
         $previousImage = $user->image;
         $newImage = null;
+        $previousCover = $user->cover;
+        $newCover = null;
 
         if ($request->hasFile('image')) {
             $newImage = app(ProfileImageStore::class)->store($request->file('image'));
             $validated['image'] = $newImage;
         }
         if ($request->hasFile('cover')) {
-            $coverFile = $request->file('cover');
-            $coverName = $coverFile->hashName();
-            $coverFile->move(public_path('/storage/img/cover'), $coverName);
-            $validated['cover'] = $coverName;
+            $newCover = app(CoverImageStore::class)->store($request->file('cover'));
+            $validated['cover'] = $newCover;
         }
 
         if ($request->hasFile('resume')) {
@@ -1220,6 +1221,10 @@ class UsersController extends Controller
 
         if ($newImage !== null) {
             app(ProfileImageStore::class)->deletePrevious($previousImage, $newImage, (int) $user->id);
+        }
+
+        if ($newCover !== null) {
+            app(CoverImageStore::class)->deletePrevious($previousCover, $newCover, (int) $user->id);
         }
 
         return redirect()->back()->with('success', 'User updated successfully');

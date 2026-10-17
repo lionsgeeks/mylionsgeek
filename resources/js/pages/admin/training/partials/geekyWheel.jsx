@@ -1,3 +1,4 @@
+import { Avatar } from '@/components/ui/avatar';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 const GeekyWheel = ({
@@ -114,9 +115,12 @@ const GeekyWheel = ({
                     {selectedWinner && (
                         <div className="mt-6 text-center">
                             <div className="flex flex-col items-center space-y-4">
-                                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-alpha text-3xl font-bold text-black">
-                                    {selectedWinner.name.charAt(0).toUpperCase()}
-                                </div>
+                                <Avatar
+                                    className="h-20 w-20 text-3xl"
+                                    image={selectedWinner.image}
+                                    name={selectedWinner.name}
+                                    onlineCircleClass="hidden"
+                                />
                                 <div>
                                     <p className="text-2xl font-bold text-dark dark:text-light">{selectedWinner.name}</p>
                                     <p className="font-semibold text-alpha">Congratulations!</p>

@@ -175,9 +175,11 @@ test('raster profile and cover uploads still succeed on the former landmine path
             ->assertRedirect();
 
         $user->refresh();
+        $coverPath = public_path('storage/'.$user->cover);
         expect($user->cover)->toStartWith('img/cover/')
             ->and($user->cover)->not->toEndWith('.svg')
-            ->and(Storage::disk('public')->exists($user->cover))->toBeTrue();
+            ->and(is_file($coverPath))->toBeTrue();
+        @unlink($coverPath);
 
         return;
     }

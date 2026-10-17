@@ -1,3 +1,4 @@
+import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -536,9 +537,12 @@ export default function ExercicesModal({ trainingId, courses = [] }) {
                                                 <div className="flex items-start justify-between gap-4">
                                                     <div className="flex-1">
                                                         <div className="mb-2 flex items-center gap-3">
-                                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-alpha)] text-sm font-bold text-black">
-                                                                {submission.user?.name?.charAt(0).toUpperCase() || 'U'}
-                                                            </div>
+                                                            <Avatar
+                                                                className="h-10 w-10"
+                                                                image={submission.user?.image}
+                                                                name={submission.user?.name || 'User'}
+                                                                onlineCircleClass="hidden"
+                                                            />
                                                             <div>
                                                                 <p className="font-semibold text-dark dark:text-light">
                                                                     {submission.user?.name || 'Unknown User'}

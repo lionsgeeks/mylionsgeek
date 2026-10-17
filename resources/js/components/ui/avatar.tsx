@@ -29,7 +29,13 @@ function resolveAvatarImageSrc(image?: string, src?: string): string | undefined
   if (!image) {
     return undefined;
   }
-  if (image.startsWith("http://") || image.startsWith("https://") || image.startsWith("/storage/")) {
+  if (
+    image.startsWith("http://") ||
+    image.startsWith("https://") ||
+    image.startsWith("/storage/") ||
+    image.startsWith("blob:") ||
+    image.startsWith("data:")
+  ) {
     return image;
   }
   if (image.includes("img/profile/")) {

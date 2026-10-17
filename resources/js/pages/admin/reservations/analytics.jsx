@@ -1,4 +1,5 @@
 import StatCard from '@/components/StatCard';
+import { Avatar } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link } from '@inertiajs/react';
@@ -393,19 +394,12 @@ export default function Analytics({
                                                 key={index}
                                                 className="flex items-center space-x-3 rounded-xl border p-4 transition-shadow hover:shadow-md"
                                             >
-                                                {user.image ? (
-                                                    <img
-                                                        src={user.image}
-                                                        alt={user.name}
-                                                        className="h-16 w-16 flex-shrink-0 rounded-full border-2 border-green-200 object-cover"
-                                                    />
-                                                ) : (
-                                                    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full">
-                                                        <span className="text-lg font-bold text-white">
-                                                            {user.name?.charAt(0).toUpperCase() || '?'}
-                                                        </span>
-                                                    </div>
-                                                )}
+                                                <Avatar
+                                                    className="h-16 w-16 flex-shrink-0 border-2 border-green-200"
+                                                    image={user.image}
+                                                    name={user.name || 'User'}
+                                                    onlineCircleClass="hidden"
+                                                />
                                                 <div className="min-w-0 flex-1">
                                                     <p className="font-bold text-foreground">
                                                         # {(userPage - 1) * ITEMS_PER_PAGE + index + 1} {user.name}

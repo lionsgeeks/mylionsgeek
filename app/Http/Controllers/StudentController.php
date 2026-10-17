@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\CoverImageStore;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -174,7 +175,7 @@ class StudentController extends Controller
             return null;
         }
 
-        return url('/storage/' . ltrim($pdfPath, '/'));
+        return url('/storage/'.ltrim($pdfPath, '/'));
     }
 
     /**
@@ -220,22 +221,23 @@ class StudentController extends Controller
 
     public function changeCover(Request $request, $id)
     {
-        $user = User::find($id);
-        if (Auth::user()->id == $user->id) {
-            $request->validate([
-                'cover' => 'required|image|mimes:jpeg,jpg,png,webp,gif|max:2048',
-            ]);
-            if ($request->hasFile('cover') && $request->file('cover')->isValid()) {
-                $path = $request->file('cover')->store('img/cover', 'public');
-                $user->update([
-                    'cover' => $path,
-                ]);
+        $user = User::query()->findOrFail($id);
 
-                return redirect()->back()->with('success', 'Cover changed successfully');
-            }
-
-            return redirect()->back()->with('error', 'There was an error changing the cover.');
+        if ((int) Auth::id() !== (int) $user->id) {
+            abort(403, 'You can only update your own cover.');
         }
+
+        $request->validate([
+            'cover' => 'required|image|mimes:jpeg,jpg,png,webp,gif|max:10240',
+        ]);
+
+        $store = app(CoverImageStore::class);
+        $previous = $user->cover;
+        $path = $store->store($request->file('cover'));
+        $user->update(['cover' => $path]);
+        $store->deletePrevious($previous, $path, (int) $user->id);
+
+        return redirect()->back()->with('success', 'Cover changed successfully');
     }
 
     public function updateAbout(Request $request, $id)

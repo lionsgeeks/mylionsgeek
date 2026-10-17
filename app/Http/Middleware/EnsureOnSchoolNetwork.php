@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Support\SchoolAllowedIps;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -28,7 +29,7 @@ class EnsureOnSchoolNetwork
             return $next($request);
         }
 
-        $allowedIps = config('attendance.allowed_ips', []);
+        $allowedIps = SchoolAllowedIps::resolve();
 
         if ($allowedIps === []) {
             return response()->json([

@@ -112,7 +112,7 @@ beforeEach(function () {
         'is_active' => true,
     ]);
 
-    config(['attendance.allowed_ips' => ['203.0.113.1']]);
+    allowSchoolNetwork(['203.0.113.1']);
 
     $this->withoutMiddleware([
         \App\Http\Middleware\HandleInertiaRequests::class,
@@ -216,7 +216,7 @@ test('staff bypasses network restriction on web check-in', function () {
 });
 
 test('empty whitelist returns 503 on web attendance page', function () {
-    config(['attendance.allowed_ips' => []]);
+    allowSchoolNetwork([]);
     $student = createWebStudent();
 
     getWebAttendancePage($this, $student, '203.0.113.1')
@@ -247,7 +247,7 @@ test('web network-check returns forbidden for student off-network', function () 
 });
 
 test('web network-check returns 503 when whitelist is empty', function () {
-    config(['attendance.allowed_ips' => []]);
+    allowSchoolNetwork([]);
     $student = createWebStudent();
 
     $this->actingAs($student)

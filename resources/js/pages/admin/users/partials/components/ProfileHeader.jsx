@@ -1,5 +1,7 @@
+import ProcessingDialog from '@/components/ProcessingDialog';
 import { Avatar } from '@/components/ui/avatar';
-import { router } from '@inertiajs/react';
+import { coverPublicUrl } from '@/lib/coverUrl';
+import { router, usePage } from '@inertiajs/react';
 import { Award, Calendar, Camera, Edit3, Github, Globe, Linkedin, Twitter } from 'lucide-react';
 import { useState } from 'react';
 import { ADMIN_USER_STATUSES } from '@/components/helpers/userStatuses';
@@ -9,12 +11,15 @@ import DownloadCertificateDialog, { resolveCertificateTrack } from './DownloadCe
 
 const ProfileHeader = ({ user, trainings, roles }) => {
     const [open, setOpen] = useState(false);
+    const [coverUploading, setCoverUploading] = useState(false);
     const [certDialogOpen, setCertDialogOpen] = useState(false);
     const hasCertificateTrack = resolveCertificateTrack(user?.field) !== null;
     const onlineColor = user?.is_online ? 'bg-green-500' : 'bg-neutral-500';
     const lastLoginRaw = user?.last_login ?? user?.last_online ?? user?.last_activity ?? null;
     const lastLogin = lastLoginRaw ? new Date(lastLoginRaw).toLocaleString() : 'No last login available';
     const socials = user?.socials || {};
+    const { errors } = usePage().props;
+    const coverUrl = coverPublicUrl(user?.cover);
 
     const changeCover = (event, userId) => {
         const file = event.target.files[0]; // Get the first file
@@ -24,17 +29,13 @@ const ProfileHeader = ({ user, trainings, roles }) => {
         formData.append('cover', file); // Append the selected file to FormData
 
         // Send the POST request with the form data
-        router.post(`/changeCover/${userId}`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data', // Make sure the request is sent as multipart
-            },
-            onSuccess: () => {
-                //('Cover changed successfully');
-            },
-            onError: (error) => {
-                //('Cover not changed', error);
-            },
+        setCoverUploading(true);
+        router.post(`/students/changeCover/${userId}`, formData, {
+            preserveScroll: true,
+            forceFormData: true,
+            onFinish: () => setCoverUploading(false),
         });
+        event.target.value = '';
     };
 
     return (
@@ -43,9 +44,12 @@ const ProfileHeader = ({ user, trainings, roles }) => {
                 <div className="mx-auto max-w-6xl">
                     {/* Cover Photo with Overlay Pattern */}
                     <div className="relative h-64 overflow-hidden md:h-80">
-                        <img src={`/storage/${user.cover}`} alt="Cover" className="h-full w-full object-cover" />
+                        {coverUrl ? <img src={coverUrl} alt="Cover" className="h-full w-full object-cover" /> : null}
                         {/* Mesh gradient overlay */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                        {errors?.cover ? (
+                            <p className="absolute bottom-4 left-4 z-10 max-w-[70%] rounded-md bg-black/75 px-3 py-2 text-sm text-white">{errors.cover}</p>
+                        ) : null}
 
                         {/* Change Cover Icon */}
                         <label
@@ -55,7 +59,7 @@ const ProfileHeader = ({ user, trainings, roles }) => {
                             <Camera size={24} className="cursor-pointer text-white" />
                             <input
                                 type="file"
-                                accept="image/*"
+                                accept="image/jpeg,image/png,image/jpg,image/webp,image/gif"
                                 className="absolute inset-0 cursor-pointer opacity-0"
                                 onChange={(e) => changeCover(e, user.id)}
                             />
@@ -203,6 +207,7 @@ const ProfileHeader = ({ user, trainings, roles }) => {
                 </div>
             </div>
             <EditUserModal open={!!open} onClose={() => setOpen(false)} editedUser={user} roles={roles} status={ADMIN_USER_STATUSES} trainings={trainings} />
+            <ProcessingDialog open={coverUploading} title="Updating cover" description="Your cover photo is being uploaded." />
             {hasCertificateTrack && (
                 <DownloadCertificateDialog open={certDialogOpen} onOpenChange={setCertDialogOpen} user={user} />
             )}
