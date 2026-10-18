@@ -112,7 +112,7 @@ function postAttendanceSave(TestCase $test, User $actor, string $remoteAddr): Te
 }
 
 test('student on allowed IP cannot save attendance', function () {
-    config(['attendance.allowed_ips' => ['203.0.113.1']]);
+    allowSchoolNetwork(['203.0.113.1']);
 
     $student = createAttendanceUser(['role' => ['student']]);
     $countBefore = AttendanceListe::count();
@@ -125,7 +125,7 @@ test('student on allowed IP cannot save attendance', function () {
 });
 
 test('student on blocked IP cannot save attendance', function () {
-    config(['attendance.allowed_ips' => ['203.0.113.1']]);
+    allowSchoolNetwork(['203.0.113.1']);
 
     $student = createAttendanceUser(['role' => ['student']]);
     $countBefore = AttendanceListe::count();
@@ -140,7 +140,7 @@ test('student on blocked IP cannot save attendance', function () {
 });
 
 test('student with empty whitelist is forbidden from saving attendance', function () {
-    config(['attendance.allowed_ips' => []]);
+    allowSchoolNetwork([]);
 
     $student = createAttendanceUser(['role' => ['student']]);
     $countBefore = AttendanceListe::count();
@@ -155,7 +155,7 @@ test('student with empty whitelist is forbidden from saving attendance', functio
 });
 
 test('coach off-network bypasses IP restriction', function () {
-    config(['attendance.allowed_ips' => ['203.0.113.1']]);
+    allowSchoolNetwork(['203.0.113.1']);
 
     $coach = createAttendanceUser(['role' => ['coach']]);
     $countBefore = AttendanceListe::count();
@@ -168,7 +168,7 @@ test('coach off-network bypasses IP restriction', function () {
 });
 
 test('coach bypasses empty whitelist', function () {
-    config(['attendance.allowed_ips' => []]);
+    allowSchoolNetwork([]);
 
     $coach = createAttendanceUser(['role' => ['coach']]);
     $countBefore = AttendanceListe::count();
@@ -181,7 +181,7 @@ test('coach bypasses empty whitelist', function () {
 });
 
 test('multi-role user with staff slug bypasses IP restriction', function () {
-    config(['attendance.allowed_ips' => ['203.0.113.1']]);
+    allowSchoolNetwork(['203.0.113.1']);
 
     $user = createAttendanceUser(['role' => ['admin', 'coach']]);
     $countBefore = AttendanceListe::count();
@@ -194,7 +194,7 @@ test('multi-role user with staff slug bypasses IP restriction', function () {
 });
 
 test('network-check returns ok for student on allowed IP', function () {
-    config(['attendance.allowed_ips' => ['203.0.113.1']]);
+    allowSchoolNetwork(['203.0.113.1']);
 
     $student = createAttendanceUser(['role' => ['student']]);
 
@@ -206,7 +206,7 @@ test('network-check returns ok for student on allowed IP', function () {
 });
 
 test('network-check returns forbidden for student off-network', function () {
-    config(['attendance.allowed_ips' => ['203.0.113.1']]);
+    allowSchoolNetwork(['203.0.113.1']);
 
     $student = createAttendanceUser(['role' => ['student']]);
 
@@ -220,7 +220,7 @@ test('network-check returns forbidden for student off-network', function () {
 });
 
 test('student on IPv6-mapped allowed IP cannot save attendance', function () {
-    config(['attendance.allowed_ips' => ['203.0.113.1']]);
+    allowSchoolNetwork(['203.0.113.1']);
 
     $student = createAttendanceUser(['role' => ['student']]);
     $countBefore = AttendanceListe::count();

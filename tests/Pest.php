@@ -41,6 +41,28 @@ expect()->extend('toBeOne', function () {
 |
 */
 
+function allowSchoolNetwork(array $ips): void
+{
+    if (! Illuminate\Support\Facades\Schema::hasTable('app_settings')) {
+        Illuminate\Support\Facades\Schema::create('app_settings', function (Illuminate\Database\Schema\Blueprint $table) {
+            $table->id();
+            $table->string('key')->unique();
+            $table->text('value')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    if ($ips === []) {
+        Illuminate\Support\Facades\DB::table('app_settings')
+            ->where('key', App\Support\SchoolAllowedIps::SETTING_KEY)
+            ->delete();
+
+        return;
+    }
+
+    App\Support\SchoolAllowedIps::store($ips);
+}
+
 function bindVerifiedFaceVerifier(): void
 {
     app()->instance(

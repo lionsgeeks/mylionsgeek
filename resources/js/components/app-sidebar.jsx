@@ -21,6 +21,7 @@ import {
     Timer,
     UserPlus,
     Users,
+    Wifi,
     Wrench,
 } from 'lucide-react';
 import { useMemo } from 'react';
@@ -223,6 +224,13 @@ const getGeneralItems = () => [
         href: '/admin/appversion',
         icon: Smartphone,
         authorizedRoles: ['admin'],
+    },
+    {
+        id: 'school_network',
+        title: 'School network',
+        href: '/admin/school-network',
+        icon: Wifi,
+        authorizedRoles: ['admin', 'super_admin'],
     },
 ];
 

@@ -99,7 +99,7 @@ beforeEach(function () {
         'staff_name' => 'Coach',
     ]);
 
-    config(['attendance.allowed_ips' => ['203.0.113.1']]);
+    allowSchoolNetwork(['203.0.113.1']);
 });
 
 afterEach(function () {
