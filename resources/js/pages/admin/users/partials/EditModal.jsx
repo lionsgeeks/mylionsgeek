@@ -88,7 +88,7 @@ const platforms = [
     { value: 'portfolio', label: 'Portfolio', domains: [] }, // Portfolio doesn't require specific domains
 ];
 
-const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], trainings = [] }) => {
+const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], trainings = [], showSocials = true }) => {
     const getInitials = useInitials();
     const { auth } = usePage().props;
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
@@ -703,7 +703,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         )}
                     </Rolegard>
                     {/* Socials Section */}
-                    {canManageSocials && (
+                    {canManageSocials && showSocials && (
                         <div className="col-span-1 md:col-span-2">
                             <Label>Socials</Label>
 

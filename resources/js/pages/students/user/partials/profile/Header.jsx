@@ -329,6 +329,7 @@ const Header = ({ user }) => {
                         status={STUDENT_EDITABLE_STATUSES}
                         roles={['student', 'admin', 'coach', 'studio_responsable']}
                         trainings={[]}
+                        showSocials={false}
                     />
                 </>
             )}
