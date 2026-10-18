@@ -7,6 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
+function errorText(value) {
+    if (Array.isArray(value)) {
+        return value.filter((item) => typeof item === 'string' && item.trim()).join(' ');
+    }
+
+    return typeof value === 'string' ? value : '';
+}
+
 const platforms = [
     { value: 'instagram', label: 'Instagram', domains: ['instagram.com', 'instagr.am'] },
     { value: 'linkedin', label: 'LinkedIn', domains: ['linkedin.com'] },
@@ -25,7 +33,9 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null, avail
     });
 
     useEffect(() => {
-        if (!onOpen) return;
+        if (!onOpen) {
+            return;
+        }
 
         clearErrors();
         setValidationError('');
@@ -33,16 +43,18 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null, avail
             title: initialLink?.title || '',
             url: initialLink?.url || '',
         });
-
-        return () => {
-            reset();
-            clearErrors();
-            setValidationError('');
-        };
-    }, [onOpen, initialLink?.id, initialLink?.title, initialLink?.url, clearErrors, setData, reset]);
+    }, [onOpen, initialLink?.id]);
 
     const validateUrl = () => {
-        if (!data.title || !data.url) return false;
+        if (!data.title) {
+            setValidationError('Select a platform');
+            return false;
+        }
+
+        if (!data.url) {
+            setValidationError('Enter a URL');
+            return false;
+        }
 
         const platform = platforms.find((p) => p.value === data.title);
         if (!platform) return false;
@@ -123,7 +135,7 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null, avail
                                 ))}
                             </SelectContent>
                         </Select>
-                        <InputError message={errors.title} />
+                        <InputError message={!data.title ? validationError : errorText(errors.title)} />
                     </div>
 
                     <div className="space-y-2">
@@ -133,14 +145,14 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null, avail
                             type="url"
                             name="url"
                             value={data.url}
+                            aria-invalid={Boolean(errorText(errors.url) || (data.title && validationError))}
                             onChange={(e) => {
                                 setData('url', e.target.value);
                                 setValidationError('');
                             }}
                             placeholder="https://example.com/username"
                         />
-                        <InputError message={errors.url} />
-                        {validationError && <p className="text-xs text-destructive">{validationError}</p>}
+                        <InputError message={data.title ? validationError || errorText(errors.url) : errorText(errors.url)} />
                     </div>
                 </div>
 
