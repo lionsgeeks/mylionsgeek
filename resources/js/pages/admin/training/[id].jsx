@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -29,6 +30,7 @@ import {
     Plus,
     QrCode,
     RefreshCw,
+    Search,
     Settings,
     User,
     UserCheck,
@@ -67,6 +69,7 @@ export default function Show({ training, usersNull, courses = [] }) {
     const [students, setStudents] = useState(training.users || []);
     const [availableUsers, setAvailableUsers] = useState(usersNull || []);
     const [filter, setFilter] = useState('');
+    const [attendanceSearch, setAttendanceSearch] = useState('');
     const [modalFilter, setModalFilter] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [showAttendance, setShowAttendance] = useState(false);
@@ -75,6 +78,7 @@ export default function Show({ training, usersNull, courses = [] }) {
     const [showAttendanceList, setShowAttendanceList] = useState(false);
     const [selectedDate, setSelectedDate] = useState(null);
     const [attendanceData, setAttendanceData] = useState({});
+    const [attendanceLoading, setAttendanceLoading] = useState(false);
     const [events, setEvents] = useState([]);
     const [currentAttendanceId, setCurrentAttendanceId] = useState(null);
     const [showPlayDropdown, setShowPlayDropdown] = useState(false);
@@ -221,6 +225,7 @@ export default function Show({ training, usersNull, courses = [] }) {
     //   attendance
 
     async function AddAttendance(dateStr) {
+        setAttendanceLoading(true);
         try {
             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
@@ -269,7 +274,10 @@ export default function Show({ training, usersNull, courses = [] }) {
             setAttendanceData((prev) => ({ ...prev, ...initialized }));
 
             setShowAttendanceList(true);
-        } catch (err) {}
+        } catch {
+        } finally {
+            setAttendanceLoading(false);
+        }
     }
 
     //   atteandacelist
@@ -314,6 +322,7 @@ export default function Show({ training, usersNull, courses = [] }) {
                 setCurrentAttendanceId(saveResult.attendance_id);
             }
             setShowAttendanceList(false);
+            setAttendanceSearch('');
             try {
                 const evRes = await fetch(`/training/${training.id}/attendance-events`);
                 const evData = await evRes.json();
@@ -446,6 +455,119 @@ export default function Show({ training, usersNull, courses = [] }) {
             </div>
         );
     };
+
+    const markAllPresent = () => {
+        setAttendanceData((prev) => {
+            const blocked =
+                attendanceLoading ||
+                !selectedDate ||
+                attendanceFilteredStudents.some((s) => !prev[`${selectedDate}-${s.id}`]);
+            if (blocked) return prev;
+            const next = { ...prev };
+            attendanceFilteredStudents.forEach((s) => {
+                const key = `${selectedDate}-${s.id}`;
+                const entry = next[key];
+                const studentMarkedSlots = entry.studentMarkedSlots ?? [];
+                next[key] = {
+                    ...entry,
+                    morning: studentMarkedSlots.includes('morning') ? entry.morning : 'present',
+                    lunch: studentMarkedSlots.includes('lunch') ? entry.lunch : 'present',
+                    evening: studentMarkedSlots.includes('evening') ? entry.evening : 'present',
+                };
+            });
+            return next;
+        });
+    };
+
+    const markSlotForAll = (slot, value) => {
+        setAttendanceData((prev) => {
+            const blocked =
+                attendanceLoading ||
+                !selectedDate ||
+                attendanceFilteredStudents.some((s) => !prev[`${selectedDate}-${s.id}`]);
+            if (blocked) return prev;
+            const next = { ...prev };
+            attendanceFilteredStudents.forEach((s) => {
+                const key = `${selectedDate}-${s.id}`;
+                const entry = next[key];
+                const studentMarkedSlots = entry.studentMarkedSlots ?? [];
+                if (studentMarkedSlots.includes(slot)) return;
+                next[key] = { ...entry, [slot]: value };
+            });
+            return next;
+        });
+    };
+
+    const markStudentPresent = (studentKey) => {
+        setAttendanceData((prev) => {
+            const entry = prev[studentKey];
+            if (attendanceLoading || !entry) return prev;
+            const studentMarkedSlots = entry.studentMarkedSlots ?? [];
+            return {
+                ...prev,
+                [studentKey]: {
+                    ...entry,
+                    morning: studentMarkedSlots.includes('morning') ? entry.morning : 'present',
+                    lunch: studentMarkedSlots.includes('lunch') ? entry.lunch : 'present',
+                    evening: studentMarkedSlots.includes('evening') ? entry.evening : 'present',
+                },
+            };
+        });
+    };
+
+    const allSlotsStudentMarked = (currentData) =>
+        ['morning', 'lunch', 'evening'].every((slot) => (currentData.studentMarkedSlots ?? []).includes(slot));
+
+    const renderMarkStudentPresentButton = (studentKey, currentData) => {
+        if (allSlotsStudentMarked(currentData)) return null;
+
+        const entryReady = !attendanceLoading && Boolean(attendanceData[studentKey]);
+
+        return (
+            <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={!entryReady}
+                onClick={() => markStudentPresent(studentKey)}
+                title={entryReady ? 'Mark all slots present' : 'Attendance is still loading'}
+                className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-green-500/10 hover:text-green-600"
+            >
+                <UserCheck className="h-4 w-4" />
+            </Button>
+        );
+    };
+
+    const renderSlotBulkHeader = (slot, columnLabel) => (
+        <DropdownMenu modal={false}>
+            <DropdownMenuTrigger
+                disabled={!attendanceBulkReady}
+                className="mx-auto flex cursor-pointer items-center gap-1 text-xs font-medium text-muted-foreground transition-colors select-none hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            >
+                {columnLabel}
+                <ChevronDown className="h-3 w-3 opacity-50" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="z-[60]">
+                <DropdownMenuItem disabled={!attendanceBulkReady} onClick={() => markSlotForAll(slot, 'present')} className="gap-2 text-sm">
+                    <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+                    Mark all Present
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={!attendanceBulkReady} onClick={() => markSlotForAll(slot, 'late')} className="gap-2 text-sm">
+                    <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+                    Mark all Late
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={!attendanceBulkReady} onClick={() => markSlotForAll(slot, 'absent')} className="gap-2 text-sm">
+                    <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
+                    Mark all Absent
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={!attendanceBulkReady} onClick={() => markSlotForAll(slot, 'excused')} className="gap-2 text-sm">
+                    <span className="inline-block h-2 w-2 rounded-full bg-sky-500" />
+                    Mark all Excused
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+
     // Notes helpers: add/remove chip-style notes per student
     const addNote = (studentKey, noteText) => {
         const text = (noteText || '').trim();
@@ -499,6 +621,19 @@ export default function Show({ training, usersNull, courses = [] }) {
     const filteredStudents = students.filter(
         (s) => s.name.toLowerCase().includes(filter.toLowerCase()) || s.email.toLowerCase().includes(filter.toLowerCase()),
     );
+
+    const attendanceFilteredStudents = attendanceSearch.trim()
+        ? students.filter(
+              (s) =>
+                  s.name.toLowerCase().includes(attendanceSearch.toLowerCase()) ||
+                  s.email.toLowerCase().includes(attendanceSearch.toLowerCase()),
+          )
+        : students;
+
+    const attendanceBulkReady =
+        !attendanceLoading &&
+        Boolean(selectedDate) &&
+        attendanceFilteredStudents.every((student) => attendanceData[`${selectedDate}-${student.id}`]);
 
     // Filter available users to exclude admins, coaches, and already assigned students
     const filteredAvailableUsers = availableUsers.filter((user) => {
@@ -1072,8 +1207,22 @@ export default function Show({ training, usersNull, courses = [] }) {
                 </Dialog>
 
                 {/* Attendance List Modal */}
-                <Dialog open={showAttendanceList} onOpenChange={setShowAttendanceList}>
-                    <DialogContent className="h-[100svh] w-full max-w-full overflow-x-hidden overflow-y-auto rounded-none border border-alpha/20 bg-light p-4 text-dark sm:h-auto sm:max-w-[95vw] sm:rounded-2xl sm:p-5 md:p-6 lg:max-w-[1150px] dark:bg-dark dark:text-light">
+                <Dialog
+                    open={showAttendanceList}
+                    onOpenChange={(open) => {
+                        setShowAttendanceList(open);
+                        if (!open) setAttendanceSearch('');
+                    }}
+                >
+                    <DialogContent
+                        className="h-[100svh] w-full max-w-full overflow-x-hidden overflow-y-auto rounded-none border border-alpha/20 bg-light p-4 text-dark sm:h-auto sm:max-w-[95vw] sm:rounded-2xl sm:p-5 md:p-6 lg:max-w-[1150px] dark:bg-dark dark:text-light"
+                        onInteractOutside={(event) => {
+                            const target = event.target;
+                            if (target instanceof Element && target.closest('[data-slot="dropdown-menu-content"]')) {
+                                event.preventDefault();
+                            }
+                        }}
+                    >
                         <DialogHeader>
                             <DialogTitle className="text-2xl font-extrabold text-dark md:text-3xl dark:text-light">
                                 Attendance for{' '}
@@ -1087,11 +1236,33 @@ export default function Show({ training, usersNull, courses = [] }) {
                             </DialogTitle>
                             <p className="text-sm text-dark/70 md:text-base dark:text-light/70">Mark attendance for each student</p>
                         </DialogHeader>
+                        <div className="px-6 pt-1 pb-3">
+                            <div className="relative">
+                                <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                <Input
+                                    type="search"
+                                    placeholder="Search by name or email..."
+                                    value={attendanceSearch}
+                                    onChange={(e) => setAttendanceSearch(e.target.value)}
+                                    className="pl-9"
+                                />
+                            </div>
+                        </div>
                         <div className="mt-4">
                             <div className="-ml-3 h-[52vh] overflow-x-hidden overflow-y-auto rounded-xl border border-alpha/20 bg-light text-dark shadow-sm md:-ml-4 dark:bg-dark dark:text-light">
+                                {attendanceSearch.trim() && attendanceFilteredStudents.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                                        <Search className="mb-3 h-8 w-8 text-muted-foreground opacity-40" />
+                                        <p className="text-sm font-medium text-foreground">No students found</p>
+                                        <p className="mt-1 text-xs text-muted-foreground">
+                                            No match for &ldquo;{attendanceSearch}&rdquo;
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <>
                                 {/* Mobile cards layout */}
                                 <div className="block space-y-3 p-3 pr-4 md:hidden">
-                                    {students.map((student) => {
+                                    {attendanceFilteredStudents.map((student) => {
                                         const studentKey = `${selectedDate}-${student.id}`;
                                         const currentData = attendanceData[studentKey] || getDefaultSlots(student);
                                         return (
@@ -1100,10 +1271,11 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                     <div className="flex h-9 w-9 items-center justify-center rounded-full bg-alpha font-bold text-black">
                                                         {student.name.charAt(0).toUpperCase()}
                                                     </div>
-                                                    <div className="min-w-0">
+                                                    <div className="min-w-0 flex-1">
                                                         <p className="truncate font-semibold text-dark dark:text-light">{student.name}</p>
                                                         <p className="truncate text-xs text-dark/70 dark:text-light/70">{student.email}</p>
                                                     </div>
+                                                    {renderMarkStudentPresentButton(studentKey, currentData)}
                                                 </div>
                                                 <div className="grid grid-cols-1 gap-2">
                                                     {renderSlotSelect(studentKey, currentData, 'morning', '9:30 - 11:00')}
@@ -1169,14 +1341,21 @@ export default function Show({ training, usersNull, courses = [] }) {
                                             <thead className="sticky top-0 z-10 bg-secondary/50">
                                                 <tr>
                                                     <th className="px-4 py-3 text-left font-semibold text-dark dark:text-light">Student</th>
-                                                    <th className="px-4 py-3 text-center font-semibold text-dark dark:text-light">9:30 - 11:00</th>
-                                                    <th className="px-4 py-3 text-center font-semibold text-dark dark:text-light">11:30 - 13:00</th>
-                                                    <th className="px-4 py-3 text-center font-semibold text-dark dark:text-light">14:00 - 17:00</th>
+                                                    <th className="px-4 py-3 text-center font-semibold text-dark dark:text-light">
+                                                        {renderSlotBulkHeader('morning', '9:30 - 11:00')}
+                                                    </th>
+                                                    <th className="px-4 py-3 text-center font-semibold text-dark dark:text-light">
+                                                        {renderSlotBulkHeader('lunch', '11:30 - 13:00')}
+                                                    </th>
+                                                    <th className="px-4 py-3 text-center font-semibold text-dark dark:text-light">
+                                                        {renderSlotBulkHeader('evening', '14:00 - 17:00')}
+                                                    </th>
                                                     <th className="px-4 py-3 text-center font-semibold text-dark dark:text-light">Notes</th>
+                                                    <th className="px-4 py-3" />
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-alpha/10">
-                                                {students.map((student) => {
+                                                {attendanceFilteredStudents.map((student) => {
                                                     const studentKey = `${selectedDate}-${student.id}`;
                                                     const currentData = attendanceData[studentKey] || getDefaultSlots(student);
                                                     return (
@@ -1244,6 +1423,9 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                                     />
                                                                 </div>
                                                             </td>
+                                                            <td className="px-4 py-3 text-center">
+                                                                {renderMarkStudentPresentButton(studentKey, currentData)}
+                                                            </td>
                                                         </tr>
                                                     );
                                                 })}
@@ -1251,6 +1433,8 @@ export default function Show({ training, usersNull, courses = [] }) {
                                         </table>
                                     </div>
                                 </div>
+                                    </>
+                                )}
                             </div>
                         </div>
 
@@ -1259,8 +1443,26 @@ export default function Show({ training, usersNull, courses = [] }) {
                                 Total Students: <span className="text-xl font-bold">{students.length}</span>
                             </div>
                             <div className="flex flex-col gap-2 sm:flex-row sm:gap-0 sm:space-x-4">
-                                <Button variant="outline" onClick={() => setShowAttendanceList(false)} className="w-full px-6 py-2 sm:w-auto">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setShowAttendanceList(false);
+                                        setAttendanceSearch('');
+                                    }}
+                                    className="w-full px-6 py-2 sm:w-auto"
+                                >
                                     Cancel
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={!attendanceBulkReady}
+                                    onClick={markAllPresent}
+                                    title={attendanceBulkReady ? 'Mark all present' : 'Attendance is still loading'}
+                                    className="w-full gap-2 px-6 py-2 sm:w-auto"
+                                >
+                                    <UserCheck className="h-4 w-4" />
+                                    Mark all present
                                 </Button>
                                 <Button
                                     onClick={() => {
