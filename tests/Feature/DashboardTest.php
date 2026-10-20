@@ -13,3 +13,14 @@ test('authenticated users can visit the dashboard', function () {
 
     $this->get(route('dashboard'))->assertOk();
 });
+
+test('coaches are not prompted to mark attendance', function () {
+    $coach = User::factory()->create([
+        'role' => ['coach'],
+    ]);
+
+    $this->actingAs($coach)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->missing('attendanceWarning'));
+});

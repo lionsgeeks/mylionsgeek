@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserSocialLink;
+use App\Services\ProfileImageStore;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
@@ -265,16 +266,18 @@ class ProfileController extends Controller
             'phone'  => 'sometimes|nullable|string|max:30',
             'status' => 'sometimes|nullable|string|max:255',
             'speciality' => 'sometimes|nullable|string|max:255',
-            'image'  => 'sometimes|file|image|mimes:jpeg,jpg,png,webp,gif|max:4096',
+            'image'  => 'sometimes|file|image|mimes:jpeg,jpg,png,webp,gif|max:10240',
             'resume' => 'sometimes|file|mimes:pdf,doc,docx|max:10240',
         ]);
+
+        $previousImage = $user->image;
+        $newImage = null;
 
         if ($request->hasFile('image')) {
             $file = $request->file('image');
             if ($file instanceof UploadedFile) {
-                $filename = $file->hashName();
-                $file->move(public_path('/storage/img/profile'), $filename);
-                $data['image'] = $filename;
+                $newImage = app(ProfileImageStore::class)->store($file);
+                $data['image'] = $newImage;
             }
         }
 
@@ -288,6 +291,10 @@ class ProfileController extends Controller
         $allowed = ['name', 'email', 'phone', 'status', 'speciality', 'image', 'resume'];
         $user->update(array_intersect_key($data, array_flip($allowed)));
         $user->refresh();
+
+        if ($newImage !== null) {
+            app(ProfileImageStore::class)->deletePrevious($previousImage, $newImage, (int) $user->id);
+        }
 
         return response()->json([
             'message' => 'Profile updated',

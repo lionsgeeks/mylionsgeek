@@ -1026,7 +1026,7 @@ const User = ({ user, trainings, close, open }) => {
                                                 {d.id ? (
                                                     <a
                                                         className="flex items-center gap-1 text-xs font-semibold text-alpha hover:underline"
-                                                        href={`/admin/users/${user.id}/documents/contract/${d.id}`}
+                                                        href={d.url || `/admin/users/${user.id}/documents/contract/${d.id}`}
                                                         target="_blank"
                                                         rel="noreferrer"
                                                     >

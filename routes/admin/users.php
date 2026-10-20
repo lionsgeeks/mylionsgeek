@@ -20,6 +20,8 @@ Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,coach,
     Route::get('/users/{user}/documents', [UsersController::class, 'documents']);
     Route::get('/users/{user}/training-documents/{formation}/{type}', [\App\Http\Controllers\StudentTrainingDocumentController::class, 'adminView'])
         ->whereNumber('formation')->whereIn('type', ['contract', 'charter'])->name('admin.users.training-documents.view');
+    Route::get('/users/{user}/computer-contract/{computer}', [\App\Http\Controllers\StudentTrainingDocumentController::class, 'adminComputer'])
+        ->whereNumber('computer')->name('admin.users.computer-contract.view');
     Route::post('/users/{user}/documents', [UsersController::class, 'uploadDocument']);
     Route::get('/users/{user}/documents/{kind}/{doc}', [UsersController::class, 'viewDocument'])->where(['kind' => 'contract|medical', 'doc' => '[0-9]+'])->name('admin.users.documents.view');
     Route::post('/users/store', [UsersController::class, 'store']);

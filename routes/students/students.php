@@ -13,6 +13,8 @@ Route::middleware(['auth', 'verified', 'role:student'])->prefix('students')->gro
     Route::get('/training-documents', [\App\Http\Controllers\StudentTrainingDocumentController::class, 'index'])->name('student.training-documents.index');
     Route::get('/training-documents/{formation}/{type}', [\App\Http\Controllers\StudentTrainingDocumentController::class, 'studentView'])
         ->whereNumber('formation')->whereIn('type', ['contract', 'charter'])->name('student.training-documents.view');
+    Route::get('/computer-contract/{computer}', [\App\Http\Controllers\StudentTrainingDocumentController::class, 'studentComputer'])
+        ->whereNumber('computer')->name('student.computer-contract.view');
 });
 
 Route::middleware(['auth', 'verified'])->prefix('students')->group(function () {

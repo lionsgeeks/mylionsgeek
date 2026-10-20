@@ -84,28 +84,7 @@ const Header = ({ user }) => {
         });
     };
 
-    const changeProfileImage = (event, userId) => {
-        const file = event.target.files[0]; // Get the first file
-        if (!file) return; // If no file is selected, don't proceed
-
-        const formData = new FormData();
-        formData.append('image', file); // Append the selected file to FormData
-
-        // Send the POST request with the form data
-        router.post(`/students/changeProfileImage/${userId}`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data', // Make sure the request is sent as multipart
-            },
-            onSuccess: () => {
-                //('Cover changed successfully');
-                //console.log('Image changed successfully');
-            },
-            onError: (error) => {
-                //('Cover not changed', error);
-                //console.log('Image change error: ' + error);
-            },
-        });
-    };
+    // Profile image is updated via the Edit Profile modal or the Settings page only.
 
     return (
         <>
@@ -171,18 +150,7 @@ const Header = ({ user }) => {
                             />
                         </div>
 
-                        {/* CAMERA ICON */}
-                        {auth.user.id == user.id && (
-                            <button className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white p-2 opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100 hover:bg-light dark:bg-dark_gray dark:hover:bg-beta">
-                                <Camera className="h-5 w-5 text-beta dark:text-light" />
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="absolute inset-0 cursor-pointer opacity-0"
-                                    onChange={(e) => changeProfileImage(e, user?.id)}
-                                />
-                            </button>
-                        )}
+                        {/* Profile image is updated via Edit Profile modal or Settings page */}
                     </div>
 
                     {/* Name and Title - Facebook Style */}
