@@ -17,6 +17,7 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
     const isRecruiter = !!profileMeta.is_recruiter;
     const requirePhone = profileMeta.require_phone !== false && !fromLionsgeek;
     const showCin = profileMeta.show_cin !== false && !isChildren;
+    const requireCin = showCin && fromLionsgeek && !isChildren;
 
     const { data, setData, processing, errors, setError } = useForm({
         password: '',
@@ -93,7 +94,7 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
 
     const validateForm = () => {
         const newErrors = {};
-        if (showCin && !data.cin.trim()) {
+        if (requireCin && !data.cin.trim()) {
             newErrors.cin = 'CIN is required';
         }
 
@@ -252,12 +253,12 @@ const CompleteProfile = ({ user, profileMeta = {}, submitUrl }) => {
                                     {showCin && (
                                         <div className="flex-1">
                                             <Label htmlFor="cin" className="mb-2 block text-sm font-medium text-gray-600">
-                                                CIN *
+                                                {requireCin ? 'CIN *' : 'CIN (optional)'}
                                             </Label>
                                             <input
                                                 id="cin"
                                                 type="text"
-                                                required
+                                                required={requireCin}
                                                 maxLength={10}
                                                 value={data.cin}
                                                 onChange={(e) => setData('cin', e.target.value)}
