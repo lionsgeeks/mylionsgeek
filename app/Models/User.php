@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use App\Mail\ForgotPasswordLinkMail;
+use App\Services\UserLifeStatusService;
 
 class User extends Authenticatable
 {
@@ -85,6 +86,31 @@ class User extends Authenticatable
             'profile_document_acceptances' => 'array',
             'profile_documents_accepted_at' => 'datetime',
         ];
+    }
+
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::updating(function (User $user) {
+            if (! $user->isDirty('program_status')) {
+                return;
+            }
+
+            $exitStatuses = [
+                self::PROGRAM_STATUS_LEFT,
+                self::PROGRAM_STATUS_NEVER_SHOWED_UP,
+            ];
+
+            if (in_array($user->program_status, $exitStatuses, true)) {
+                $user->status = 'unknown';
+            } elseif (
+                $user->program_status === self::PROGRAM_STATUS_ACTIVE
+                && strtolower(trim((string) $user->status)) === 'unknown'
+            ) {
+                $user->status = UserLifeStatusService::STUDYING;
+            }
+        });
     }
 
     public const ACTIVATION_TTL_HOURS = 24;
@@ -310,12 +336,14 @@ class User extends Authenticatable
 
     /**
      * LionsGEEK program lifecycle. Independent of the `status` column, which tracks
-     * life situation (Working, Studying…) and must never be derived from these.
+     * life situation (Working, Studying…). An exit program status resets `status`
+     * to unknown in the updating hook.
      *
-     *   active         — currently following the training
-     *   certified      — finished and received a certificate
-     *   not_certified  — finished but received no certificate
-     *   left           — did not finish; set by hand by an admin or coach
+     *   active           — currently following the training
+     *   certified        — finished and received a certificate
+     *   not_certified    — finished but received no certificate
+     *   left             — did not finish; set by hand by an admin or coach
+     *   never_showed_up  — enrolled but never attended a single session
      */
     public const PROGRAM_STATUS_ACTIVE = 'active';
 
@@ -325,12 +353,15 @@ class User extends Authenticatable
 
     public const PROGRAM_STATUS_LEFT = 'left';
 
+    public const PROGRAM_STATUS_NEVER_SHOWED_UP = 'never_showed_up';
+
     /** @var list<string> */
     public const PROGRAM_STATUSES = [
         self::PROGRAM_STATUS_ACTIVE,
         self::PROGRAM_STATUS_CERTIFIED,
         self::PROGRAM_STATUS_NOT_CERTIFIED,
         self::PROGRAM_STATUS_LEFT,
+        self::PROGRAM_STATUS_NEVER_SHOWED_UP,
     ];
 
     /** Human-readable labels, mirroring resources/js/components/helpers/userDemographics.js */
@@ -339,6 +370,7 @@ class User extends Authenticatable
         self::PROGRAM_STATUS_CERTIFIED => 'Certificate',
         self::PROGRAM_STATUS_NOT_CERTIFIED => 'Not Certificate',
         self::PROGRAM_STATUS_LEFT => 'Left',
+        self::PROGRAM_STATUS_NEVER_SHOWED_UP => 'Never Showed Up',
     ];
 
     /** Relative path on the private disk, e.g. resumes/abc.pdf */

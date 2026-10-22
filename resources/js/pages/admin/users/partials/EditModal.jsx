@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { useInitials } from '@/hooks/use-initials';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { Briefcase, ExternalLink, Facebook, Github, ImagePlus, Instagram, Linkedin, MessageCircle, Send, Trash, Twitter, Users } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { normalizeStatusForSelect, resolveStatusOptions } from '@/components/helpers/userStatuses';
 import {
     GENDER_OPTIONS,
@@ -178,11 +178,20 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         const match = trainingOptions.find((training) => String(training.id) === selectedId);
         return match?.name || editedUser?.formation_name || 'Select training';
     }, [formData.formation_id, trainingOptions, editedUser?.formation_name]);
-    // Load user data into form when modal opens or user changes
+    const formLoadedForUserId = useRef(null);
+    // Load user data into form when modal opens or the edited user changes.
+    // A failed save refreshes the same user from the server; do not overwrite what was just typed.
     useEffect(() => {
         if (!open || !editedUser) {
+            formLoadedForUserId.current = null;
             return;
         }
+
+        const userKey = String(editedUser.id);
+        if (formLoadedForUserId.current === userKey) {
+            return;
+        }
+        formLoadedForUserId.current = userKey;
 
         let rolesArray = [];
         if (Array.isArray(editedUser.role)) {
@@ -446,7 +455,13 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                             <Select
                                 key={`program-status-${editedUser?.id}`}
                                 value={formData.program_status}
-                                onValueChange={(v) => setFormData({ ...formData, program_status: v })}
+                                onValueChange={(v) => {
+                                    const status =
+                                        v === PROGRAM_STATUS.ACTIVE && String(formData.status || '').toLowerCase() === 'unknown'
+                                            ? 'Studying'
+                                            : formData.status;
+                                    setFormData({ ...formData, program_status: v, status });
+                                }}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select program status">
@@ -455,7 +470,12 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                 </SelectTrigger>
                                 <SelectContent>
                                     {programStatusOptions
-                                        .filter((option) => option.value === PROGRAM_STATUS.ACTIVE || option.value === PROGRAM_STATUS.LEFT)
+                                        .filter(
+                                            (option) =>
+                                                option.value === PROGRAM_STATUS.ACTIVE ||
+                                                option.value === PROGRAM_STATUS.LEFT ||
+                                                option.value === PROGRAM_STATUS.NEVER_SHOWED_UP,
+                                        )
                                         .map((option) => (
                                             <SelectItem key={option.value} value={option.value}>
                                                 {option.label}

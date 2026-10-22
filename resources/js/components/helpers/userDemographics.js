@@ -14,11 +14,13 @@ export const PROGRAM_STATUS = {
     CERTIFIED: 'certified',
     NOT_CERTIFIED: 'not_certified',
     LEFT: 'left',
+    NEVER_SHOWED_UP: 'never_showed_up',
 };
 
 export const PROGRAM_STATUS_OPTIONS = [
     { value: PROGRAM_STATUS.ACTIVE, label: 'Active' },
     { value: PROGRAM_STATUS.LEFT, label: 'Left' },
+    { value: PROGRAM_STATUS.NEVER_SHOWED_UP, label: 'Never Showed Up' },
     { value: PROGRAM_STATUS.CERTIFIED, label: 'Certificate' },
     { value: PROGRAM_STATUS.NOT_CERTIFIED, label: 'Not Certificate' },
 ];
@@ -34,6 +36,7 @@ export const PROGRAM_STATUS_CERTIFICATE_OUTCOME_OPTIONS = [
 export const PROGRAM_STATUS_FILTER_OPTIONS = [
     { value: PROGRAM_STATUS.ACTIVE, label: 'Active' },
     { value: PROGRAM_STATUS.LEFT, label: 'Left' },
+    { value: PROGRAM_STATUS.NEVER_SHOWED_UP, label: 'Never Showed Up' },
     { value: PROGRAM_STATUS_FILTER_CERTIFICATE_OUTCOMES, label: 'Certificate & Not Certificate' },
     ...PROGRAM_STATUS_CERTIFICATE_OUTCOME_OPTIONS,
 ];
@@ -76,12 +79,21 @@ export const canAssignProgramStatusLeft = (roles, { isTrainingCoach = false, req
     return false;
 };
 
-/** Program status options for edit/bulk forms; keeps Left visible when already set. */
+/** Program status options for edit/bulk forms; keeps an exit status visible when already set. */
 export const resolveProgramStatusEditOptions = (currentProgramStatus, roles, options = {}) => {
-    const canAssignLeft =
-        canAssignProgramStatusLeft(roles, options) || currentProgramStatus === PROGRAM_STATUS.LEFT;
+    const canAssignExit = canAssignProgramStatusLeft(roles, options);
 
-    return PROGRAM_STATUS_OPTIONS.filter((option) => option.value !== PROGRAM_STATUS.LEFT || canAssignLeft);
+    return PROGRAM_STATUS_OPTIONS.filter((option) => {
+        if (option.value === PROGRAM_STATUS.LEFT) {
+            return canAssignExit || currentProgramStatus === PROGRAM_STATUS.LEFT;
+        }
+
+        if (option.value === PROGRAM_STATUS.NEVER_SHOWED_UP) {
+            return canAssignExit || currentProgramStatus === PROGRAM_STATUS.NEVER_SHOWED_UP;
+        }
+
+        return true;
+    });
 };
 
 export const genderLabel = (gender) => {

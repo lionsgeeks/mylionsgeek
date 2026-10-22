@@ -1082,18 +1082,23 @@ class UsersController extends Controller
             abort(403, 'You can only update your own profile.');
         }
 
+        $statusValues = UserLifeStatusService::ALLOWED_VALUES;
+        if (strtolower(trim((string) $user->status)) === 'unknown') {
+            $statusValues[] = 'unknown';
+        }
+
         $validated = $request->validate([
             'name' => 'nullable|string',
             'email' => 'nullable|email|unique:users,email,'.$user->id,
             'roles' => 'nullable|array',
             'roles.*' => 'string|in:student,coach,admin,super_admin,moderateur,studio_responsable,responsable_studio,coworker,pro,recruiter',
-            'status' => 'nullable|string|in:'.implode(',', UserLifeStatusService::ALLOWED_VALUES),
+            'status' => 'nullable|string|in:'.implode(',', $statusValues),
             'formation_id' => 'nullable|integer|exists:formations,id',
             'phone' => 'nullable|string',
             'cin' => 'nullable|string',
             'gender' => 'nullable|in:male,female',
             'has_handicap' => 'nullable|in:0,1',
-            'program_status' => 'nullable|in:active,certified,not_certified,left',
+            'program_status' => 'nullable|in:active,certified,not_certified,left,never_showed_up',
             'speciality' => 'nullable|string|max:255',
             'image' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif',
             'cover' => 'nullable|image|mimes:jpeg,jpg,png,webp,gif', // <-- allow cover image

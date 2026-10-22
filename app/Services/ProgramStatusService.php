@@ -22,8 +22,10 @@ class ProgramStatusService
 
     public const LEFT = 'left';
 
+    public const NEVER_SHOWED_UP = 'never_showed_up';
+
     /**
-     * Admins and coaches may assign program status "left".
+     * Admins and coaches may assign exit program statuses (left, never showed up).
      * When a training is provided, coaches must be assigned to that training.
      */
     public function canAssignLeft(User $actor, ?Formation $training = null): bool
@@ -156,12 +158,14 @@ class ProgramStatusService
 
     public function assertCanAssignLeft(User $actor, ?string $programStatus, ?Formation $training = null): void
     {
-        if ($programStatus !== self::LEFT) {
+        $exitStatuses = [self::LEFT, self::NEVER_SHOWED_UP];
+
+        if (! in_array($programStatus, $exitStatuses, true)) {
             return;
         }
 
         if (! $this->canAssignLeft($actor, $training)) {
-            abort(403, 'Only admins and coaches can set program status to Left.');
+            abort(403, 'Only admins and coaches can set program status to Left or Never Showed Up.');
         }
     }
 }

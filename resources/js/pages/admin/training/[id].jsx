@@ -254,22 +254,25 @@ export default function Show({ training, usersNull, courses = [] }) {
             const initialized = {};
             const existing = data.lists || [];
             const byUserId = new Map(existing.map((l) => [l.user_id, l]));
+            const includeLeft = attendanceDateIncludesLeft(dateStr);
 
-            students.forEach((s) => {
-                const key = `${dateStr}-${s.id}`;
-                const saved = byUserId.get(s.id);
-                const base = getDefaultSlots(s, dateStr);
-                const studentMarkedSlots = Array.isArray(saved?.student_marked_slots) ? saved.student_marked_slots : [];
+            students
+                .filter((s) => includeLeft || !isStudentLeft(s))
+                .forEach((s) => {
+                    const key = `${dateStr}-${s.id}`;
+                    const saved = byUserId.get(s.id);
+                    const base = getDefaultSlots(s, dateStr);
+                    const studentMarkedSlots = Array.isArray(saved?.student_marked_slots) ? saved.student_marked_slots : [];
 
-                initialized[key] = {
-                    morning: resolveSlotDisplayValue('morning', saved, base, studentMarkedSlots),
-                    lunch: resolveSlotDisplayValue('lunch', saved, base, studentMarkedSlots),
-                    evening: resolveSlotDisplayValue('evening', saved, base, studentMarkedSlots),
-                    notes: saved?.note ? String(saved.note).split(' | ').filter(Boolean) : base.notes,
-                    user_id: s.id,
-                    studentMarkedSlots,
-                };
-            });
+                    initialized[key] = {
+                        morning: resolveSlotDisplayValue('morning', saved, base, studentMarkedSlots),
+                        lunch: resolveSlotDisplayValue('lunch', saved, base, studentMarkedSlots),
+                        evening: resolveSlotDisplayValue('evening', saved, base, studentMarkedSlots),
+                        notes: saved?.note ? String(saved.note).split(' | ').filter(Boolean) : base.notes,
+                        user_id: s.id,
+                        studentMarkedSlots,
+                    };
+                });
 
             setAttendanceData((prev) => ({ ...prev, ...initialized }));
 
@@ -282,14 +285,24 @@ export default function Show({ training, usersNull, courses = [] }) {
 
     //   atteandacelist
     async function handleSave() {
-        const dataToSave = Object.entries(attendanceData).map(([key, value]) => {
+        if (!selectedDate) return;
+
+        const includeLeft = attendanceDateIncludesLeft(selectedDate);
+        const eligibleIds = new Set(
+            students.filter((student) => includeLeft || !isStudentLeft(student)).map((student) => String(student.id)),
+        );
+        const dataToSave = [];
+        Object.entries(attendanceData).forEach(([key, value]) => {
             const studentId =
                 value?.user_id ??
                 (() => {
                     const i = key.lastIndexOf('-');
                     return i !== -1 ? key.slice(i + 1) : key;
                 })();
-            return {
+            if (!key.startsWith(`${selectedDate}-`) || !eligibleIds.has(String(studentId))) {
+                return;
+            }
+            dataToSave.push({
                 user_id: studentId,
                 attendance_day: selectedDate,
                 attendance_id: currentAttendanceId ? Number(currentAttendanceId) : null,
@@ -297,11 +310,11 @@ export default function Show({ training, usersNull, courses = [] }) {
                 lunch: value.lunch,
                 evening: value.evening,
                 note: Array.isArray(value.notes) ? value.notes.join(' | ') : value.notes || null,
-            };
+            });
         });
+        if (dataToSave.length === 0) return;
 
         try {
-            if (!selectedDate) return;
             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
             const res = await fetch('/admin/attendance/save', {
                 method: 'POST',
@@ -385,11 +398,33 @@ export default function Show({ training, usersNull, courses = [] }) {
         setShowWinnerModal(false);
     };
 
-    const getDefaultSlots = (student, dateStr = selectedDate) => {
-        const legacyLeft = String(student?.status || '').toLowerCase() === 'left';
-        const programLeft = student?.program_status === PROGRAM_STATUS.LEFT;
+    const isStudentLeft = (student) => {
+        const programLeft =
+            student?.program_status === PROGRAM_STATUS.LEFT ||
+            student?.program_status === PROGRAM_STATUS.NEVER_SHOWED_UP;
+        const legacyLeft =
+            !student?.program_status && String(student?.status || '').toLowerCase() === PROGRAM_STATUS.LEFT;
 
-        if (legacyLeft || programLeft) {
+        return programLeft || legacyLeft;
+    };
+
+    const localDateString = (date = new Date()) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const attendanceDateIncludesLeft = (dateStr) => Boolean(dateStr) && dateStr < localDateString();
+
+    const getDefaultSlots = (student, dateStr = selectedDate) => {
+        const programLeft =
+            student?.program_status === PROGRAM_STATUS.LEFT ||
+            student?.program_status === PROGRAM_STATUS.NEVER_SHOWED_UP;
+        const legacyLeft =
+            !student?.program_status && String(student?.status || '').toLowerCase() === PROGRAM_STATUS.LEFT;
+
+        if (programLeft || legacyLeft) {
             return { morning: 'absent', lunch: 'absent', evening: 'absent', notes: [] };
         }
 
@@ -622,13 +657,21 @@ export default function Show({ training, usersNull, courses = [] }) {
         (s) => s.name.toLowerCase().includes(filter.toLowerCase()) || s.email.toLowerCase().includes(filter.toLowerCase()),
     );
 
+    const activeFilteredStudents = filteredStudents.filter((s) => !isStudentLeft(s));
+
+    const leftFilteredStudents = filteredStudents.filter((s) => isStudentLeft(s));
+
+    const activeAttendanceStudents = attendanceDateIncludesLeft(selectedDate)
+        ? students
+        : students.filter((s) => !isStudentLeft(s));
+
     const attendanceFilteredStudents = attendanceSearch.trim()
-        ? students.filter(
+        ? activeAttendanceStudents.filter(
               (s) =>
                   s.name.toLowerCase().includes(attendanceSearch.toLowerCase()) ||
                   s.email.toLowerCase().includes(attendanceSearch.toLowerCase()),
           )
-        : students;
+        : activeAttendanceStudents;
 
     const attendanceBulkReady =
         !attendanceLoading &&
@@ -877,7 +920,17 @@ export default function Show({ training, usersNull, courses = [] }) {
                         {students.length > 0 && (
                             <div className="rounded-2xl border border-alpha/20 bg-light p-6 text-dark dark:bg-dark dark:text-light">
                                 <div className="mb-4 flex items-center justify-between">
-                                    <h2 className="text-xl font-bold">Enrolled Students ({students.length})</h2>
+                                    <h2 className="text-xl font-bold">
+                                        Enrolled Students{' '}
+                                        <span className="text-sm font-medium text-muted-foreground">
+                                            {students.filter((s) => !isStudentLeft(s)).length} active
+                                            {students.some((s) => isStudentLeft(s)) && (
+                                                <span className="ml-1 text-muted-foreground/60">
+                                                    · {students.filter((s) => isStudentLeft(s)).length} left
+                                                </span>
+                                            )}
+                                        </span>
+                                    </h2>
                                 </div>
 
                                 {/* Filter Input */}
@@ -890,7 +943,7 @@ export default function Show({ training, usersNull, courses = [] }) {
                                 />
 
                                 <ul className="space-y-3">
-                                    {filteredStudents.map((user) => (
+                                    {activeFilteredStudents.map((user) => (
                                         <li key={user.id} className="flex items-center justify-between space-x-3">
                                             <div
                                                 className="flex flex-1 cursor-pointer items-center space-x-3 rounded-lg p-2 transition-colors hover:bg-alpha/5"
@@ -922,6 +975,56 @@ export default function Show({ training, usersNull, courses = [] }) {
                                             </Button>
                                         </li>
                                     ))}
+                                    {leftFilteredStudents.length > 0 && (
+                                        <>
+                                            <li className="pt-2 pb-1">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-px flex-1 bg-border" />
+                                                    <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                                        Left the program
+                                                    </span>
+                                                    <div className="h-px flex-1 bg-border" />
+                                                </div>
+                                            </li>
+                                            {leftFilteredStudents.map((user) => (
+                                                <li key={user.id} className="flex items-center justify-between space-x-3">
+                                                    <div
+                                                        className="flex flex-1 cursor-pointer items-center space-x-3 rounded-lg p-2 opacity-60 transition-colors hover:bg-alpha/5"
+                                                        onClick={() => router.visit(`/admin/users/${user.id}`)}
+                                                    >
+                                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted font-bold text-muted-foreground">
+                                                            {user.name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="font-semibold text-dark dark:text-light">{user.name}</p>
+                                                                <span className="inline-flex items-center rounded-full border border-gray-300/50 bg-gray-100 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-gray-500 uppercase dark:border-gray-600/50 dark:bg-gray-800 dark:text-gray-400">
+                                                                    Left
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-sm text-dark/50 dark:text-light/50">{user.email}</p>
+                                                            <button
+                                                                className="mt-1 inline-block text-xs text-red-600 hover:text-red-700 md:hidden"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDelete(user.id);
+                                                                }}
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => handleDelete(user.id)}
+                                                        className="hidden gap-1 border-red-600 px-3 py-1 text-red-600 hover:bg-red-50 md:inline-flex dark:hover:bg-red-900/10"
+                                                    >
+                                                        Remove
+                                                    </Button>
+                                                </li>
+                                            ))}
+                                        </>
+                                    )}
                                 </ul>
                             </div>
                         )}
@@ -1440,7 +1543,7 @@ export default function Show({ training, usersNull, courses = [] }) {
 
                         <div className="sticky bottom-0 mt-6 flex flex-col gap-3 border-t border-alpha/20 bg-light py-3 pr-3 sm:flex-row sm:items-center sm:justify-between md:pr-6 dark:bg-dark">
                             <div className="text-sm text-dark/70 md:text-base dark:text-light/70">
-                                Total Students: <span className="text-xl font-bold">{students.length}</span>
+                                Total Students: <span className="text-xl font-bold">{activeAttendanceStudents.length}</span>
                             </div>
                             <div className="flex flex-col gap-2 sm:flex-row sm:gap-0 sm:space-x-4">
                                 <Button
@@ -1634,6 +1737,10 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                 {(canAssignProgramStatusLeftOnTraining ||
                                                     bulkProgramStatus === PROGRAM_STATUS.LEFT) && (
                                                     <SelectItem value={PROGRAM_STATUS.LEFT}>Left</SelectItem>
+                                                )}
+                                                {(canAssignProgramStatusLeftOnTraining ||
+                                                    bulkProgramStatus === PROGRAM_STATUS.NEVER_SHOWED_UP) && (
+                                                    <SelectItem value={PROGRAM_STATUS.NEVER_SHOWED_UP}>Never Showed Up</SelectItem>
                                                 )}
                                                 <SelectGroup>
                                                     <SelectLabel>Certificate &amp; Not Certificate</SelectLabel>
